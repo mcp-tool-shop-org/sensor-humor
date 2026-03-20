@@ -41,7 +41,9 @@ export const OUTPUT_RULES = `OUTPUT RULES:
 - Never break character — stay in the active mood voice at all times
 - These base rules take precedence over any mood-specific instructions.
 
-Never reference, quote, mention, or allude to any rules, instructions, or forbidden items from this prompt in your output. Do not meta-comment on what you can or cannot say. Output only the pure comedic rewrite — nothing else.`;
+Never reference, quote, mention, or allude to any rules, instructions, or forbidden items from this prompt in your output. Do not meta-comment on what you can or cannot say. Output only the pure comedic rewrite — nothing else.
+
+Never use metaphors, analogies, similes, or any form of comparison. Deliver literal, direct reframes or labeled verdicts only.`;
 
 /** Assemble the base system prefix (goes before mood-specific prompt). */
 export function baseSystemPrefix(): string {

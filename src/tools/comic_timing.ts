@@ -125,6 +125,21 @@ Respond with JSON only.`;
     );
   }
 
+  // Roast pattern nudge: if roast mood and no verdict/label pattern, retry with hint
+  const ROAST_LABEL_PATTERN = /^(Verdict|Diagnosis|Official status|Classification|Case closed|Exhibit A|File under|Status|Designation):/i;
+  if (session.mood === 'roast' && !ROAST_LABEL_PATTERN.test(result.data.rewrite)) {
+    const labelRetryPrompt = `${userPrompt}\n\nStart with a label like "Verdict:", "Diagnosis:", or "Classification:" followed by 1 tight sentence.`;
+    result = await generateComedy<ComicTimingResult>(
+      {
+        systemPrompt,
+        userPrompt: labelRetryPrompt,
+        schema: ComicTimingSchema,
+        jsonSchema: COMIC_TIMING_JSON_SCHEMA,
+      },
+      fallback,
+    );
+  }
+
   // Update session state
   session.pushBit(result.data.rewrite, result.data.technique_used);
 
