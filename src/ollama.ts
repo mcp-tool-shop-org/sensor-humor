@@ -47,6 +47,8 @@ export interface GenerateComedyOptions {
   schema: z.ZodType<unknown>;
   /** JSON schema object to pass to Ollama format parameter. */
   jsonSchema: Record<string, unknown>;
+  /** Override num_predict for this call (e.g., heckle uses 40). */
+  numPredict?: number;
 }
 
 export interface GenerateComedyResult<T> {
@@ -62,7 +64,7 @@ export async function generateComedy<T>(
   options: GenerateComedyOptions,
   fallback: T,
 ): Promise<GenerateComedyResult<T>> {
-  const { systemPrompt, userPrompt, schema, jsonSchema } = options;
+  const { systemPrompt, userPrompt, schema, jsonSchema, numPredict } = options;
   const model = getModel();
   const debug = isDebug();
   const client = getClient();
@@ -91,7 +93,7 @@ export async function generateComedy<T>(
           top_k: DEFAULT_TOP_K,
           mirostat: DEFAULT_MIROSTAT,
           mirostat_tau: DEFAULT_MIROSTAT_TAU,
-          num_predict: MAX_PREDICT,
+          num_predict: numPredict ?? MAX_PREDICT,
         },
       });
 
