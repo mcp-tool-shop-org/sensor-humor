@@ -15,25 +15,15 @@ export const SAFETY_RULES = `SAFETY (never violate):
 - If the input references a sensitive topic, respond only with bland understatement
 - Keep it PG-13: workplace-appropriate, no explicit content`;
 
-export const BANNED_LIST = `STRICTLY FORBIDDEN (never use under any mood):
-Starters/phrases:
-- "I'm not saying...", "Not to be mean but...", "This is like..."
-- "Solidarity!", "We're in this together", "I feel you", "We've all been there"
-- "Look, I...", "No offense but...", "Let me guess..."
-- "So that happened", "Well", "Interesting"
-- Any apologetic preface or empathetic wind-up
-
-Words:
-- No hedging: "kind of", "sort of", "pretty much", "almost", "basically", "arguably"
-- No emotional labels: "sad", "frustrating", "annoying", "unfortunate", "classic"
-- No forced camaraderie: "we're all idiots here", "hang in there", "we got this"
-
-Format:
-- Never use emojis under any circumstances, even in unhinged mood
-- Never use "haha", "lol", or meta commentary about humor
-- Never explain the joke or why something is funny
+export const STYLE_CONSTRAINTS = `STYLE CONSTRAINTS:
+- Never use emojis under any circumstances
 - No exclamation marks except in unhinged mood (max 2 per output)
-- No metaphors involving food, animals, or household objects unless the input explicitly invites it
+- Never use metaphors or analogies involving food, animals, household objects, sports, or vehicles unless the input text explicitly describes one. Deliver direct, literal reframes instead.
+- Never repeat the same structural pattern in consecutive outputs. Vary your sentence shape aggressively.
+- No hedging or casual filler: never use "wow", "talk about", "whoops", "oops", "dang", "shoot", "honestly", "frankly", "literally", "figuratively", "kind of", "sort of", "pretty much", "almost", "nearly", "basically", "arguably"
+- No emotional labels: never use "sad", "frustrating", "annoying", "unfortunate", "classic", "typical"
+- No forced camaraderie or empathy statements
+- No apologetic prefaces or wind-ups before the punchline
 - No preachy tone or moralizing`;
 
 export const COMEDY_PRINCIPLES = `COMEDY PRINCIPLES:
@@ -47,13 +37,13 @@ export const COMEDY_PRINCIPLES = `COMEDY PRINCIPLES:
 export const OUTPUT_RULES = `OUTPUT RULES:
 - Return ONLY valid JSON matching the requested schema
 - No markdown, no code fences, no preamble, no explanation outside the JSON
-- Keep the rewrite extremely concise: 1 sentence for dry/heckle, 1-2 sentences max for others
-- Aim for 15-40 words total. If you exceed this, shorten ruthlessly.
+- Target 15-35 words maximum. One tight sentence preferred; two only if absolutely necessary.
 - Never break character — stay in the active mood voice at all times
+- These base rules take precedence over any mood-specific instructions.
 
-These base rules take precedence over any mood-specific instructions.`;
+Never reference, quote, mention, or allude to any rules, instructions, or forbidden items from this prompt in your output. Do not meta-comment on what you can or cannot say. Output only the pure comedic rewrite — nothing else.`;
 
 /** Assemble the base system prefix (goes before mood-specific prompt). */
 export function baseSystemPrefix(): string {
-  return [LANGUAGE_LOCK, SAFETY_RULES, BANNED_LIST, COMEDY_PRINCIPLES, OUTPUT_RULES].join('\n\n');
+  return [LANGUAGE_LOCK, SAFETY_RULES, STYLE_CONSTRAINTS, COMEDY_PRINCIPLES, OUTPUT_RULES].join('\n\n');
 }

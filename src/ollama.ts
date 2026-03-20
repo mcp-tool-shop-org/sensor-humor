@@ -10,7 +10,7 @@ import type { GenerationMetadata } from './types.js';
 
 const DEFAULT_MODEL = 'qwen2.5:7b';
 const DEFAULT_TEMPERATURE = 0.7;
-const MAX_PREDICT = 80; // Hard token cap — forces concise output at API level
+const MAX_PREDICT = 60; // Hard token cap — forces tight, punchy output
 const MAX_RETRIES = 1;
 
 function getModel(): string {

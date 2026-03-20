@@ -11,10 +11,13 @@ import { generateComedy } from '../ollama.js';
 import { COMIC_TECHNIQUES, type ComicTechnique, type ComicTimingResult } from '../types.js';
 
 const ComicTimingSchema = z.object({
-  rewrite: z.string().max(500),
+  rewrite: z.string().max(300),
   technique_used: z.string(),
   callback_source: z.string().optional(),
 });
+
+/** Detect meta-commentary or prompt leakage in output. */
+const META_LEAK_PATTERN = /\b(ban|forbidden|rule|emoji|exclamation|prompt|instruction|unhinged mood|hedging|preface)\b/i;
 
 /** JSON schema for Ollama format parameter. */
 const COMIC_TIMING_JSON_SCHEMA = {
@@ -98,7 +101,7 @@ Respond with JSON only.`;
     technique_used: 'understatement',
   };
 
-  const result = await generateComedy<ComicTimingResult>(
+  let result = await generateComedy<ComicTimingResult>(
     {
       systemPrompt,
       userPrompt,
@@ -107,6 +110,20 @@ Respond with JSON only.`;
     },
     fallback,
   );
+
+  // Post-validation: reject meta-commentary leaks and retry once
+  if (META_LEAK_PATTERN.test(result.data.rewrite)) {
+    const retryPrompt = `${userPrompt}\n\nOutput ONLY the comedic rewrite. No rules, no comments, no meta text. Pure comedy only.`;
+    result = await generateComedy<ComicTimingResult>(
+      {
+        systemPrompt,
+        userPrompt: retryPrompt,
+        schema: ComicTimingSchema,
+        jsonSchema: COMIC_TIMING_JSON_SCHEMA,
+      },
+      fallback,
+    );
+  }
 
   // Update session state
   session.pushBit(result.data.rewrite, result.data.technique_used);
