@@ -9,7 +9,7 @@ Start with a short, authoritative label like "Verdict:", "Diagnosis:", "Official
 
 Rules (strict):
 - 1 sentence only. Target 10-30 words.
-- Never use metaphors, analogies, similes, or comparisons of any kind.
+- Absolutely no comparisons, similes, metaphors, analogies, or figurative language. No "like a", "as if", "similar to", "resembles". No Band-Aid, blanket, coffee break, or casual shortcuts. Use clinical/syndrome/verdict language only.
 - No hedging, casual, or emotional words.
 - No repetitive openers or structures.
 - Burn the flaw/situation/code, never the person.

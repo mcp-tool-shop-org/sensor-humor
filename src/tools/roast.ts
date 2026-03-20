@@ -60,12 +60,15 @@ Respond with JSON only.`;
     severity: 3,
   };
 
+  const ROAST_NUM_PREDICT = 80;
+
   let result = await generateComedy<z.infer<typeof RoastSchema>>(
     {
       systemPrompt,
       userPrompt,
       schema: RoastSchema,
       jsonSchema: ROAST_JSON_SCHEMA,
+      numPredict: ROAST_NUM_PREDICT,
     },
     fallback,
   );
@@ -79,6 +82,23 @@ Respond with JSON only.`;
         userPrompt: retryPrompt,
         schema: RoastSchema,
         jsonSchema: ROAST_JSON_SCHEMA,
+        numPredict: ROAST_NUM_PREDICT,
+      },
+      fallback,
+    );
+  }
+
+  // Comparison/metaphor leak check: retry once with negative prompt
+  const COMPARISON_LEAK = /\blike a\b|\bas a\b|\bas if\b|\bsimilar to\b|\bresembles\b|\bband[\s-]?aid\b|\bbandaid\b|\bblanket\b|\bcoffee break\b/i;
+  if (COMPARISON_LEAK.test(result.data.roast)) {
+    const cleanPrompt = `${userPrompt}\n\nNo comparisons, similes, or figurative language. Literal clinical verdict only.`;
+    result = await generateComedy<z.infer<typeof RoastSchema>>(
+      {
+        systemPrompt,
+        userPrompt: cleanPrompt,
+        schema: RoastSchema,
+        jsonSchema: ROAST_JSON_SCHEMA,
+        numPredict: ROAST_NUM_PREDICT,
       },
       fallback,
     );
