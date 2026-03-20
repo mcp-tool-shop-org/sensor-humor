@@ -8,7 +8,7 @@ import { Ollama } from 'ollama';
 import type { z } from 'zod';
 import type { GenerationMetadata } from './types.js';
 
-const DEFAULT_MODEL = 'qwen2.5:7b-instruct';
+const DEFAULT_MODEL = 'qwen2.5:7b';
 const DEFAULT_TEMPERATURE = 0.7;
 const MAX_RETRIES = 1;
 
