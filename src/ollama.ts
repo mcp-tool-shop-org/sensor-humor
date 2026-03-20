@@ -9,8 +9,12 @@ import type { z } from 'zod';
 import type { GenerationMetadata } from './types.js';
 
 const DEFAULT_MODEL = 'qwen2.5:7b';
-const DEFAULT_TEMPERATURE = 0.7;
-const MAX_PREDICT = 60; // Hard token cap — forces tight, punchy output
+const DEFAULT_TEMPERATURE = 0.55;
+const DEFAULT_TOP_P = 0.85;
+const DEFAULT_TOP_K = 40;
+const DEFAULT_MIROSTAT = 2;
+const DEFAULT_MIROSTAT_TAU = 5.0;
+const MAX_PREDICT = 60;
 const MAX_RETRIES = 1;
 
 function getModel(): string {
@@ -83,6 +87,10 @@ export async function generateComedy<T>(
         format: jsonSchema,
         options: {
           temperature: DEFAULT_TEMPERATURE,
+          top_p: DEFAULT_TOP_P,
+          top_k: DEFAULT_TOP_K,
+          mirostat: DEFAULT_MIROSTAT,
+          mirostat_tau: DEFAULT_MIROSTAT_TAU,
           num_predict: MAX_PREDICT,
         },
       });
