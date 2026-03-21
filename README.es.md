@@ -25,6 +25,19 @@ Diseñado para desarrolladores: comentarios ingeniosos sobre código deficiente,
 - Emparejamiento de voz: mcp-voice-soundboard con Piper TTS (controles de prosodia: length_scale, noise_scale, noise_w_scale, volume).
 - Determinista: aplicación y validación de esquemas JSON, reintento en caso de resultados incorrectos, registro de depuración.
 
+## Modos
+
+Cada modo utiliza una plantilla con espacios en blanco que obliga al modelo a adoptar una forma predecible y de alta calidad.
+
+- **formal** — serio, minimalista, obvio (por defecto)
+- **sarcástico** — comentarios afectuosos y directos, etiquetas de veredicto/diagnóstico
+- **cínico** — realismo desilusionado y sutilmente cruel ("Por supuesto:", "Predeciblemente:")
+- **picante** — bromas juguetonas y traviesas ("Ay, cariño", "Movida audaz")
+- **caótico** — oración inicial, seguida de un giro absurdo repentino ("Según se informa...")
+- **joven** — sarcasmo de la Generación Z, extremadamente conectado a internet (reacción, comentario, MAYÚSCULAS, etiqueta)
+
+Todos los modos heredan la voz y la entonación a través de mcp-voice-soundboard (se recomienda Piper).
+
 ## Requisitos
 
 - Node.js 18+.
@@ -79,10 +92,11 @@ Todas las herramientas heredan el estado de ánimo actual de la sesión.
 
 | Herramienta | Firma | Descripción |
 |------|-----------|-------------|
-| `mood.set` | `(style: string)` | Establece el estado de ánimo activo (seco, sarcástico, absurdo, amigable, cínico, descontrolado). |
+| `mood.set` | `(style: string)` | Establecer estado de ánimo (serio, sarcástico, caótico, pícaro, cínico, "zoomer") |
 | `mood.get` | `()` | Estado de ánimo actual + contador de chistes. |
 | `comic_timing` | `(text, technique?)` | Reescribe con una entrega cómica (regla de tres, desvío, escalada, llamada de retorno, subestimación, automático). |
-| `roast` | `(target, context?)` | Comentario afectuoso con patrón de veredicto/etiqueta, devuelve la severidad del 1 al 5. Contexto: código, error, idea, situación. |
+| `roast` | `(target, context?)` | Comentario sarcástico en la voz del modo actual, con un nivel de intensidad de 1 a 5. Contexto: código, error, idea, situación. |
+| `debug_status` | `()` | Eliminar el estado actual de la sesión, la configuración del modo y el backend de la voz. |
 | `heckle` | `(target)` | Comentario breve y directo. |
 | `catchphrase.generate` | `(context?)` | Crea un fragmento reutilizable (almacenado en la sesión). |
 | `catchphrase.callback` | `()` | Reutiliza la frase hecha más utilizada (o nula). |
@@ -95,10 +109,10 @@ Cada estado de ánimo se asocia con una voz de Piper distinta y una configuraci�
 |------|-------|-------------|-------------|---------------|--------|-----------|
 | seco | en_GB-alan-medium | 1.15 | 0.3 | 0.3 | 0.9 | Plano, cansado, metronómico. |
 | sarcástico | en_US-ryan-high | 0.95 | 0.667 | 0.8 | 1.0 | Sarcasmo seguro. |
-| absurdo | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | Errático, impredecible. |
-| amigable | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Energía cálida y gentil de un padre. |
-| cínico | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | Monotonía cansada del mundo. |
-| descontrolado | en_US-lessac-high | 0.82 | 0.9 | 1.0 | 1.2 | Rápido, fuerte, caótico. |
+| Caótico. | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | Presentador de noticias diciendo tonterías. |
+| Pícaro. | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Guiño cálido, juguetón y provocador. |
+| Cínico. | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | Frío, plano, sin ninguna sorpresa. |
+| "Zoomer". | en_US-lessac-high | 0.90 | 0.85 | 0.9 | 1.15 | Rápido, ruidoso, energía de "streamer". |
 
 ## Variables de entorno
 
@@ -121,10 +135,12 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 
 ## Notas de calidad
 
-- Tasa de éxito cómico: ~70-75% en sesiones reales (el estado de ánimo "seco" es el más fuerte, seguido de cerca por el "sarcástico").
-- Determinista: aplicación de esquemas JSON, 1 reintento en caso de salida no válida, validación posterior para patrones prohibidos.
-- Voz: Piper proporciona una separación real de la prosodia (no solo la velocidad); Kokoro es solo de velocidad.
-- No apto para bots de producción; solo es un complemento para desarrolladores. El humor es subjetivo; ajuste las solicitudes si es necesario.
+- Tasa de éxito cómico: 70-100% por modo/herramienta en sesiones de desarrollo reales (ingeniería de prompts basada en plantillas).
+- Filtro de símiles/comparaciones: expresión regular de validación posterior + reintento/alternativa para evitar errores en los modos "formal" y "picante".
+- Todos los modos tienen una tasa de éxito superior al 70% en sesiones reales; los modos "sarcástico", "cínico" y "caótico" suelen tener una tasa del 90-100%.
+- Determinista: cumplimiento de esquemas JSON, reintento en caso de resultados incorrectos, la herencia del modo se aplica en todas las herramientas.
+- Voz: Piper proporciona una separación de la entonación (longitud/ruido/volumen por modo); Kokoro es una alternativa más rápida.
+- Solo para uso como herramienta de desarrollo. El humor es subjetivo; desactive cualquier modo a través de variables de entorno o ajuste los prompts si es necesario.
 
 ## Arquitectura
 

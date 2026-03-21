@@ -10,7 +10,7 @@ sidebar:
 Set the active comedy mood for the session.
 
 **Input:**
-- `style` (string, required) — one of: `dry`, `roast`, `absurdist`, `wholesome`, `sardonic`, `unhinged`
+- `style` (string, required) — one of: `dry`, `roast`, `chaotic`, `cheeky`, `cynic`, `zoomer`
 
 **Output:**
 ```json

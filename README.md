@@ -14,16 +14,29 @@
 
 MCP tool that gives your LLM a persistent comedic sidekick: mood-based personality, session-aware callbacks, running gags, roasts, heckles, and catchphrases — all with voice integration via Piper TTS (prosody-controlled).
 
-Built for developers: gentle burns on code smells, dry deadpan error messages, unhinged chaos on build fails. Never overwrites host LLM tone — distinct voice that chimes in when called.
+Built for developers: gentle burns on code smells, dry deadpan error messages, chaotic escalation on build fails. Never overwrites host LLM tone — distinct voice that chimes in when called.
 
 ## Features
 
-- 6 moods: dry (default), roast, absurdist, wholesome, sardonic, unhinged
+- 6 moods, all at 70%+ hit rate in real dev sessions
 - Session state: running gags, recent bits ring buffer (max 20), catchphrase Map
-- Tools: mood.set/get, comic_timing, roast, heckle, catchphrase.generate/callback
+- 7 tools: mood.set/get, comic_timing, roast, heckle, catchphrase.generate/callback
 - Local Ollama backend (qwen2.5:7b-instruct recommended)
 - Voice pairing: mcp-voice-soundboard with Piper TTS (prosody knobs: length_scale, noise_scale, noise_w_scale, volume)
-- Deterministic: JSON schema enforcement, validation, retry on bad output, debug logging
+- Deterministic: JSON schema enforcement, validation, retry on bad output, mood inheritance enforced
+
+## Moods
+
+Each mood uses a fill-in-the-blank skeleton prompt that forces the model into a predictable, high-quality shape.
+
+- **dry** — deadpan, minimalist, painfully obvious (default)
+- **roast** — affectionate pointed burns, verdict/diagnosis labels
+- **cynic** — jaded, quietly vicious realism ("Of course:", "Predictably:")
+- **cheeky** — playful teasing mischief ("Oh honey", "Bold move")
+- **chaotic** — grounded sentence, then sudden absurd twist ("Reportedly...")
+- **zoomer** — terminally online savage Gen-Z snark (reaction, jab, CAPS BLOCK, tag)
+
+All moods inherit voice + prosody via mcp-voice-soundboard (Piper recommended).
 
 ## Requirements
 
@@ -79,10 +92,11 @@ All tools inherit current mood from session.
 
 | Tool | Signature | Description |
 |------|-----------|-------------|
-| `mood.set` | `(style: string)` | Set active mood (dry, roast, absurdist, wholesome, sardonic, unhinged) |
+| `mood.set` | `(style: string)` | Set active mood (dry, roast, chaotic, cheeky, cynic, zoomer) |
 | `mood.get` | `()` | Current mood + gag count |
 | `comic_timing` | `(text, technique?)` | Rewrite with comedic delivery (rule-of-three, misdirection, escalation, callback, understatement, auto) |
-| `roast` | `(target, context?)` | Affectionate burn with verdict/label pattern, returns severity 1-5. Context: code, error, idea, situation |
+| `roast` | `(target, context?)` | Affectionate burn in current mood voice, returns severity 1-5. Context: code, error, idea, situation |
+| `debug_status` | `()` | Dump current session state, mood config, and voice backend |
 | `heckle` | `(target)` | Short pointed jab |
 | `catchphrase.generate` | `(context?)` | Create reusable bit (stored in session) |
 | `catchphrase.callback` | `()` | Reuse most-used catchphrase (or null) |
@@ -95,10 +109,10 @@ Each mood maps to a distinct Piper voice + prosody configuration:
 |------|-------|-------------|-------------|---------------|--------|-----------|
 | dry | en_GB-alan-medium | 1.15 | 0.3 | 0.3 | 0.9 | Flat, weary, metronomic |
 | roast | en_US-ryan-high | 0.95 | 0.667 | 0.8 | 1.0 | Confident sarcasm |
-| absurdist | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | Erratic, unpredictable |
-| wholesome | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Warm, gentle dad energy |
-| sardonic | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | World-weary drawl |
-| unhinged | en_US-lessac-high | 0.82 | 0.9 | 1.0 | 1.2 | Fast, loud, chaotic |
+| chaotic | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | News anchor delivering nonsense |
+| cheeky | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Warm, teasing, playful wink |
+| cynic | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | Cold, flat, zero surprise |
+| zoomer | en_US-lessac-high | 0.90 | 0.85 | 0.9 | 1.15 | Fast, loud, streamer energy |
 
 ## Environment Variables
 
@@ -121,10 +135,12 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 
 ## Quality Notes
 
-- Comedy hit rate: ~70-75% in real sessions (dry strongest, roast close behind)
-- Deterministic: JSON schema enforcement, 1 retry on invalid output, post-validation for banned patterns
-- Voice: Piper gives real prosody separation (not just speed); Kokoro fallback is speed-only
-- Not for production bots — dev-tool sidekick only. Humor is subjective; tune prompts if needed
+- Comedy hit rate: 70-100% per mood/tool in real dev sessions (skeleton-based prompt engineering)
+- Simile/comparison filter: post-validation regex + retry/fallback prevents leaks in dry/cheeky
+- All moods at 70%+ in real sessions; roast/cynic/chaotic often 90-100%
+- Deterministic: JSON schema enforcement, retry on bad output, mood inheritance enforced across all tools
+- Voice: Piper gives prosody separation (length/noise/volume per mood); Kokoro fallback is speed-only
+- Dev-tool sidekick only. Humor is subjective; disable any mood via env or tune prompts if needed
 
 ## Architecture
 

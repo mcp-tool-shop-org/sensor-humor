@@ -12,18 +12,31 @@
   <a href="https://mcp-tool-shop-org.github.io/sensor-humor/"><img src="https://img.shields.io/badge/landing-page-34d399" alt="Landing Page"></a>
 </p>
 
-Un outil MCP qui donne à votre LLM un acolyte comique persistant : personnalité basée sur l'humeur, rappels sensibles au contexte de session, blagues récurrentes, railleries, insultes et expressions types, le tout avec une intégration vocale via Piper TTS (avec contrôle de la prosodie).
+Cet outil MCP offre à votre LLM un compagnon comique persistant : personnalité basée sur l'humeur, rappels sensibles au contexte de session, blagues récurrentes, railleries, insultes et expressions types, le tout avec intégration vocale via Piper TTS (contrôle de la prosodie).
 
-Conçu pour les développeurs : critiques subtiles du code, messages d'erreur secs et impersonnels, chaos total en cas d'échec de la compilation. Ne modifie jamais le ton du LLM hôte ; voix distincte qui intervient lorsqu'elle est appelée.
+Conçu pour les développeurs : critiques subtiles du code, messages d'erreur secs et impersonnels, chaos total en cas d'échec de la compilation. Ne modifie jamais le ton du LLM hôte ; voix distincte qui intervient lorsque cela est demandé.
 
 ## Fonctionnalités
 
-- 6 humeurs : neutre (par défaut), moqueur, absurde, bienveillant, sarcastique, déjanté
+- 6 humeurs : neutre (par défaut), moqueur, absurde, bienveillant, sarcastique, déchaîné
 - État de session : blagues récurrentes, tampon circulaire des dernières phrases (max 20), mappage des expressions types
 - Outils : mood.set/get, comic_timing, roast, heckle, catchphrase.generate/callback
 - Backend Ollama local (qwen2.5:7b-instruct recommandé)
 - Appariement vocal : mcp-voice-soundboard avec Piper TTS (paramètres de prosodie : length_scale, noise_scale, noise_w_scale, volume)
 - Déterministe : application et validation de schéma JSON, nouvelle tentative en cas de résultat incorrect, journalisation de débogage
+
+## Modes
+
+Chaque mode utilise une structure de phrase avec des espaces à remplir, ce qui force le modèle à adopter une forme prévisible et de haute qualité.
+
+- **neutre** — ton neutre, minimaliste, évidement (par défaut)
+- **sarcastique** — critiques affectueuses et acerbes, étiquettes de diagnostic/évaluation
+- **cynique** — réalisme désabusé et subtilement méchant ("Bien sûr :", "Prévisiblement :")
+- **espiègle** — taquineries ludiques et malicieuses ("Oh, mon chéri", "Audace !")
+- **chaotique** — phrase cohérente, suivie d'un rebondissement absurde ("Apparemment...")
+- **génération Z** — sarcasme acerbe typique de la génération Z, constamment en ligne (réaction, pique, MAJUSCULES, mention)
+
+Tous les modes héritent de la voix et de la prosodie via mcp-voice-soundboard (Piper est recommandé).
 
 ## Prérequis
 
@@ -48,7 +61,7 @@ npm link /path/to/sensor-humor
 ollama run qwen2.5:7b-instruct
 ```
 
-2. Démarrer le serveur MCP sensor-humor (transport stdio) :
+2. Démarrer le serveur sensor-humor MCP (transport stdio) :
 
 ```bash
 cd sensor-humor
@@ -71,7 +84,7 @@ mood.set(style: "roast")
 roast(target: "800-line god function")
 ```
 
-Une critique moqueuse est renvoyée, puis `voice_speak(mood: "roast")` la prononce avec une énergie sarcastique et confiante.
+Une "insulte" est renvoyée, puis `voice_speak(mood: "roast")` la prononce avec une énergie sarcastique et confiante.
 
 ## Outils
 
@@ -79,26 +92,27 @@ Tous les outils héritent de l'humeur actuelle de la session.
 
 | Outil | Signature | Description |
 |------|-----------|-------------|
-| `mood.set` | `(style: string)` | Définir l'humeur active (neutre, moqueur, absurde, bienveillant, sarcastique, déjanté) |
+| `mood.set` | `(style: string)` | Définir le mode actif (neutre, sarcastique, chaotique, espiègle, cynique, génération Z). |
 | `mood.get` | `()` | Humeur actuelle + nombre de blagues |
 | `comic_timing` | `(text, technique?)` | Réécrire avec une livraison comique (règle des trois, diversion, escalade, rappel, euphémisme, automatique) |
-| `roast` | `(target, context?)` | Critique affectueuse avec motif de verdict/étiquette, renvoie un niveau de gravité de 1 à 5. Contexte : code, erreur, idée, situation |
+| `roast` | `(target, context?)` | Critique affectueuse dans la voix du mode actuel, avec un niveau de sévérité de 1 à 5. Contexte : code, erreur, idée, situation. |
+| `debug_status` | `()` | Supprimer l'état de la session actuelle, la configuration du mode et le backend vocal. |
 | `heckle` | `(target)` | Brève remarque acerbe |
 | `catchphrase.generate` | `(context?)` | Créer un élément réutilisable (stocké dans la session) |
 | `catchphrase.callback` | `()` | Réutiliser l'expression type la plus utilisée (ou null) |
 
-## Prosodie de l'humeur (Voix Piper)
+## Prosodie de l'humeur (voix Piper)
 
-Chaque humeur correspond à une voix Piper distincte et à une configuration de prosodie :
+Chaque humeur est associée à une voix Piper distincte et à une configuration de prosodie :
 
 | Humeur | Voix | length_scale | noise_scale | noise_w_scale | volume | Caractère |
 |------|-------|-------------|-------------|---------------|--------|-----------|
 | neutre | en_GB-alan-medium | 1.15 | 0.3 | 0.3 | 0.9 | Plat, las, métrique |
 | moqueur | en_US-ryan-high | 0.95 | 0.667 | 0.8 | 1.0 | Sarcasme confiant |
-| absurde | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | Erratique, imprévisible |
-| bienveillant | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Énergie chaleureuse et douce de "papa" |
-| sarcastique | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | Ton monocorde et blasé |
-| déjanté | en_US-lessac-high | 0.82 | 0.9 | 1.0 | 1.2 | Rapide, bruyant, chaotique |
+| chaotique | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | Présentateur de nouvelles débitant des absurdités. |
+| espiègle | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Taquin, joueur, clin d'œil. |
+| cynique | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | Froid, plat, aucune surprise. |
+| génération Z | en_US-lessac-high | 0.90 | 0.85 | 0.9 | 1.15 | Rapide, bruyant, énergie de streamer. |
 
 ## Variables d'environnement
 
@@ -121,10 +135,12 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 
 ## Notes de qualité
 
-- Taux de réussite comique : ~70-75 % dans les sessions réelles (neutre le plus fort, moqueur juste derrière)
-- Déterministe : application du schéma JSON, 1 nouvelle tentative en cas de résultat invalide, validation post-exécution pour les motifs interdits
-- Voix : Piper offre une séparation réelle de la prosodie (et non pas seulement de la vitesse) ; Kokoro est une simple variation de vitesse
-- Ne pas utiliser pour les bots de production ; outil de développement uniquement. L'humour est subjectif ; ajuster les invites si nécessaire.
+- Taux de réussite comique : 70-100 % par mode/outil lors de sessions de développement réelles (ingénierie de prompts basée sur une structure).
+- Filtre de comparaison/analogie : expression régulière de validation post-traitement + tentative/solution de repli pour éviter les erreurs dans les modes neutre/espiègle.
+- Tous les modes atteignent un taux de 70 % ou plus lors de sessions réelles ; les modes sarcastique, cynique et chaotique atteignent souvent 90-100 %.
+- Déterministe : application stricte du schéma JSON, nouvelle tentative en cas de résultat incorrect, héritage du mode appliqué à tous les outils.
+- Voix : Piper permet une séparation de la prosodie (longueur/bruit/volume par mode) ; Kokoro est une solution de repli axée uniquement sur la vitesse.
+- Outil d'assistance pour les développeurs uniquement. L'humour est subjectif ; désactivez tout mode via les variables d'environnement ou ajustez les prompts si nécessaire.
 
 ## Architecture
 

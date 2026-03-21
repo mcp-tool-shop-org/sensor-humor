@@ -25,6 +25,19 @@ Desenvolvido para desenvolvedores: críticas sutis sobre código mal escrito, me
 - Emparelhamento de voz: mcp-voice-soundboard com Piper TTS (parâmetros de prosódia: length_scale, noise_scale, noise_w_scale, volume).
 - Determinístico: aplicação e validação de esquema JSON, repetição em caso de saída inválida, registro de depuração.
 
+## Modos
+
+Cada modo utiliza um modelo de prompt com espaços em branco que força o modelo a adotar uma forma previsível e de alta qualidade.
+
+- **neutro** — tom sério, minimalista, óbvio (padrão)
+- **sarcástico** — críticas afetuosas e incisivas, rótulos de veredicto/diagnóstico
+- **cínico** — realismo cínico e discreto ("Claro:", "Previsivelmente:")
+- **travesso** — brincadeiras e provocações ("Oh, querido", "Movimento ousado")
+- **caótico** — frase inicial, seguida de uma reviravolta absurda ("Aparentemente...")
+- **moderno** — sarcasmo da geração Z, excessivamente conectado ("reação", "provocação", "MAIÚSCULAS", "marcação")
+
+Todos os modos herdam a voz e a entonação através do mcp-voice-soundboard (Piper recomendado).
+
 ## Requisitos
 
 - Node.js 18+.
@@ -79,10 +92,11 @@ Todas as ferramentas herdam o humor atual da sessão.
 
 | Ferramenta | Assinatura | Descrição |
 |------|-----------|-------------|
-| `mood.set` | `(style: string)` | Define o humor ativo (seco, crítico, absurdo, amigável, sarcástico, descontrolado). |
+| `mood.set` | `(style: string)` | Definir o estado de espírito (neutro, sarcástico, caótico, irreverente, cínico, "zoomer") |
 | `mood.get` | `()` | Humor atual + contagem de piadas. |
 | `comic_timing` | `(text, technique?)` | Reescreve com entrega cômica (regra de três, desvio de atenção, escalada, referência, subestimação, automático). |
-| `roast` | `(target, context?)` | Crítica afetuosa com padrão de veredicto/rótulo, retorna a severidade de 1 a 5. Contexto: código, erro, ideia, situação. |
+| `roast` | `(target, context?)` | Crítica afetuosa na voz do modo atual, com nível de intensidade de 1 a 5. Contexto: código, erro, ideia, situação. |
+| `debug_status` | `()` | Descarrega o estado atual da sessão, a configuração do modo e o backend da voz. |
 | `heckle` | `(target)` | Crítica curta e direta. |
 | `catchphrase.generate` | `(context?)` | Cria um "bit" reutilizável (armazenado na sessão). |
 | `catchphrase.callback` | `()` | Reutiliza a frase de efeito mais usada (ou nula). |
@@ -95,10 +109,10 @@ Cada humor corresponde a uma voz Piper distinta e configuração de prosódia:
 |------|-------|-------------|-------------|---------------|--------|-----------|
 | seco | en_GB-alan-medium | 1.15 | 0.3 | 0.3 | 0.9 | Monótono, cansado, metronômico. |
 | crítico | en_US-ryan-high | 0.95 | 0.667 | 0.8 | 1.0 | Sarcasmo confiante. |
-| absurdo | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | Errático, imprevisível. |
-| amigável | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Energia calorosa e gentil de pai. |
-| sarcástico | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | Tom cansado do mundo. |
-| descontrolado | en_US-lessac-high | 0.82 | 0.9 | 1.0 | 1.2 | Rápido, alto, caótico. |
+| Caótico | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | Apresentador de notícias falando bobagens |
+| Irreverente | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Piscadela calorosa, provocadora e brincalhona |
+| Cínico | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | Frio, sem emoção, sem surpresa |
+| "Zoomer" | en_US-lessac-high | 0.90 | 0.85 | 0.9 | 1.15 | Rápido, alto, energia de streamer |
 
 ## Variáveis de Ambiente
 
@@ -121,10 +135,12 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 
 ## Observações sobre a Qualidade
 
-- Taxa de acerto do humor: ~70-75% em sessões reais (o humor "seco" é o mais forte, seguido pelo "crítico").
-- Determinístico: aplicação de esquema JSON, 1 repetição em caso de saída inválida, validação pós-execução para padrões proibidos.
-- Voz: o Piper oferece uma separação real de prosódia (não apenas velocidade); o Kokoro é apenas de velocidade.
-- Não é para bots de produção — apenas uma ferramenta para desenvolvedores. O humor é subjetivo; ajuste os prompts, se necessário.
+- Taxa de sucesso cômico: 70-100% por modo/ferramenta em sessões de desenvolvimento reais (engenharia de prompts baseada em modelos).
+- Filtro de comparação/analogia: expressão regular de validação posterior + tentativas/alternativas para evitar falhas nos modos neutro/travesso.
+- Todos os modos com 70%+ em sessões reais; sarcástico/cínico/caótico frequentemente com 90-100%.
+- Determinístico: aplicação de esquema JSON, repetição em caso de saída incorreta, herança de modo aplicada a todas as ferramentas.
+- Voz: Piper oferece separação de entonação (duração/ruído/volume por modo); Kokoro é uma alternativa mais rápida.
+- Apenas uma ferramenta de desenvolvimento. O humor é subjetivo; desative qualquer modo através de variáveis de ambiente ou ajuste os prompts, se necessário.
 
 ## Arquitetura
 

@@ -106,6 +106,14 @@ export async function generateComedy<T>(
       }
 
       const parsed = JSON.parse(raw);
+
+      // Clean trailing JSON artifacts from string fields (Ollama leak)
+      for (const key of Object.keys(parsed)) {
+        if (typeof parsed[key] === 'string') {
+          parsed[key] = parsed[key].trim().replace(/[\s}]+$/, '').trim();
+        }
+      }
+
       const validated = schema.parse(parsed) as T;
 
       const metadata: GenerationMetadata | undefined = debug

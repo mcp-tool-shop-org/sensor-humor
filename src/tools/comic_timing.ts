@@ -9,6 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
 import { COMIC_TECHNIQUES, type ComicTechnique, type ComicTimingResult } from '../types.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER } from '../validators.js';
 
 const ComicTimingSchema = z.object({
   rewrite: z.string().max(300),
@@ -17,7 +18,7 @@ const ComicTimingSchema = z.object({
 });
 
 /** Detect meta-commentary or prompt leakage in output. */
-const META_LEAK_PATTERN = /\b(ban|forbidden|rule|emoji|exclamation|prompt|instruction|unhinged mood|hedging|preface)\b/i;
+const META_LEAK_PATTERN = /\b(ban|forbidden|rule|emoji|exclamation|prompt|instruction|zoomer mood|hedging|preface)\b/i;
 
 /** JSON schema for Ollama format parameter. */
 const COMIC_TIMING_JSON_SCHEMA = {
@@ -118,6 +119,39 @@ Respond with JSON only.`;
       {
         systemPrompt,
         userPrompt: retryPrompt,
+        schema: ComicTimingSchema,
+        jsonSchema: COMIC_TIMING_JSON_SCHEMA,
+      },
+      fallback,
+    );
+  }
+
+  // Simile/comparison leak check: retry once with negative prompt
+  if (hasSimileLeak(result.data.rewrite)) {
+    const simileRetryPrompt = `${userPrompt}${SIMILE_RETRY_SUFFIX}`;
+    result = await generateComedy<ComicTimingResult>(
+      {
+        systemPrompt,
+        userPrompt: simileRetryPrompt,
+        schema: ComicTimingSchema,
+        jsonSchema: COMIC_TIMING_JSON_SCHEMA,
+      },
+      fallback,
+    );
+    // If still leaking after retry, replace with safe fallback
+    if (hasSimileLeak(result.data.rewrite)) {
+      result.data.rewrite = `${text}. No further comment.`;
+      result.data.technique_used = 'understatement';
+    }
+  }
+
+  // Harshness filter: reject slurs/extreme insults and retry once
+  if (HARSH_FILTER.test(result.data.rewrite)) {
+    const cleanRetryPrompt = `${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel. Pure comedy only.`;
+    result = await generateComedy<ComicTimingResult>(
+      {
+        systemPrompt,
+        userPrompt: cleanRetryPrompt,
         schema: ComicTimingSchema,
         jsonSchema: COMIC_TIMING_JSON_SCHEMA,
       },

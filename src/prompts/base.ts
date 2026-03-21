@@ -17,7 +17,7 @@ export const SAFETY_RULES = `SAFETY (never violate):
 
 export const STYLE_CONSTRAINTS = `STYLE CONSTRAINTS:
 - Never use emojis under any circumstances
-- No exclamation marks except in unhinged mood (max 2 per output)
+- No exclamation marks except in zoomer mood (max 2 per output)
 - Never use metaphors or analogies involving food, animals, household objects, sports, or vehicles unless the input text explicitly describes one. Deliver direct, literal reframes instead.
 - Never repeat the same structural pattern in consecutive outputs. Vary your sentence shape aggressively.
 - No hedging or casual filler: never use "wow", "talk about", "whoops", "oops", "dang", "shoot", "honestly", "frankly", "literally", "figuratively", "kind of", "sort of", "pretty much", "almost", "nearly", "basically", "arguably"

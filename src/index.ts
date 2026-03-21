@@ -14,10 +14,13 @@ import { comicTiming } from './tools/comic_timing.js';
 import { roast } from './tools/roast.js';
 import { heckle } from './tools/heckle.js';
 import { catchphraseGenerate, catchphraseCallback } from './tools/catchphrase.js';
+import { getSession } from './session.js';
+import { MOOD_DESCRIPTIONS } from './types.js';
+import { getMoodVoiceNotes } from './prompts/loader.js';
 
 const server = new McpServer({
   name: 'sensor-humor',
-  version: '0.2.0',
+  version: '1.0.0',
 });
 
 // --- mood_set ---
@@ -26,7 +29,7 @@ server.tool(
   'Set the comedic mood/persona for this session. Affects the voice of all comedy tools.',
   {
     style: z.enum(MOOD_STYLES).describe(
-      'The mood to set. Options: dry (deadpan), roast (affectionate burns), absurdist (surreal), wholesome (warm dad energy), sardonic (weary wit), unhinged (chaotic energy)',
+      'The mood to set. Options: dry (deadpan), roast (affectionate burns), chaotic (normal-to-absurd), cheeky (playful teasing), cynic (bitter realism), zoomer (Gen-Z snark)',
     ),
   },
   async ({ style }) => {
@@ -173,11 +176,37 @@ server.tool(
   },
 );
 
+// --- debug_status ---
+server.tool(
+  'debug_status',
+  'Dump current session state, mood config, and voice backend. Useful for debugging without env vars.',
+  {},
+  async () => {
+    const session = getSession();
+    const status = {
+      mood: session.mood,
+      mood_description: MOOD_DESCRIPTIONS[session.mood],
+      voice_notes: getMoodVoiceNotes(session.mood),
+      turn_counter: session.turn_counter,
+      recent_bits_count: session.recent_bits.length,
+      running_gags_count: session.running_gags.length,
+      catchphrase_count: session.catchphrases.size,
+      catchphrases: Object.fromEntries(session.catchphrases),
+      voice_backend: process.env.VOICE_SOUNDBOARD_ENGINE || 'default (kokoro)',
+      model: process.env.SENSOR_HUMOR_MODEL || 'qwen2.5:7b',
+      debug: process.env.SENSOR_HUMOR_DEBUG === 'true',
+    };
+    return {
+      content: [{ type: 'text', text: JSON.stringify(status, null, 2) }],
+    };
+  },
+);
+
 // --- Start server ---
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('[sensor-humor] MCP server v0.2.0 running on stdio');
+  console.error('[sensor-humor] MCP server v1.0.0 running on stdio');
 }
 
 main().catch((err) => {

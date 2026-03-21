@@ -13,10 +13,10 @@ Each mood maps to a Piper TTS voice and 4 prosody knobs:
 
 | Knob | What it controls | Effect on comedy |
 |------|-----------------|-----------------|
-| `length_scale` | Speech speed (>1 = slower) | Dry/sardonic drag; unhinged rushes |
-| `noise_scale` | Expressiveness (0 = flat, 1 = animated) | Dry is monotone; unhinged is chaotic |
+| `length_scale` | Speech speed (>1 = slower) | Dry/cynic drag; zoomer rushes |
+| `noise_scale` | Expressiveness (0 = flat, 1 = animated) | Dry is monotone; chaotic is erratic |
 | `noise_w_scale` | Phoneme timing variance (0 = metronomic, 1 = erratic) | Controls whether words land at even intervals |
-| `volume` | Loudness | Sardonic is quiet; unhinged is loud |
+| `volume` | Loudness | Cynic is quiet; zoomer is loud |
 
 ## Mood-to-voice mapping
 
@@ -24,10 +24,10 @@ Each mood maps to a Piper TTS voice and 4 prosody knobs:
 |------|-------------|--------|-------|---------|-----|
 | dry | en_GB-alan-medium | 1.15 | 0.3 | 0.3 | 0.9 |
 | roast | en_US-ryan-high | 0.95 | 0.667 | 0.8 | 1.0 |
-| absurdist | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 |
-| wholesome | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 |
-| sardonic | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 |
-| unhinged | en_US-lessac-high | 0.82 | 0.9 | 1.0 | 1.2 |
+| chaotic | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 |
+| cheeky | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 |
+| cynic | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 |
+| zoomer | en_US-lessac-high | 0.90 | 0.85 | 0.9 | 1.15 |
 
 ## Setup
 
@@ -60,6 +60,7 @@ If `VOICE_SOUNDBOARD_ENGINE` is not set, the default Kokoro backend is used. Kok
 
 Kokoro strips SSML and only respects speed + voice selection. Piper's ONNX inference exposes all 4 prosody knobs natively via `SynthesisConfig`, giving real vocal differentiation:
 
-- Dry and sardonic use the same voice (alan) but sardonic is measurably slower, flatter, and quieter
-- Unhinged has maximum timing variance — words don't land at even intervals, which reads as chaotic
+- Dry and cynic use the same voice (alan) but cynic is measurably slower, flatter, and quieter
+- Chaotic has high timing variance — words don't land at even intervals, which reads as erratic
 - Roast has natural expressiveness that gives verdict labels a confident lift
+- Zoomer is fast and loud — streamer energy with brisk pacing

@@ -54,9 +54,24 @@ describe('Prompt Loader', () => {
       expect(getMoodSystemPrompt('roast')).toContain('affectionate');
     });
 
-    it('unhinged prompt contains chaos/energy language', () => {
-      const prompt = getMoodSystemPrompt('unhinged');
-      expect(prompt.toLowerCase()).toMatch(/chaos|energy|spiraling|composure/);
+    it('zoomer prompt contains snark/meme language', () => {
+      const prompt = getMoodSystemPrompt('zoomer');
+      expect(prompt.toLowerCase()).toMatch(/zoomer|snark|savage|meme/);
+    });
+
+    it('cynic prompt contains jaded/bitter language', () => {
+      const prompt = getMoodSystemPrompt('cynic');
+      expect(prompt.toLowerCase()).toMatch(/cynic|bitter|jaded|vicious/);
+    });
+
+    it('cheeky prompt contains playful/teasing language', () => {
+      const prompt = getMoodSystemPrompt('cheeky');
+      expect(prompt.toLowerCase()).toMatch(/cheeky|playful|teasing|mischief/);
+    });
+
+    it('chaotic prompt contains absurd/escalation language', () => {
+      const prompt = getMoodSystemPrompt('chaotic');
+      expect(prompt.toLowerCase()).toMatch(/chaotic|absurd|escalat|reality/);
     });
   });
 

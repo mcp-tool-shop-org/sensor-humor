@@ -168,7 +168,7 @@ describe('Session', () => {
 describe('types', () => {
   it('has all 6 moods', () => {
     expect(MOOD_STYLES).toEqual([
-      'dry', 'roast', 'absurdist', 'wholesome', 'sardonic', 'unhinged',
+      'dry', 'roast', 'chaotic', 'cheeky', 'cynic', 'zoomer',
     ]);
   });
 

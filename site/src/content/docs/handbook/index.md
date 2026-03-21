@@ -19,9 +19,9 @@ This separation means:
 
 ## How it works
 
-1. **You set a mood** (dry, roast, absurdist, wholesome, sardonic, unhinged)
+1. **You set a mood** (dry, roast, chaotic, cheeky, cynic, zoomer)
 2. **You call a tool** (comic_timing, roast, heckle, catchphrase)
-3. **sensor-humor builds a prompt** from the mood's system prompt + session state summary + your input
+3. **sensor-humor builds a prompt** from the mood's skeleton prompt + session state summary + your input
 4. **A local Ollama model** (qwen2.5:7b-instruct) generates the comedy under strict JSON schema
 5. **sensor-humor validates** the output, updates session state, and returns clean structured data
 6. **Optionally**, the output is spoken via Piper TTS with mood-specific prosody
@@ -31,6 +31,6 @@ This separation means:
 Most humor tools are joke databases or prompt wrappers. sensor-humor is a **comedy director** that manages:
 
 - **Continuity** — callbacks to earlier bits, running gags that evolve, catchphrases that recur
-- **Voice** — each mood has a distinct personality anchor, not just different words
-- **Prosody** — when paired with Piper TTS, dry sounds flat, roast sounds sarcastic, unhinged sounds chaotic
+- **Voice** — each mood has a distinct personality anchor and fill-in-the-blank skeleton
+- **Prosody** — when paired with Piper TTS, dry sounds flat, roast sounds sarcastic, chaotic sounds erratic
 - **Determinism** — every output is schema-validated, length-capped, and checked for banned patterns

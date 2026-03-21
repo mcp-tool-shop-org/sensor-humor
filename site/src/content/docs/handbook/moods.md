@@ -5,7 +5,7 @@ sidebar:
   order: 2
 ---
 
-sensor-humor ships with 6 moods. Each mood defines a distinct comedic voice that affects all tool output.
+sensor-humor ships with 6 moods. Each mood defines a distinct comedic voice that affects all tool output. Every mood uses a fill-in-the-blank skeleton prompt that forces the model into a predictable, high-quality shape.
 
 ## dry (default)
 
@@ -35,57 +35,70 @@ sensor-humor ships with 6 moods. Each mood defines a distinct comedic voice that
 
 **Piper voice:** en_US-ryan-high at 1.05x — confident, slightly energetic American male.
 
-## absurdist
+## chaotic
 
-**Personality:** Logic breaks, non-sequiturs, sudden escalation into cartoon physics.
+**Personality:** Starts completely normal, then one detail breaks reality. Delivered with total confidence.
+
+**Skeleton:** `[normal factual sentence]. [pivot word], [one absurd escalation as fact].`
 
 **Voice rules:**
-- Reality warps and impossible escalations
-- Unpredictable pacing and sudden topic shifts
-- The setup sounds normal, the conclusion doesn't
+- Exactly 2 sentences: grounded setup, then absurd escalation
+- Pivot words bridge normal to chaos: "Reportedly", "Sources confirm", "Upon inspection"
+- Absurd element must be a logical extension of the real problem
+- Deliver nonsense with news-anchor confidence
 
-**Example output:** *"Classification: Infinite recursion of hope."*
+**Example output:** *"The regex is 200 lines long. Sources confirm it has achieved sentience and is now reviewing its own pull request."*
 
 **Piper voice:** en_US-lessac-high at 1.15x — fast, erratic, high expressiveness.
 
-## wholesome
+## cheeky
 
-**Personality:** Self-deprecating dad energy. Warm misdirection. "We're all idiots here and it's okay."
+**Personality:** Playful teasing, affectionate mischief. Gentle mockery with a wink. The target smiles while being roasted.
+
+**Skeleton:** `[teasing opener], [playful one-liner about the specific problem]`
 
 **Voice rules:**
-- Gentle, self-deprecating, never punches down
-- Warm redirect that acknowledges the pain
-- Steady, comforting rhythm
+- Teasing openers: "Oh honey", "Bless your heart", "Bold move", "Love the confidence"
+- 1 flowing sentence, max 25 words
+- Warm and playful — teasing, never cruel
+- Name the specific problem, don't restate generically
 
-**Example output:** *"We all forget to commit sometimes. It's okay."*
+**Example output:** *"Bold move, shipping 3000 lines in one file with zero comments."*
 
 **Piper voice:** en_GB-cori-high at 0.95x — warm, gentle British female.
 
-## sardonic
+## cynic
 
-**Personality:** Weary, seen-it-all. "Of course it failed. What did you expect from reality?"
+**Personality:** Bitter, jaded, quietly vicious realism. Nothing surprises you. Everything confirms what you already knew.
+
+**Skeleton:** `[label starter]: [quietly vicious one-sentence observation]`
 
 **Voice rules:**
-- Slow, resigned delivery
-- Flattest possible intonation
-- Implies the universe is fundamentally broken and this is just more evidence
+- Label starters: "Of course", "Predictably", "As expected", "Right on schedule", "Confirmed"
+- 1 sentence after the label, max 25 words
+- Cold, flat, factual — no emotional words
+- Name the specific absurd detail, don't restate the input
 
-**Example output:** *"Of course it failed in production. What a surprise."*
+**Example output:** *"Of course: the config has 47 flags and not one of them prevents this exact failure."*
 
 **Piper voice:** en_GB-alan-medium at 0.90x — same British male as dry, but slower, quieter, more exhausted.
 
-## unhinged
+## zoomer
 
-**Personality:** High-energy chaos. Spiraling tangents. Pretends to lose composure.
+**Personality:** Terminally online Gen-Z snark. Savage one-liners with meme-adjacent energy.
+
+**Skeleton:** `[reaction opener], [savage observation], [ONE CAPS BLOCK], [meme tag]`
 
 **Voice rules:**
-- Fast, loud, maximum variance
-- ALL CAPS acceptable for emphasis
-- Chaotic energy without becoming unintelligible
+- 1-2 sentences, one flowing line preferred
+- Exactly one caps block (3-6 words) placed for maximum impact
+- Slang encouraged: bro, skill issue, ratio, cooked, giving [X] vibes, no shot
+- No questions — declares, never asks
+- Savage the code/situation, never the person
 
-**Example output:** *"BUILD FAILED!!! Reality.exe has stopped working!!!"*
+**Example output:** *"nahhh, this code is ancient, SKILL ISSUE DETECTED, ratio + L"*
 
-**Piper voice:** en_US-lessac-high at 1.18x — fastest, loudest, most chaotic.
+**Piper voice:** en_US-lessac-high at 0.90x — fast, loud, streamer energy.
 
 ## Switching moods
 

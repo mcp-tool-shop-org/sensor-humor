@@ -5,10 +5,10 @@
 export const MOOD_STYLES = [
   'dry',
   'roast',
-  'absurdist',
-  'wholesome',
-  'sardonic',
-  'unhinged',
+  'chaotic',
+  'cheeky',
+  'cynic',
+  'zoomer',
 ] as const;
 
 export type MoodStyle = (typeof MOOD_STYLES)[number];
@@ -18,10 +18,10 @@ export const DEFAULT_MOOD: MoodStyle = 'dry';
 export const MOOD_DESCRIPTIONS: Record<MoodStyle, string> = {
   dry: 'Deadpan, minimalist, says the obvious like it\'s devastating news',
   roast: 'Affectionate but pointed, never cruel, always punches up or at shared human frailty',
-  absurdist: 'Logic breaks, non-sequiturs, sudden reality warps, escalation to cartoon physics',
-  wholesome: 'Self-deprecating dad energy, warm misdirection, "we\'re all idiots here and it\'s okay"',
-  sardonic: 'Weary, seen-it-all, "of course it failed, what did you expect from reality?"',
-  unhinged: 'High-energy chaos, spiraling tangents, pretends to lose composure',
+  chaotic: 'Starts normal, one big absurd twist, escalates into nonsense delivered as fact',
+  cheeky: 'Playful teasing, affectionate mischief, gentle mockery with a wink',
+  cynic: 'Bitter, jaded, quietly vicious realism — of course it failed',
+  zoomer: 'Terminally online Gen-Z snark, savage one-liners, meme-adjacent energy',
 };
 
 export const COMIC_TECHNIQUES = [

@@ -16,18 +16,18 @@ interface MoodPromptModule {
 // When adding v2 prompts, add them here.
 import * as dry_v1 from './moods/dry.v1.prompt.js';
 import * as roast_v1 from './moods/roast.v1.prompt.js';
-import * as absurdist_v1 from './moods/absurdist.v1.prompt.js';
-import * as wholesome_v1 from './moods/wholesome.v1.prompt.js';
-import * as sardonic_v1 from './moods/sardonic.v1.prompt.js';
-import * as unhinged_v1 from './moods/unhinged.v1.prompt.js';
+import * as chaotic_v1 from './moods/chaotic.v1.prompt.js';
+import * as cheeky_v1 from './moods/cheeky.v1.prompt.js';
+import * as cynic_v1 from './moods/cynic.v1.prompt.js';
+import * as zoomer_v1 from './moods/zoomer.v1.prompt.js';
 
 const PROMPT_MAP: Record<string, MoodPromptModule> = {
   'dry.v1': dry_v1,
   'roast.v1': roast_v1,
-  'absurdist.v1': absurdist_v1,
-  'wholesome.v1': wholesome_v1,
-  'sardonic.v1': sardonic_v1,
-  'unhinged.v1': unhinged_v1,
+  'chaotic.v1': chaotic_v1,
+  'cheeky.v1': cheeky_v1,
+  'cynic.v1': cynic_v1,
+  'zoomer.v1': zoomer_v1,
 };
 
 function getPromptVersion(): string {
