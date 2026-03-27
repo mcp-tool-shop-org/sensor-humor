@@ -1,11 +1,11 @@
 ---
 title: Tool Reference
-description: Complete API reference for all 7 sensor-humor tools
+description: Complete API reference for all 8 sensor-humor tools
 sidebar:
   order: 3
 ---
 
-## mood.set
+## mood_set
 
 Set the active comedy mood for the session.
 
@@ -21,7 +21,7 @@ Set the active comedy mood for the session.
 }
 ```
 
-## mood.get
+## mood_get
 
 Read the current mood and session stats.
 
@@ -91,7 +91,7 @@ Short, punchy reaction. The quick jab — no config needed.
 
 Heckles are capped at ~20 words. They inherit the active mood.
 
-## catchphrase.generate
+## catchphrase_generate
 
 Create a reusable catchphrase or recurring bit, stored in session.
 
@@ -108,7 +108,7 @@ Create a reusable catchphrase or recurring bit, stored in session.
 
 `is_fresh` is `true` on first generation, `false` when returning an existing phrase.
 
-## catchphrase.callback
+## catchphrase_callback
 
 Retrieve and reuse the most-used catchphrase from the session.
 
@@ -124,6 +124,29 @@ Retrieve and reuse the most-used catchphrase from the session.
 
 Returns `null` if no catchphrases exist in the session yet.
 
+## debug_status
+
+Dump the current session state, mood config, and voice backend. Useful for inspecting state without enabling debug env vars.
+
+**Input:** none
+
+**Output:**
+```json
+{
+  "mood": "dry",
+  "mood_description": "Deadpan, minimalist, says the obvious like it's devastating news",
+  "voice_notes": "One flat sentence of devastating observation...",
+  "turn_counter": 5,
+  "recent_bits_count": 3,
+  "running_gags_count": 1,
+  "catchphrase_count": 1,
+  "catchphrases": { "Ship it and pray.": 2 },
+  "voice_backend": "default (kokoro)",
+  "model": "qwen2.5:7b",
+  "debug": false
+}
+```
+
 ## Environment Variables
 
 | Variable | Default | Description |
@@ -131,6 +154,8 @@ Returns `null` if no catchphrases exist in the session yet.
 | `SENSOR_HUMOR_DEBUG` | `false` | Verbose logging of prompts, responses, and session updates |
 | `SENSOR_HUMOR_OBSERVE` | `false` | Full chain trace including voice params |
 | `SENSOR_HUMOR_PROMPT_VERSION` | `1` | Prompt set version for A/B testing |
+| `SENSOR_HUMOR_MODEL` | `qwen2.5:7b` | Ollama model to use for comedy generation |
+| `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama API endpoint |
 
 ## Session State
 

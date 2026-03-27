@@ -19,7 +19,7 @@ sensor-humor ships with 6 moods. Each mood defines a distinct comedic voice that
 
 **Example output:** *"Twelve parameters. Efficient."*
 
-**Piper voice:** en_GB-alan-medium at 0.92x — slow, flat, quiet British male.
+**Piper voice:** en_GB-alan-medium, length_scale 1.15 — slow, flat, quiet British male.
 
 ## roast
 
@@ -33,7 +33,7 @@ sensor-humor ships with 6 moods. Each mood defines a distinct comedic voice that
 
 **Example output:** *"Verdict: Monolithic state blob syndrome."*
 
-**Piper voice:** en_US-ryan-high at 1.05x — confident, slightly energetic American male.
+**Piper voice:** en_US-ryan-high, length_scale 0.95 — confident, slightly energetic American male.
 
 ## chaotic
 
@@ -49,7 +49,7 @@ sensor-humor ships with 6 moods. Each mood defines a distinct comedic voice that
 
 **Example output:** *"The regex is 200 lines long. Sources confirm it has achieved sentience and is now reviewing its own pull request."*
 
-**Piper voice:** en_US-lessac-high at 1.15x — fast, erratic, high expressiveness.
+**Piper voice:** en_US-lessac-high, length_scale 0.88 — fast, erratic, high expressiveness.
 
 ## cheeky
 
@@ -65,7 +65,7 @@ sensor-humor ships with 6 moods. Each mood defines a distinct comedic voice that
 
 **Example output:** *"Bold move, shipping 3000 lines in one file with zero comments."*
 
-**Piper voice:** en_GB-cori-high at 0.95x — warm, gentle British female.
+**Piper voice:** en_GB-cori-high, length_scale 1.05 — warm, gentle British female.
 
 ## cynic
 
@@ -81,7 +81,7 @@ sensor-humor ships with 6 moods. Each mood defines a distinct comedic voice that
 
 **Example output:** *"Of course: the config has 47 flags and not one of them prevents this exact failure."*
 
-**Piper voice:** en_GB-alan-medium at 0.90x — same British male as dry, but slower, quieter, more exhausted.
+**Piper voice:** en_GB-alan-medium, length_scale 1.25 — same British male as dry, but slower, quieter, more exhausted.
 
 ## zoomer
 
@@ -98,15 +98,15 @@ sensor-humor ships with 6 moods. Each mood defines a distinct comedic voice that
 
 **Example output:** *"nahhh, this code is ancient, SKILL ISSUE DETECTED, ratio + L"*
 
-**Piper voice:** en_US-lessac-high at 0.90x — fast, loud, streamer energy.
+**Piper voice:** en_US-lessac-high, length_scale 0.90 — fast, loud, streamer energy.
 
 ## Switching moods
 
-Call `mood.set(style)` at any time. All subsequent tool calls use the new mood. Session state (gags, bits, catchphrases) persists across mood switches.
+Call `mood_set(style)` at any time. All subsequent tool calls use the new mood. Session state (gags, bits, catchphrases) persists across mood switches.
 
 ```
-mood.set(style: "roast")
+mood_set(style: "roast")
 roast(target: "no tests")
-mood.set(style: "dry")
+mood_set(style: "dry")
 comic_timing(text: "deployment at 4:55pm on Friday")
 ```

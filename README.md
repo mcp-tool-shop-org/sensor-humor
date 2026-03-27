@@ -20,8 +20,8 @@ Built for developers: gentle burns on code smells, dry deadpan error messages, c
 
 - 6 moods, all at 70%+ hit rate in real dev sessions
 - Session state: running gags, recent bits ring buffer (max 20), catchphrase Map
-- 7 tools: mood.set/get, comic_timing, roast, heckle, catchphrase.generate/callback
-- Local Ollama backend (qwen2.5:7b-instruct recommended)
+- 8 tools: mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status
+- Local Ollama backend (qwen2.5:7b default, configurable via `SENSOR_HUMOR_MODEL`)
 - Voice pairing: mcp-voice-soundboard with Piper TTS (prosody knobs: length_scale, noise_scale, noise_w_scale, volume)
 - Deterministic: JSON schema enforcement, validation, retry on bad output, mood inheritance enforced
 
@@ -41,8 +41,8 @@ All moods inherit voice + prosody via mcp-voice-soundboard (Piper recommended).
 ## Requirements
 
 - Node.js 18+
-- Ollama running locally with `qwen2.5:7b-instruct` pulled
-- mcp-voice-soundboard installed & running (Piper backend recommended)
+- Ollama running locally with `qwen2.5:7b` pulled (or set `SENSOR_HUMOR_MODEL` for a different model)
+- mcp-voice-soundboard installed & running (Piper backend recommended, optional)
 - @modelcontextprotocol/sdk
 
 ## Install
@@ -58,7 +58,7 @@ npm link /path/to/sensor-humor
 1. Start Ollama:
 
 ```bash
-ollama run qwen2.5:7b-instruct
+ollama pull qwen2.5:7b
 ```
 
 2. Start sensor-humor MCP server (stdio transport):
@@ -80,11 +80,11 @@ VOICE_SOUNDBOARD_ENGINE=piper VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/mo
    - Test chain:
 
 ```
-mood.set(style: "roast")
+mood_set(style: "roast")
 roast(target: "800-line god function")
 ```
 
-Text roast returned, then `voice_speak(mood: "roast")` speaks it with am_eric + confident sarcastic energy.
+Text roast returned, then `voice_speak(mood: "roast")` speaks it with mood-appropriate prosody.
 
 ## Tools
 
@@ -92,14 +92,14 @@ All tools inherit current mood from session.
 
 | Tool | Signature | Description |
 |------|-----------|-------------|
-| `mood.set` | `(style: string)` | Set active mood (dry, roast, chaotic, cheeky, cynic, zoomer) |
-| `mood.get` | `()` | Current mood + gag count |
+| `mood_set` | `(style: string)` | Set active mood (dry, roast, chaotic, cheeky, cynic, zoomer) |
+| `mood_get` | `()` | Current mood + gag count |
 | `comic_timing` | `(text, technique?)` | Rewrite with comedic delivery (rule-of-three, misdirection, escalation, callback, understatement, auto) |
 | `roast` | `(target, context?)` | Affectionate burn in current mood voice, returns severity 1-5. Context: code, error, idea, situation |
-| `debug_status` | `()` | Dump current session state, mood config, and voice backend |
 | `heckle` | `(target)` | Short pointed jab |
-| `catchphrase.generate` | `(context?)` | Create reusable bit (stored in session) |
-| `catchphrase.callback` | `()` | Reuse most-used catchphrase (or null) |
+| `catchphrase_generate` | `(context?)` | Create reusable bit (stored in session) |
+| `catchphrase_callback` | `()` | Reuse most-used catchphrase (or null) |
+| `debug_status` | `()` | Dump current session state, mood config, and voice backend |
 
 ## Mood Prosody (Piper Voice)
 
@@ -121,6 +121,8 @@ Each mood maps to a distinct Piper voice + prosody configuration:
 SENSOR_HUMOR_DEBUG=true                # verbose prompt/response dumps
 SENSOR_HUMOR_OBSERVE=true              # full chain trace (prompt -> text -> piper params)
 SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (for A/B tuning)
+SENSOR_HUMOR_MODEL=qwen2.5:7b         # Ollama model (default: qwen2.5:7b)
+OLLAMA_HOST=http://127.0.0.1:11434    # Ollama API host (default: http://127.0.0.1:11434)
 
 # voice integration (in voice-soundboard)
 VOICE_SOUNDBOARD_ENGINE=piper          # or kokoro (default)

@@ -8,7 +8,7 @@ sidebar:
 ## Prerequisites
 
 - **Node.js 18+**
-- **Ollama** running locally with `qwen2.5:7b-instruct` pulled
+- **Ollama** running locally with `qwen2.5:7b` pulled (or set `SENSOR_HUMOR_MODEL` for a different model)
 - An MCP client (Claude Code, Cursor, or any MCP-compatible host)
 
 Optional for voice:
@@ -33,10 +33,10 @@ npm run build
 ## Pull the comedy model
 
 ```bash
-ollama pull qwen2.5:7b-instruct
+ollama pull qwen2.5:7b
 ```
 
-This is the recommended model for comedy generation. It has strong instruction following, concise output, and solid JSON schema adherence.
+This is the default model for comedy generation. It has strong instruction following, concise output, and solid JSON schema adherence. Override with the `SENSOR_HUMOR_MODEL` environment variable if needed.
 
 ## Start the server
 
@@ -51,7 +51,7 @@ The server runs on stdio transport. Your MCP client connects to it as a local to
 In your MCP client:
 
 ```
-mood.set(style: "dry")
+mood_set(style: "dry")
 ```
 
 You should get back:

@@ -39,7 +39,7 @@ Piper TTS (local ONNX) -> audio output
 ## Key components
 
 ### MCP server (`src/index.ts`)
-Registers 7 tools with `@modelcontextprotocol/sdk`. Runs on stdio transport. Each tool call flows through the same pipeline: resolve mood, build prompt, call Ollama, validate, update session, return.
+Registers 8 tools with `@modelcontextprotocol/sdk`. Runs on stdio transport. Each tool call flows through the same pipeline: resolve mood, build prompt, call Ollama, validate, update session, return.
 
 ### Session (`src/session.ts`)
 In-memory singleton. Tracks mood, running gags (tagged setups with usage counts), recent bits (ring buffer, max 20), catchphrases (Map), and turn counter. Dies when server stops — no persistence by design.
@@ -48,7 +48,7 @@ In-memory singleton. Tracks mood, running gags (tagged setups with usage counts)
 Versioned system prompts per mood. `base.ts` provides safety rules, banned patterns, and length constraints. Mood files add voice flavor. Loader resolves `SENSOR_HUMOR_PROMPT_VERSION` env var with v1 fallback.
 
 ### Ollama client (`src/ollama.ts`)
-Wraps the Ollama chat API with JSON schema enforcement (`format` parameter), Zod validation, and 1-retry logic. Inference settings: temperature 0.55, mirostat 2, tau 5.0, num_predict varies by tool (40-75 tokens).
+Wraps the Ollama chat API with JSON schema enforcement (`format` parameter), Zod validation, and 1-retry logic. Inference settings: temperature 0.55, top_p 0.85, top_k 40, mirostat 2, tau 5.0, num_predict varies by tool (30-80 tokens). Default model is `qwen2.5:7b`, configurable via `SENSOR_HUMOR_MODEL`. Ollama host defaults to `http://127.0.0.1:11434`, configurable via `OLLAMA_HOST`.
 
 ### Tools (`src/tools/`)
 Each tool assembles its prompt (base + mood + state summary + user input + technique guidance), calls Ollama, post-validates (banned patterns, length, label presence for roast), and updates session state.
@@ -62,7 +62,9 @@ The comedy quality depends heavily on inference settings, not just prompts:
 | temperature | 0.55 | Low enough for consistency, high enough to avoid rote repetition |
 | mirostat | 2 | Keeps perplexity stable, reduces creativity bursts that lead to metaphor leaks |
 | mirostat_tau | 5.0 | Target perplexity — balanced between flat and wild |
-| num_predict | 40-75 | Hard token cap by tool type (heckle short, roast longer) |
+| top_p | 0.85 | Nucleus sampling — moderate to complement mirostat |
+| top_k | 40 | Limits token candidates per step |
+| num_predict | 30-80 | Hard token cap by tool type (catchphrase 30, heckle 40, comic_timing 60, roast 80) |
 
 ## Why qwen2.5:7b-instruct
 
