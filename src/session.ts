@@ -48,7 +48,10 @@ export class Session implements SensorHumorSession {
     };
     this.recent_bits.push(bit);
     if (this.recent_bits.length > MAX_RECENT_BITS) {
-      this.recent_bits.shift();
+      const evicted = this.recent_bits.shift();
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true' && evicted) {
+        console.error(`[sensor-humor] Evicted bit from turn ${evicted.turn} (buffer full at ${MAX_RECENT_BITS})`);
+      }
     }
   }
 
@@ -81,7 +84,12 @@ export class Session implements SensorHumorSession {
    */
   findCallbackCandidates(text: string): RunningGag[] {
     const lower = text.toLowerCase();
-    return this.running_gags.filter((g) => lower.includes(g.tag.toLowerCase()));
+    return this.running_gags.filter((g) => {
+      const tag = g.tag.toLowerCase();
+      if (tag.length < 3) return lower.includes(tag); // short tags: keep substring match
+      const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`\\b${escaped}\\b`).test(lower);
+    });
   }
 
   /** Compact summary of recent bits for prompt injection. */

@@ -39,8 +39,12 @@ server.tool(
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
     } catch (err) {
+      const e = err as Error;
+      const detail = process.env.SENSOR_HUMOR_DEBUG === 'true'
+        ? `Error [${e.name}]: ${e.message}`
+        : `Error: ${e.message}`;
       return {
-        content: [{ type: 'text', text: `Error: ${(err as Error).message}` }],
+        content: [{ type: 'text', text: detail }],
         isError: true,
       };
     }
@@ -80,8 +84,12 @@ server.tool(
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
     } catch (err) {
+      const e = err as Error;
+      const detail = process.env.SENSOR_HUMOR_DEBUG === 'true'
+        ? `Error [${e.name}]: ${e.message}`
+        : `Error: ${e.message}`;
       return {
-        content: [{ type: 'text', text: `Error: ${(err as Error).message}` }],
+        content: [{ type: 'text', text: detail }],
         isError: true,
       };
     }
@@ -106,8 +114,12 @@ server.tool(
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
     } catch (err) {
+      const e = err as Error;
+      const detail = process.env.SENSOR_HUMOR_DEBUG === 'true'
+        ? `Error [${e.name}]: ${e.message}`
+        : `Error: ${e.message}`;
       return {
-        content: [{ type: 'text', text: `Error: ${(err as Error).message}` }],
+        content: [{ type: 'text', text: detail }],
         isError: true,
       };
     }
@@ -128,8 +140,12 @@ server.tool(
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
     } catch (err) {
+      const e = err as Error;
+      const detail = process.env.SENSOR_HUMOR_DEBUG === 'true'
+        ? `Error [${e.name}]: ${e.message}`
+        : `Error: ${e.message}`;
       return {
-        content: [{ type: 'text', text: `Error: ${(err as Error).message}` }],
+        content: [{ type: 'text', text: detail }],
         isError: true,
       };
     }
@@ -150,8 +166,12 @@ server.tool(
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
     } catch (err) {
+      const e = err as Error;
+      const detail = process.env.SENSOR_HUMOR_DEBUG === 'true'
+        ? `Error [${e.name}]: ${e.message}`
+        : `Error: ${e.message}`;
       return {
-        content: [{ type: 'text', text: `Error: ${(err as Error).message}` }],
+        content: [{ type: 'text', text: detail }],
         isError: true,
       };
     }
@@ -202,11 +222,26 @@ server.tool(
   },
 );
 
+// --- Ollama health check (non-blocking) ---
+async function checkOllamaHealth(): Promise<void> {
+  try {
+    const { Ollama } = await import('ollama');
+    const client = new Ollama({ host: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434' });
+    await client.list();
+    console.error('[sensor-humor] Ollama connection verified');
+  } catch {
+    console.error('[sensor-humor] WARNING: Ollama not reachable. Tools will use fallbacks until available.');
+  }
+}
+
 // --- Start server ---
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('[sensor-humor] MCP server v1.0.1 running on stdio');
+
+  // Fire-and-forget health check
+  checkOllamaHealth();
 }
 
 main().catch((err) => {

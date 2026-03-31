@@ -65,15 +65,16 @@ Respond with JSON only.`;
 export async function heckle(target: string): Promise<HeckleResult> {
   const session = getSession();
   session.tick();
+  const mood = session.mood;
 
   const systemPrompt = [
     baseSystemPrefix(),
-    getMoodSystemPrompt(session.mood),
-    buildHeckleGuidance(session.mood),
+    getMoodSystemPrompt(mood),
+    buildHeckleGuidance(mood),
     `\nSESSION CONTEXT:\n${session.stateSummary()}`,
   ].join('\n\n');
 
-  const userPrompt = buildHeckleUserPrompt(session.mood, target);
+  const userPrompt = buildHeckleUserPrompt(mood, target);
 
   const fallback: z.infer<typeof HeckleSchema> = {
     heckle: target,
@@ -105,6 +106,9 @@ export async function heckle(target: string): Promise<HeckleResult> {
     );
     if (hasSimileLeak(result.data.heckle)) {
       result.data.heckle = `${target}. That's a choice.`;
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+        console.error('[sensor-humor] Heckle: simile leak persisted after retry, using safe fallback');
+      }
     }
   }
 
@@ -128,6 +132,6 @@ export async function heckle(target: string): Promise<HeckleResult> {
 
   return {
     heckle: result.data.heckle,
-    mood: session.mood,
+    mood,
   };
 }

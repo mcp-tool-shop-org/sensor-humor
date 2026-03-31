@@ -145,6 +145,9 @@ Respond with JSON only.`;
         ? `Verdict: ${text}. No further comment.`
         : `${text}. No further comment.`;
       result.data.technique_used = 'understatement';
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+        console.error('[sensor-humor] ComicTiming: simile leak persisted after retry, using safe fallback');
+      }
     }
   }
 
@@ -186,6 +189,8 @@ Respond with JSON only.`;
     );
     if (gag) {
       session.addGag(gag.setup, gag.tag);
+    } else if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+      console.error(`[sensor-humor] callback_source "${result.data.callback_source}" did not match any gag candidate`);
     }
   }
 

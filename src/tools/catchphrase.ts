@@ -83,6 +83,12 @@ Respond with JSON only.`;
   );
 
   const phrase = result.data.phrase;
+  // If Ollama returned a phrase we already have, treat as reuse not fresh
+  if (session.catchphrases.has(phrase)) {
+    const count = session.useCatchphrase(phrase);
+    session.pushBit(phrase, 'catchphrase');
+    return { phrase, is_fresh: false };
+  }
   session.useCatchphrase(phrase);
   session.pushBit(phrase, 'catchphrase');
 

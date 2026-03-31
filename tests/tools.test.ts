@@ -361,6 +361,25 @@ describe('comic_timing tool', () => {
     expect(gag!.used).toBe(2);
   });
 
+  it('handles callback_source that matches no gag gracefully', async () => {
+    const session = getSession();
+    session.addGag('Real gag', 'realtag');
+
+    mockGenerate.mockResolvedValue({
+      data: {
+        rewrite: 'Reference to nothing.',
+        technique_used: 'callback',
+        callback_source: 'nonexistent_tag',
+      },
+    });
+
+    const result = await comicTiming('some text about realtag', 'callback');
+    expect(result.callback_source).toBe('nonexistent_tag');
+    // Gag should NOT be incremented since source didn't match
+    const gag = session.running_gags.find(g => g.tag === 'realtag');
+    expect(gag!.used).toBe(1);
+  });
+
   it('defaults to auto technique', async () => {
     mockGenerate.mockResolvedValue({
       data: { rewrite: 'Output.', technique_used: 'understatement' },
@@ -554,6 +573,33 @@ describe('catchphrase tools', () => {
       catchphraseCallback();
       expect(session.recent_bits[0].technique).toBe('catchphrase');
     });
+  });
+});
+
+describe('harsh filter retry', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  it('roast retries on harsh output then accepts clean', async () => {
+    mockGenerate
+      .mockResolvedValueOnce({ data: { roast: 'Verdict: you retard.', severity: 3 } })
+      .mockResolvedValueOnce({ data: { roast: 'Verdict: Impressive incompetence.', severity: 3 } });
+
+    const result = await roast('bad code');
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+    expect(result.roast).not.toMatch(/retard/i);
+  });
+
+  it('heckle retries on harsh output', async () => {
+    mockGenerate
+      .mockResolvedValueOnce({ data: { heckle: 'you stupid bitch.' } })
+      .mockResolvedValueOnce({ data: { heckle: 'Bold of you to ship that.' } });
+
+    const result = await heckle('bad code');
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+    expect(result.heckle).not.toMatch(/bitch/i);
   });
 });
 
@@ -763,6 +809,28 @@ describe('edge cases', () => {
     expect(result.is_fresh).toBe(true);
   });
 
+  it('handles concurrent tool invocations without state corruption', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { roast: 'Verdict: Concurrent.', severity: 3 },
+    });
+
+    const results = await Promise.all([
+      roast('target 1'),
+      roast('target 2'),
+      roast('target 3'),
+    ]);
+
+    expect(results).toHaveLength(3);
+    results.forEach(r => {
+      expect(r.roast).toBeDefined();
+      expect(r.severity).toBeGreaterThanOrEqual(1);
+    });
+    // Turn counter should have incremented 3 times
+    expect(getSession().turn_counter).toBe(3);
+    // All 3 bits should be recorded
+    expect(getSession().recent_bits).toHaveLength(3);
+  });
+
   it('catchphraseGenerate handles context with newlines (sanitized)', async () => {
     mockGenerate.mockResolvedValue({
       data: { phrase: 'Clean code.' },
@@ -774,5 +842,50 @@ describe('edge cases', () => {
     const call = mockGenerate.mock.calls[0];
     const opts = call[0] as { userPrompt: string };
     expect(opts.userPrompt).not.toContain('\n\nContext: buggy\ncode');
+  });
+});
+
+describe('parameterized regression', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  it('all moods produce valid roast output', async () => {
+    for (const mood of MOOD_STYLES) {
+      resetSession();
+      moodSet(mood);
+      mockGenerate.mockResolvedValue({
+        data: { roast: 'Verdict: Test output.', severity: 3 },
+      });
+      const result = await roast('test target');
+      expect(result.mood).toBe(mood);
+      expect(typeof result.roast).toBe('string');
+    }
+  });
+
+  it('all moods produce valid heckle output', async () => {
+    for (const mood of MOOD_STYLES) {
+      resetSession();
+      moodSet(mood);
+      mockGenerate.mockResolvedValue({
+        data: { heckle: 'Test heckle.' },
+      });
+      const result = await heckle('test target');
+      expect(result.mood).toBe(mood);
+      expect(typeof result.heckle).toBe('string');
+    }
+  });
+
+  it('all techniques produce valid comic_timing output', async () => {
+    const { COMIC_TECHNIQUES } = await import('../src/types.js');
+    for (const technique of COMIC_TECHNIQUES) {
+      resetSession();
+      mockGenerate.mockResolvedValue({
+        data: { rewrite: 'Test rewrite.', technique_used: technique === 'auto' ? 'understatement' : technique },
+      });
+      const result = await comicTiming('test input', technique);
+      expect(typeof result.rewrite).toBe('string');
+    }
   });
 });

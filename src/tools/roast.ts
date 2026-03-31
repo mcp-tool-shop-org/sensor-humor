@@ -60,15 +60,16 @@ export async function roast(
 ): Promise<RoastResult> {
   const session = getSession();
   session.tick();
+  const mood = session.mood;
 
   const systemPrompt = [
     baseSystemPrefix(),
-    getMoodSystemPrompt(session.mood),
-    buildRoastGuidance(session.mood),
+    getMoodSystemPrompt(mood),
+    buildRoastGuidance(mood),
     `\nSESSION CONTEXT:\n${session.stateSummary()}`,
   ].join('\n\n');
 
-  const userPrompt = buildRoastUserPrompt(session.mood, target, context);
+  const userPrompt = buildRoastUserPrompt(mood, target, context);
 
   const fallback: z.infer<typeof RoastSchema> = {
     roast: `${target}. No further comment.`,
@@ -89,7 +90,7 @@ export async function roast(
   );
 
   // Label pattern enforcement: ONLY in roast mood
-  if (session.mood === 'roast' && !ROAST_LABEL_PATTERN.test(result.data.roast)) {
+  if (mood === 'roast' && !ROAST_LABEL_PATTERN.test(result.data.roast)) {
     const retryPrompt = `${userPrompt}\n\nStart with a label like "Verdict:", "Diagnosis:", or "Classification:" followed by 1 tight sentence.`;
     result = await generateComedy<z.infer<typeof RoastSchema>>(
       {
@@ -118,9 +119,12 @@ export async function roast(
     );
     // If still leaking after retry, use safe fallback
     if (COMPARISON_LEAK.test(result.data.roast) || hasSimileLeak(result.data.roast)) {
-      result.data.roast = session.mood === 'roast'
+      result.data.roast = mood === 'roast'
         ? `Verdict: ${target}. No further comment.`
         : `${target}. No further comment.`;
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+        console.error('[sensor-humor] Roast: simile leak persisted after retry, using safe fallback');
+      }
     }
   }
 
@@ -148,6 +152,6 @@ export async function roast(
   return {
     roast: result.data.roast,
     severity,
-    mood: session.mood,
+    mood,
   };
 }
