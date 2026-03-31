@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/sensor-humor/readme.png" width="600" alt="sensor-humor" />
+  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/sensor-humor/readme.png" width="400" alt="sensor-humor" />
 </p>
 
 <p align="center">
@@ -18,37 +18,37 @@ Progettato per sviluppatori: commenti sarcastici sul codice, messaggi di errore 
 
 ## Funzionalità
 
-- 6 umori: asciutto (predefinito), sarcastico, assurdo, positivo, cinico, folle
-- Stato della sessione: battute ricorrenti, buffer circolare delle ultime battute (massimo 20), mappa delle frasi ad effetto
-- Strumenti: mood.set/get, comic_timing, roast, heckle, catchphrase.generate/callback
-- Backend Ollama locale (si consiglia qwen2.5:7b-instruct)
-- Abbinamento vocale: mcp-voice-soundboard con Piper TTS (parametri della prosodia: length_scale, noise_scale, noise_w_scale, volume)
-- Deterministico: applicazione dello schema JSON, validazione, riprova in caso di output errato, logging di debug
+- 6 modalità, tutte con un tasso di successo superiore al 70% nelle sessioni di sviluppo reali.
+- Stato della sessione: battute ricorrenti, buffer circolare delle ultime battute (massimo 20), mappa delle frasi tipiche.
+- 9 strumenti: mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status, session_reset.
+- Backend Ollama locale (qwen2.5:7b predefinito, configurabile tramite `SENSOR_HUMOR_MODEL`).
+- Associazione vocale: mcp-voice-soundboard con Piper TTS (controlli di prosodia: length_scale, noise_scale, noise_w_scale, volume).
+- Deterministic: applicazione dello schema JSON, validazione, riprova in caso di output errato, ereditarietà della modalità forzata.
 
 ## Modalità
 
-Ogni modalità utilizza una struttura di prompt con spazi da riempire che costringe il modello a generare output prevedibili e di alta qualità.
+Ogni modalità utilizza un modello di prompt con spazi da riempire che forza il modello a generare output prevedibili e di alta qualità.
 
-- **dry** — tono piatto, minimalista, ovvio (predefinito)
-- **roast** — commenti pungenti e affettuosi, etichette di verdetto/diagnosi
-- **cynic** — realismo cinico e velenoso ("Ovviamente:", "Prevedibilmente:")
-- **cheeky** — scherzi giocosi e maliziosi ("Oh, tesoro", "Mossa audace")
-- **chaotic** — frase introduttiva, seguita da un colpo di scena assurdo ("Si dice che...")
-- **zoomer** — cinismo della Generazione Z, sempre online (reazione, frecciatina, MAIUSCOLO, tag)
+- **dry** — tono piatto, minimalista, ovvio (predefinito).
+- **roast** — critiche affettuose e pungenti, etichette di verdetto/diagnosi.
+- **cynic** — realismo cinico e silenziosamente cattivo ("Certo:", "Prevedibilmente:").
+- **cheeky** — scherzi giocosi e maliziosi ("Oh, tesoro", "Mossa audace").
+- **chaotic** — frase apparentemente normale, seguita da un colpo di scena assurdo ("Si dice che...").
+- **zoomer** — cinismo spietato della Generazione Z, sempre online (reazione, frecciatina, MAIUSCOLO, tag).
 
-Tutte le modalità ereditano la voce e la prosodia tramite mcp-voice-soundboard (si consiglia Piper).
+Tutte le modalità ereditano la voce e la prosodia tramite mcp-voice-soundboard (Piper consigliato).
 
 ## Requisiti
 
-- Node.js 18+
-- Ollama in esecuzione localmente con `qwen2.5:7b-instruct` installato
-- mcp-voice-soundboard installato e in esecuzione (si consiglia il backend Piper)
-- @modelcontextprotocol/sdk
+- Node.js 18+.
+- Ollama in esecuzione localmente con il modello `qwen2.5:7b` scaricato (o impostare `SENSOR_HUMOR_MODEL` per un modello diverso).
+- mcp-voice-soundboard installato e in esecuzione (backend Piper consigliato, opzionale).
+- @modelcontextprotocol/sdk.
 
 ## Installazione
 
 ```bash
-npm install @mcp-tool-shop/sensor-humor
+npm install sensor-humor
 # or link local dev version
 npm link /path/to/sensor-humor
 ```
@@ -58,7 +58,7 @@ npm link /path/to/sensor-humor
 1. Avviare Ollama:
 
 ```bash
-ollama run qwen2.5:7b-instruct
+ollama pull qwen2.5:7b
 ```
 
 2. Avviare il server MCP di sensor-humor (trasporto stdio):
@@ -80,11 +80,11 @@ VOICE_SOUNDBOARD_ENGINE=piper VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/mo
 - Testare la catena:
 
 ```
-mood.set(style: "roast")
+mood_set(style: "roast")
 roast(target: "800-line god function")
 ```
 
-Viene restituito un insulto testuale, quindi `voice_speak(mood: "roast")` lo pronuncia con energia sarcastica e sicura.
+Testo "roast" restituito. Se anche [mcp-voice-soundboard](https://github.com/mcp-tool-shop-org/mcp-voice-soundboard) è configurato, `voice_speak(mood: "roast")` lo pronuncia con la prosodia appropriata di Piper per la modalità.
 
 ## Strumenti
 
@@ -92,14 +92,15 @@ Tutti gli strumenti ereditano l'umore corrente dalla sessione.
 
 | Strumento | Firma | Descrizione |
 |------|-----------|-------------|
-| `mood.set` | `(style: string)` | Imposta l'umore (serio, sarcastico, caotico, impertinente, cinico, "zoomer") |
-| `mood.get` | `()` | Umore corrente + conteggio delle battute |
+| `mood_set` | `(style: string)` | Imposta l'umore (serio, sarcastico, caotico, impertinente, cinico, "zoomer") |
+| `mood_get` | `()` | Umore corrente + conteggio delle battute |
 | `comic_timing` | `(text, technique?)` | Riscrivere con un tono comico (regola delle tre, depistaggio, escalation, richiamo, understatement, automatico) |
-| `roast` | `(target, context?)` | Commento pungente e affettuoso nella voce della modalità corrente, con un livello di intensità da 1 a 5. Contesto: codice, errore, idea, situazione. |
-| `debug_status` | `()` | Elimina lo stato della sessione corrente, la configurazione della modalità e il backend vocale. |
+| `roast` | `(target, context?)` | Critica affettuosa nella voce della modalità corrente, restituisce un livello di severità da 1 a 5. Contesto: codice, errore, idea, situazione. |
 | `heckle` | `(target)` | Osservazione pungente |
-| `catchphrase.generate` | `(context?)` | Creare una battuta riutilizzabile (memorizzata nella sessione) |
-| `catchphrase.callback` | `()` | Riutilizzare la frase ad effetto più utilizzata (o nulla) |
+| `catchphrase_generate` | `(context?)` | Creare una battuta riutilizzabile (memorizzata nella sessione) |
+| `catchphrase_callback` | `()` | Riutilizzare la frase ad effetto più utilizzata (o nulla) |
+| `debug_status` | `()` | Visualizza lo stato corrente della sessione, la configurazione della modalità e il backend vocale. |
+| `session_reset` | `()` | Ripristina tutti gli stati della sessione (modalità, battute, elementi, frasi tipiche, contatore di turni). |
 
 ## Prosodia dell'umore (Voce Piper)
 
@@ -121,6 +122,8 @@ Ogni umore è associato a una voce Piper distinta e a una configurazione della p
 SENSOR_HUMOR_DEBUG=true                # verbose prompt/response dumps
 SENSOR_HUMOR_OBSERVE=true              # full chain trace (prompt -> text -> piper params)
 SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (for A/B tuning)
+SENSOR_HUMOR_MODEL=qwen2.5:7b         # Ollama model (default: qwen2.5:7b)
+OLLAMA_HOST=http://127.0.0.1:11434    # Ollama API host (default: http://127.0.0.1:11434)
 
 # voice integration (in voice-soundboard)
 VOICE_SOUNDBOARD_ENGINE=piper          # or kokoro (default)
@@ -135,12 +138,22 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 
 ## Note sulla qualità
 
-- Tasso di successo comico: 70-100% per modalità/strumento nelle sessioni di sviluppo reali (ingegneria dei prompt basata su schemi).
-- Filtro di similitudini/confronti: espressione regolare di convalida post-elaborazione + tentativi/soluzioni alternative per evitare errori nelle modalità "dry" e "cheeky".
-- Tutte le modalità raggiungono un tasso di successo superiore al 70% nelle sessioni reali; "roast", "cynic" e "chaotic" spesso raggiungono il 90-100%.
-- Deterministico: applicazione dello schema JSON, tentativo di nuovo in caso di output errato, ereditarietà della modalità applicata a tutti gli strumenti.
-- Voce: Piper offre una separazione della prosodia (lunghezza, rumore, volume per modalità); Kokoro è un'alternativa più veloce.
-- Solo strumento di sviluppo. L'umorismo è soggettivo; disabilitare qualsiasi modalità tramite variabili d'ambiente o modificare i prompt, se necessario.
+- Tasso di successo comico: 70-100% per modalità/strumento nelle sessioni di sviluppo reali (prompt basati su scheletro).
+- Filtro di similitudini/confronti: espressione regolare di post-validazione + riprova/fallback per evitare errori in modalità "dry" o "cheeky".
+- Tutte le modalità con un tasso di successo superiore al 70% nelle sessioni reali; "roast", "cynic" e "chaotic" spesso con un tasso del 90-100%.
+- Deterministic: applicazione dello schema JSON, riprova in caso di output errato, ereditarietà della modalità forzata in tutti gli strumenti.
+- Voce: Piper fornisce una separazione della prosodia (lunghezza/rumore/volume per modalità); Kokoro è un'alternativa più veloce.
+- Solo strumento per sviluppatori. L'umorismo è soggettivo; disabilitare qualsiasi modalità tramite variabili d'ambiente o modificare i prompt se necessario.
+
+## Sicurezza e Affidabilità
+
+- **Solo locale** — comunica con Ollama su localhost tramite HTTP, senza connessioni in uscita verso la rete esterna.
+- **Nessun accesso al file system** — non legge né scrive file.
+- **Nessuna gestione di segreti** — non legge, memorizza né trasmette credenziali.
+- **Nessuna telemetria** — non vengono raccolti né inviati dati.
+- **Lo stato della sessione è solo in memoria** — viene perso quando il processo del server si interrompe.
+- **Sanificazione dell'input** — tutto il testo fornito dall'utente viene sanificato prima dell'iniezione di prompt (rimozione delle nuove righe, limite di lunghezza, rimozione dei caratteri di controllo).
+- **Filtraggio dell'output** — filtro per linguaggio offensivo (elenco di termini codificati in base64) con riprova + fallback sicuro per evitare che insulti raggiungano l'utente.
 
 ## Architettura
 

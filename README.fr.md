@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/sensor-humor/readme.png" width="600" alt="sensor-humor" />
+  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/sensor-humor/readme.png" width="400" alt="sensor-humor" />
 </p>
 
 <p align="center">
@@ -18,12 +18,12 @@ Conçu pour les développeurs : critiques subtiles du code, messages d'erreur se
 
 ## Fonctionnalités
 
-- 6 humeurs : neutre (par défaut), moqueur, absurde, bienveillant, sarcastique, déchaîné
-- État de session : blagues récurrentes, tampon circulaire des dernières phrases (max 20), mappage des expressions types
-- Outils : mood.set/get, comic_timing, roast, heckle, catchphrase.generate/callback
-- Backend Ollama local (qwen2.5:7b-instruct recommandé)
-- Appariement vocal : mcp-voice-soundboard avec Piper TTS (paramètres de prosodie : length_scale, noise_scale, noise_w_scale, volume)
-- Déterministe : application et validation de schéma JSON, nouvelle tentative en cas de résultat incorrect, journalisation de débogage
+- 6 modes, avec un taux de réussite de plus de 70 % lors de sessions de développement réelles.
+- État de la session : blagues récurrentes, tampon circulaire des dernières répliques (maximum 20), mappage des expressions favorites.
+- 9 outils : mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status, session_reset.
+- Backend Ollama local (qwen2.5:7b par défaut, configurable via `SENSOR_HUMOR_MODEL`).
+- Accompagnement vocal : mcp-voice-soundboard avec Piper TTS (paramètres de prosodie : length_scale, noise_scale, noise_w_scale, volume).
+- Déterministe : application stricte du schéma JSON, validation, nouvelle tentative en cas de résultat incorrect, héritage des modes imposé.
 
 ## Modes
 
@@ -41,14 +41,14 @@ Tous les modes héritent de la voix et de la prosodie via mcp-voice-soundboard (
 ## Prérequis
 
 - Node.js 18+
-- Ollama en cours d'exécution localement avec `qwen2.5:7b-instruct` installé
-- mcp-voice-soundboard installé et en cours d'exécution (backend Piper recommandé)
+- Ollama en cours d'exécution localement avec le modèle `qwen2.5:7b` téléchargé (ou définissez `SENSOR_HUMOR_MODEL` pour un autre modèle).
+- mcp-voice-soundboard installé et en cours d'exécution (backend Piper recommandé, optionnel).
 - @modelcontextprotocol/sdk
 
 ## Installation
 
 ```bash
-npm install @mcp-tool-shop/sensor-humor
+npm install sensor-humor
 # or link local dev version
 npm link /path/to/sensor-humor
 ```
@@ -58,7 +58,7 @@ npm link /path/to/sensor-humor
 1. Démarrer Ollama :
 
 ```bash
-ollama run qwen2.5:7b-instruct
+ollama pull qwen2.5:7b
 ```
 
 2. Démarrer le serveur sensor-humor MCP (transport stdio) :
@@ -80,11 +80,11 @@ VOICE_SOUNDBOARD_ENGINE=piper VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/mo
 - Tester la chaîne :
 
 ```
-mood.set(style: "roast")
+mood_set(style: "roast")
 roast(target: "800-line god function")
 ```
 
-Une "insulte" est renvoyée, puis `voice_speak(mood: "roast")` la prononce avec une énergie sarcastique et confiante.
+Une "insulte" textuelle est renvoyée. Si [mcp-voice-soundboard](https://github.com/mcp-tool-shop-org/mcp-voice-soundboard) est également configuré, `voice_speak(mood: "roast")` la prononce avec la prosodie Piper appropriée au mode.
 
 ## Outils
 
@@ -92,14 +92,15 @@ Tous les outils héritent de l'humeur actuelle de la session.
 
 | Outil | Signature | Description |
 |------|-----------|-------------|
-| `mood.set` | `(style: string)` | Définir le mode actif (neutre, sarcastique, chaotique, espiègle, cynique, génération Z). |
-| `mood.get` | `()` | Humeur actuelle + nombre de blagues |
+| `mood_set` | `(style: string)` | Définir le mode actif (neutre, sarcastique, chaotique, espiègle, cynique, génération Z). |
+| `mood_get` | `()` | Humeur actuelle + nombre de blagues |
 | `comic_timing` | `(text, technique?)` | Réécrire avec une livraison comique (règle des trois, diversion, escalade, rappel, euphémisme, automatique) |
 | `roast` | `(target, context?)` | Critique affectueuse dans la voix du mode actuel, avec un niveau de sévérité de 1 à 5. Contexte : code, erreur, idée, situation. |
-| `debug_status` | `()` | Supprimer l'état de la session actuelle, la configuration du mode et le backend vocal. |
 | `heckle` | `(target)` | Brève remarque acerbe |
-| `catchphrase.generate` | `(context?)` | Créer un élément réutilisable (stocké dans la session) |
-| `catchphrase.callback` | `()` | Réutiliser l'expression type la plus utilisée (ou null) |
+| `catchphrase_generate` | `(context?)` | Créer un élément réutilisable (stocké dans la session) |
+| `catchphrase_callback` | `()` | Réutiliser l'expression type la plus utilisée (ou null) |
+| `debug_status` | `()` | Supprimer l'état de la session actuelle, la configuration du mode et le backend vocal. |
+| `session_reset` | `()` | Réinitialise tout l'état de la session (mode, blagues, répliques, expressions favorites, compteur de tours). |
 
 ## Prosodie de l'humeur (voix Piper)
 
@@ -121,6 +122,8 @@ Chaque humeur est associée à une voix Piper distincte et à une configuration 
 SENSOR_HUMOR_DEBUG=true                # verbose prompt/response dumps
 SENSOR_HUMOR_OBSERVE=true              # full chain trace (prompt -> text -> piper params)
 SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (for A/B tuning)
+SENSOR_HUMOR_MODEL=qwen2.5:7b         # Ollama model (default: qwen2.5:7b)
+OLLAMA_HOST=http://127.0.0.1:11434    # Ollama API host (default: http://127.0.0.1:11434)
 
 # voice integration (in voice-soundboard)
 VOICE_SOUNDBOARD_ENGINE=piper          # or kokoro (default)
@@ -141,6 +144,16 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 - Déterministe : application stricte du schéma JSON, nouvelle tentative en cas de résultat incorrect, héritage du mode appliqué à tous les outils.
 - Voix : Piper permet une séparation de la prosodie (longueur/bruit/volume par mode) ; Kokoro est une solution de repli axée uniquement sur la vitesse.
 - Outil d'assistance pour les développeurs uniquement. L'humour est subjectif ; désactivez tout mode via les variables d'environnement ou ajustez les prompts si nécessaire.
+
+## Sécurité et confidentialité
+
+- **Uniquement local** — communique avec Ollama sur localhost via HTTP, sans accès au réseau externe.
+- **Pas d'accès au système de fichiers** — ne lit ni n'écrit de fichiers.
+- **Pas de gestion de secrets** — ne lit, ne stocke ni ne transmet d'informations d'identification.
+- **Pas de télémétrie** — rien n'est collecté ni envoyé.
+- **L'état de la session est uniquement en mémoire** — est perdu lorsque le processus du serveur s'arrête.
+- **Nettoyage des entrées** — tout texte fourni par l'utilisateur est nettoyé avant l'injection de prompt (suppression des sauts de ligne, limitation de la longueur, suppression des caractères de contrôle).
+- **Filtrage des sorties** — filtre de langage restrictif (liste de termes encodés en base64) avec nouvelle tentative et solution de repli sécurisée pour empêcher les insultes d'atteindre l'utilisateur.
 
 ## Architecture
 

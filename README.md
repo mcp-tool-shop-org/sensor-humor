@@ -48,7 +48,7 @@ All moods inherit voice + prosody via mcp-voice-soundboard (Piper recommended).
 ## Install
 
 ```bash
-npm install @mcp-tool-shop/sensor-humor
+npm install sensor-humor
 # or link local dev version
 npm link /path/to/sensor-humor
 ```

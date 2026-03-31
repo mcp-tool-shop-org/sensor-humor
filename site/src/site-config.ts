@@ -6,7 +6,7 @@ export const config: SiteConfig = {
   logoBadge: 'SH',
   brandName: 'sensor-humor',
   repoUrl: 'https://github.com/mcp-tool-shop-org/sensor-humor',
-  npmUrl: 'https://www.npmjs.com/package/@mcp-tool-shop/sensor-humor',
+  npmUrl: 'https://www.npmjs.com/package/sensor-humor',
   footerText: 'MIT Licensed — built by <a href="https://mcp-tool-shop.github.io/" style="color:var(--color-muted);text-decoration:underline">MCP Tool Shop</a>',
 
   hero: {

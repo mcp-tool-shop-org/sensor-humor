@@ -18,7 +18,7 @@ Optional for voice:
 ## Install
 
 ```bash
-npm install @mcp-tool-shop/sensor-humor
+npm install sensor-humor
 ```
 
 Or clone and link for development:

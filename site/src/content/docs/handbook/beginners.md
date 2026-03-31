@@ -83,7 +83,7 @@ This is the default model. It produces concise, schema-compliant comedy output. 
 ### 2. Install sensor-humor
 
 ```bash
-npm install @mcp-tool-shop/sensor-humor
+npm install sensor-humor
 ```
 
 Or for development:

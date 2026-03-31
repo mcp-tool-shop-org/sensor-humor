@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/sensor-humor/readme.png" width="600" alt="sensor-humor" />
+  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/sensor-humor/readme.png" width="400" alt="sensor-humor" />
 </p>
 
 <p align="center">
@@ -18,12 +18,12 @@ MCP टूल जो आपके LLM को एक स्थायी हास
 
 ## विशेषताएं
 
-- 6 मूड: सूखा (डिफ़ॉल्ट), व्यंग्यात्मक, अतार्किक, सकारात्मक, कटाक्षपूर्ण, अराजक
-- सत्र स्थिति: लगातार चुटकुले, हाल के अंशों का रिंग बफर (अधिकतम 20), मुहावरे का मानचित्र
-- उपकरण: mood.set/get, comic_timing, roast, heckle, catchphrase.generate/callback
-- स्थानीय Ollama बैकएंड (qwen2.5:7b-instruct अनुशंसित)
-- वॉयस पेयरिंग: mcp-voice-soundboard, Piper TTS के साथ (प्रोसडी नियंत्रण: length_scale, noise_scale, noise_w_scale, volume)
-- नियतात्मक: JSON स्कीमा प्रवर्तन, सत्यापन, खराब आउटपुट पर पुनः प्रयास, डिबग लॉगिंग
+- 6 मूड, सभी 70%+ सटीकता के साथ वास्तविक विकास सत्रों में।
+- सत्र की स्थिति: लगातार चलने वाले चुटकुले, हाल के अंशों का रिंग बफर (अधिकतम 20), कैचफ्रेज़ मैप।
+- 9 उपकरण: mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status, session_reset।
+- स्थानीय ओलामा बैकएंड (डिफ़ॉल्ट रूप से qwen2.5:7b, `SENSOR_HUMOR_MODEL` के माध्यम से कॉन्फ़िगर करने योग्य)।
+- वॉयस पेयरिंग: mcp-voice-soundboard, Piper TTS के साथ (प्रोज़ोडी नियंत्रण: length_scale, noise_scale, noise_w_scale, volume)।
+- नियतात्मक: JSON स्कीमा का प्रवर्तन, सत्यापन, खराब आउटपुट पर पुनः प्रयास, मूड विरासत का प्रवर्तन।
 
 ## मूड (Moods)
 
@@ -41,14 +41,14 @@ MCP टूल जो आपके LLM को एक स्थायी हास
 ## आवश्यकताएं
 
 - Node.js 18+
-- Ollama स्थानीय रूप से चल रहा है, जिसमें `qwen2.5:7b-instruct` स्थापित है
-- mcp-voice-soundboard स्थापित और चल रहा है (Piper बैकएंड अनुशंसित)
+- स्थानीय रूप से ओलामा चल रहा है, जिसमें `qwen2.5:7b` डाउनलोड किया गया है (या किसी अन्य मॉडल के लिए `SENSOR_HUMOR_MODEL` सेट करें)।
+- mcp-voice-soundboard स्थापित और चल रहा है (पाइपर बैकएंड अनुशंसित, वैकल्पिक)।
 - @modelcontextprotocol/sdk
 
 ## इंस्टॉल करें
 
 ```bash
-npm install @mcp-tool-shop/sensor-humor
+npm install sensor-humor
 # or link local dev version
 npm link /path/to/sensor-humor
 ```
@@ -58,7 +58,7 @@ npm link /path/to/sensor-humor
 1. Ollama शुरू करें:
 
 ```bash
-ollama run qwen2.5:7b-instruct
+ollama pull qwen2.5:7b
 ```
 
 2. सेंसर-ह्यूमर MCP सर्वर शुरू करें (stdio ट्रांसपोर्ट):
@@ -80,11 +80,11 @@ VOICE_SOUNDBOARD_ENGINE=piper VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/mo
 - परीक्षण श्रृंखला:
 
 ```
-mood.set(style: "roast")
+mood_set(style: "roast")
 roast(target: "800-line god function")
 ```
 
-एक व्यंग्यात्मक प्रतिक्रिया प्राप्त होती है, फिर `voice_speak(mood: "roast")` इसे "am_eric" + आत्मविश्वासपूर्ण और व्यंग्यात्मक ऊर्जा के साथ बोलता है।
+"रोस्ट" टेक्स्ट वापस किया गया। यदि [mcp-voice-soundboard](https://github.com/mcp-tool-shop-org/mcp-voice-soundboard) भी कॉन्फ़िगर किया गया है, तो `voice_speak(mood: "roast")` इसे मूड के अनुरूप पाइपर प्रोज़ोडी के साथ बोलता है।
 
 ## उपकरण
 
@@ -92,14 +92,15 @@ roast(target: "800-line god function")
 
 | उपकरण | हस्ताक्षर | विवरण |
 |------|-----------|-------------|
-| `mood.set` | `(style: string)` | सक्रिय मूड सेट करें (सूखा, व्यंग्यात्मक, अराजक, शरारती, निराशावादी, ज़ूमर) |
-| `mood.get` | `()` | वर्तमान मूड + चुटकुला गणना |
+| `mood_set` | `(style: string)` | सक्रिय मूड सेट करें (सूखा, व्यंग्यात्मक, अराजक, शरारती, निराशावादी, ज़ूमर) |
+| `mood_get` | `()` | वर्तमान मूड + चुटकुला गणना |
 | `comic_timing` | `(text, technique?)` | हास्यपूर्ण डिलीवरी के साथ फिर से लिखें (नियम-की-तीन, गलत दिशा, वृद्धि, कॉलबैक, अल्पवाचन, ऑटो) |
 | `roast` | `(target, context?)` | वर्तमान मूड की आवाज में स्नेहपूर्ण कटाक्ष, गंभीरता 1-5 तक। संदर्भ: कोड, त्रुटि, विचार, स्थिति |
-| `debug_status` | `()` | वर्तमान सत्र की स्थिति, मूड कॉन्फ़िगरेशन और आवाज बैकएंड को हटा दें। |
 | `heckle` | `(target)` | संक्षिप्त, तीखा कटाक्ष |
-| `catchphrase.generate` | `(context?)` | पुन: प्रयोज्य अंश बनाएं (सत्र में संग्रहीत) |
-| `catchphrase.callback` | `()` | सबसे अधिक उपयोग किए जाने वाले मुहावरे का पुन: उपयोग करें (या शून्य) |
+| `catchphrase_generate` | `(context?)` | पुन: प्रयोज्य अंश बनाएं (सत्र में संग्रहीत) |
+| `catchphrase_callback` | `()` | सबसे अधिक उपयोग किए जाने वाले मुहावरे का पुन: उपयोग करें (या शून्य) |
+| `debug_status` | `()` | वर्तमान सत्र की स्थिति, मूड कॉन्फ़िगरेशन और आवाज बैकएंड को हटा दें। |
+| `session_reset` | `()` | सभी सत्र की स्थिति को रीसेट करें (मूड, चुटकुले, अंश, कैचफ्रेज़, टर्न काउंटर)। |
 
 ## मूड प्रसडी (Piper वॉयस)
 
@@ -121,6 +122,8 @@ roast(target: "800-line god function")
 SENSOR_HUMOR_DEBUG=true                # verbose prompt/response dumps
 SENSOR_HUMOR_OBSERVE=true              # full chain trace (prompt -> text -> piper params)
 SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (for A/B tuning)
+SENSOR_HUMOR_MODEL=qwen2.5:7b         # Ollama model (default: qwen2.5:7b)
+OLLAMA_HOST=http://127.0.0.1:11434    # Ollama API host (default: http://127.0.0.1:11434)
 
 # voice integration (in voice-soundboard)
 VOICE_SOUNDBOARD_ENGINE=piper          # or kokoro (default)
@@ -141,6 +144,16 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 - नियतात्मक: JSON स्कीमा प्रवर्तन, खराब आउटपुट पर पुनः प्रयास, सभी उपकरणों में मूड विरासत लागू।
 - आवाज: Piper लय (लंबाई/शोर/मात्रा प्रति मूड) को अलग करता है; Kokoro केवल गति पर आधारित है।
 - केवल एक विकास उपकरण सहायक। हास्य व्यक्तिपरक है; यदि आवश्यक हो तो किसी भी मूड को पर्यावरण के माध्यम से अक्षम करें या प्रॉम्प्ट को समायोजित करें।
+
+## सुरक्षा और विश्वास
+
+- **केवल स्थानीय** — यह ओलामा के साथ केवल localhost पर HTTP के माध्यम से संचार करता है, कोई बाहरी नेटवर्क कनेक्शन नहीं।
+- **कोई फ़ाइल सिस्टम एक्सेस नहीं** — यह कोई भी फ़ाइल नहीं पढ़ता या लिखता है।
+- **कोई गुप्त जानकारी प्रबंधन नहीं** — यह कोई भी क्रेडेंशियल नहीं पढ़ता, संग्रहीत नहीं करता या प्रसारित नहीं करता।
+- **कोई टेलीमेट्री नहीं** — कुछ भी एकत्र या भेजा नहीं जाता है।
+- **सत्र की स्थिति केवल मेमोरी में होती है** — सर्वर प्रक्रिया बंद होने पर यह समाप्त हो जाती है।
+- **इनपुट सैनिटाइजेशन** — प्रॉम्प्ट इंजेक्शन से पहले सभी उपयोगकर्ता द्वारा प्रदान किए गए टेक्स्ट को सैनिटाइज किया जाता है (नई लाइनें हटाई जाती हैं, लंबाई सीमित की जाती है, नियंत्रण वर्ण हटा दिए जाते हैं)।
+- **आउटपुट फ़िल्टरिंग** — एक कठोर भाषा फ़िल्टर (बेस64-एन्कोडेड शब्द सूची) का उपयोग किया जाता है, जिसमें पुनः प्रयास + सुरक्षित विकल्प शामिल हैं, ताकि अपमानजनक शब्दों को उपयोगकर्ता तक न पहुंचने दिया जाए।
 
 ## आर्किटेक्चर
 
