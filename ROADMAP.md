@@ -1,7 +1,7 @@
 # sensor-humor Roadmap
 
-**Current:** v1.0.1 — shipped 2026-03-25
-**Quality baseline:** 6 moods at 70%+, 92 tests, simile post-validation, Piper prosody, live sessions addictive with voice on.
+**Current:** v1.0.2 — shipped 2026-03-31
+**Quality baseline:** 6 moods at 70%+, 160 tests, simile post-validation, harsh filter safe fallback, mood-specific fallbacks, Piper prosody, live sessions addictive with voice on.
 
 Everything below must meaningfully move quality, determinism, debuggability, developer time, or end-user edge. Nothing else gets in.
 
@@ -11,7 +11,7 @@ Everything below must meaningfully move quality, determinism, debuggability, dev
 
 The v1.0.0 publish shipped 1.6MB because voice-demos/, scripts/, debug.log, and stale dist files leaked into the tarball. Fix before any more publishes.
 
-- [ ] Add `.npmignore` (exclude voice-demos/, scripts/, debug.log, site/, tests/, .github/, *.prompt.ts source)
+- [x] Add `.npmignore` (exclude voice-demos/, scripts/, debug.log, site/, tests/, .github/, *.prompt.ts source) (2026-03-31)
 - [ ] Add `npm pack --dry-run` verification to CI (fail if tarball > 200KB)
 - [ ] Clean stale dist/ files from deleted moods (absurdist, sardonic, wholesome, unhinged)
 - [x] Patch bump to v1.0.1, publish clean tarball (shipped 2026-03-25)

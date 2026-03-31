@@ -34,7 +34,7 @@ export const config: SiteConfig = {
         { title: 'Session Memory', desc: 'Running gags, recent bits ring buffer, catchphrase persistence. Callbacks to turn-47 bits still land on turn-120.' },
         { title: 'Voice Prosody', desc: 'Piper TTS with 4 knobs per mood: length_scale, noise_scale, noise_w_scale, volume. Deadpan sounds flat. Chaotic sounds like a news anchor delivering nonsense.' },
         { title: 'Deterministic', desc: 'JSON schema enforcement via Ollama, post-validation, retry on bad output, banned-pattern detection. Comedy with guardrails.' },
-        { title: '7 Tools', desc: 'mood.set/get, comic_timing, roast, heckle, catchphrase.generate, catchphrase.callback — all inherit active mood.' },
+        { title: '9 Tools', desc: 'mood.set/get, comic_timing, roast, heckle, catchphrase.generate/callback, debug_status, session_reset — all inherit active mood.' },
         { title: 'Local-first', desc: 'Ollama + qwen2.5:7b-instruct for comedy generation. Piper ONNX for voice. No cloud, no API keys, no latency.' },
       ],
     },
