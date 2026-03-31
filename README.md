@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/sensor-humor/readme.png" width="600" alt="sensor-humor" />
+  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/sensor-humor/readme.png" width="400" alt="sensor-humor" />
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@ Built for developers: gentle burns on code smells, dry deadpan error messages, c
 
 - 6 moods, all at 70%+ hit rate in real dev sessions
 - Session state: running gags, recent bits ring buffer (max 20), catchphrase Map
-- 8 tools: mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status
+- 9 tools: mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status, session_reset
 - Local Ollama backend (qwen2.5:7b default, configurable via `SENSOR_HUMOR_MODEL`)
 - Voice pairing: mcp-voice-soundboard with Piper TTS (prosody knobs: length_scale, noise_scale, noise_w_scale, volume)
 - Deterministic: JSON schema enforcement, validation, retry on bad output, mood inheritance enforced
@@ -100,6 +100,7 @@ All tools inherit current mood from session.
 | `catchphrase_generate` | `(context?)` | Create reusable bit (stored in session) |
 | `catchphrase_callback` | `()` | Reuse most-used catchphrase (or null) |
 | `debug_status` | `()` | Dump current session state, mood config, and voice backend |
+| `session_reset` | `()` | Reset all session state (mood, gags, bits, catchphrases, turn counter) |
 
 ## Mood Prosody (Piper Voice)
 
@@ -143,6 +144,16 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 - Deterministic: JSON schema enforcement, retry on bad output, mood inheritance enforced across all tools
 - Voice: Piper gives prosody separation (length/noise/volume per mood); Kokoro fallback is speed-only
 - Dev-tool sidekick only. Humor is subjective; disable any mood via env or tune prompts if needed
+
+## Security & Trust
+
+- **Local only** — communicates with Ollama on localhost via HTTP, no external network egress
+- **No file system access** — reads and writes no files
+- **No secrets handling** — does not read, store, or transmit credentials
+- **No telemetry** — nothing is collected or sent
+- **Session state is in-memory only** — dies when the server process stops
+- **Input sanitization** — all user-provided text is sanitized before prompt injection (newlines stripped, length capped, control chars removed)
+- **Output filtering** — harsh language filter (base64-encoded term list) with retry + safe fallback prevents slurs from reaching the user
 
 ## Architecture
 

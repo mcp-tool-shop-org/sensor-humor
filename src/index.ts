@@ -20,7 +20,7 @@ import { getMoodVoiceNotes } from './prompts/loader.js';
 
 const server = new McpServer({
   name: 'sensor-humor',
-  version: '1.0.1',
+  version: '1.0.2',
 });
 
 // --- mood_set ---
@@ -252,7 +252,7 @@ async function checkOllamaHealth(): Promise<void> {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('[sensor-humor] MCP server v1.0.1 running on stdio');
+  console.error('[sensor-humor] MCP server v1.0.2 running on stdio');
 
   // Fire-and-forget health check
   checkOllamaHealth();
