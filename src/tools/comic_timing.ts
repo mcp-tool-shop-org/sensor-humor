@@ -68,7 +68,7 @@ export async function comicTiming(
   technique: ComicTechnique = 'auto',
 ): Promise<ComicTimingResult> {
   const session = getSession();
-  const turn = session.tick();
+  session.tick();
 
   // Check for callback candidates
   const callbackCandidates = session.findCallbackCandidates(text);
