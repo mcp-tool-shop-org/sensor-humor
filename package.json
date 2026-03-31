@@ -1,5 +1,5 @@
 {
-  "name": "@mcp-tool-shop/sensor-humor",
+  "name": "sensor-humor",
   "version": "1.0.2",
   "description": "MCP comedy sidekick — gives LLMs a sense of humor via Ollama-powered comedic personality",
   "type": "module",

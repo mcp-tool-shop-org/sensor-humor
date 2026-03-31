@@ -18,7 +18,7 @@ describe('version alignment', () => {
     expect(changelog).toContain(pkg.version);
   });
 
-  it('package name uses correct npm scope', () => {
-    expect(pkg.name).toMatch(/^@/);
+  it('package name is sensor-humor', () => {
+    expect(pkg.name).toBe('sensor-humor');
   });
 });
