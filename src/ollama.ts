@@ -38,13 +38,13 @@ function getClient(): Ollama {
   return _client;
 }
 
-export interface GenerateComedyOptions {
+export interface GenerateComedyOptions<T> {
   /** Full system prompt (base + mood + state context). */
   systemPrompt: string;
   /** User-facing prompt (the actual request). */
   userPrompt: string;
   /** Zod schema for structured output validation. */
-  schema: z.ZodType<unknown>;
+  schema: z.ZodType<T>;
   /** JSON schema object to pass to Ollama format parameter. */
   jsonSchema: Record<string, unknown>;
   /** Override num_predict for this call (e.g., heckle uses 40). */
@@ -61,7 +61,7 @@ export interface GenerateComedyResult<T> {
  * Retries once on parse/validation failure, then falls back to a safe default.
  */
 export async function generateComedy<T>(
-  options: GenerateComedyOptions,
+  options: GenerateComedyOptions<T>,
   fallback: T,
 ): Promise<GenerateComedyResult<T>> {
   const { systemPrompt, userPrompt, schema, jsonSchema, numPredict } = options;
@@ -110,7 +110,7 @@ export async function generateComedy<T>(
       // Clean trailing JSON artifacts from string fields (Ollama leak)
       for (const key of Object.keys(parsed)) {
         if (typeof parsed[key] === 'string') {
-          parsed[key] = parsed[key].trim().replace(/[\s}]+$/, '').trim();
+          parsed[key] = parsed[key].replace(/\s+$/, '').replace(/\}+$/, '').trim();
         }
       }
 
@@ -140,6 +140,6 @@ export async function generateComedy<T>(
     }
   }
 
-  // Unreachable, but TypeScript wants it
+  // TypeScript exhaustiveness guard — loop always returns or falls through to the catch block's return
   return { data: fallback };
 }

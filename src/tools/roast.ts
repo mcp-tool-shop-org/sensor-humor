@@ -8,7 +8,7 @@ import { getSession } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
-import type { RoastContext, RoastResult } from '../types.js';
+import type { RoastContext, RoastResult, MoodStyle } from '../types.js';
 import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER, sanitizeForPrompt } from '../validators.js';
 
 const RoastSchema = z.object({
@@ -33,11 +33,11 @@ const ROAST_JSON_SCHEMA = {
   required: ['roast', 'severity'],
 };
 
-const ROAST_LABEL_PATTERN = /^(Verdict|Diagnosis|Official status|Classification|Case closed|Exhibit A|File under|Status|Designation):/i;
+export const ROAST_LABEL_PATTERN = /^(Verdict|Diagnosis|Official status|Classification|Case closed|Exhibit A|File under|Status|Designation):/i;
 const COMPARISON_LEAK = /\blike a\b|\bas a\b|\bas if\b|\bsimilar to\b|\bresembles\b|\bband[\s-]?aid\b|\bbandaid\b|\bblanket\b|\bcoffee break\b/i;
 
 /** Build roast-specific guidance that respects mood voice. */
-function buildRoastGuidance(mood: string): string {
+function buildRoastGuidance(mood: MoodStyle): string {
   if (mood === 'roast') {
     return `\nROAST MODE: Assign severity 1-5 based on how egregious the flaw is (1=mild pattern, 3=notable code smell, 5=architectural crime). Start with ONE label — pick exactly one of: "Verdict:", "Diagnosis:", "Classification:", "Case closed:", "File under:", "Official status:". Do NOT combine labels.`;
   }
@@ -46,7 +46,7 @@ function buildRoastGuidance(mood: string): string {
 }
 
 /** Build roast user prompt that respects mood voice. */
-function buildRoastUserPrompt(mood: string, target: string, context: RoastContext): string {
+function buildRoastUserPrompt(mood: MoodStyle, target: string, context: RoastContext): string {
   if (mood === 'roast') {
     return `Roast the following ${context}. Pick ONE label (Verdict: OR Diagnosis: OR Classification:) then deliver 1 tight sentence.\n\nTARGET:\n${sanitizeForPrompt(target)}\n\nRespond with JSON only.`;
   }
@@ -118,7 +118,9 @@ export async function roast(
     );
     // If still leaking after retry, use safe fallback
     if (COMPARISON_LEAK.test(result.data.roast) || hasSimileLeak(result.data.roast)) {
-      result.data.roast = `${target}. No further comment.`;
+      result.data.roast = session.mood === 'roast'
+        ? `Verdict: ${target}. No further comment.`
+        : `${target}. No further comment.`;
     }
   }
 

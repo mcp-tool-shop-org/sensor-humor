@@ -8,7 +8,7 @@ import { getSession } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
-import type { HeckleResult } from '../types.js';
+import type { HeckleResult, MoodStyle } from '../types.js';
 import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER, sanitizeForPrompt } from '../validators.js';
 
 const HeckleSchema = z.object({
@@ -29,7 +29,7 @@ const HECKLE_JSON_SCHEMA = {
 const HECKLE_NUM_PREDICT = 40;
 
 /** Mood-specific heckle guidance for moods that need skeleton override. */
-function buildHeckleGuidance(mood: string): string {
+function buildHeckleGuidance(mood: MoodStyle): string {
   if (mood === 'zoomer') {
     return `\nHECKLE MODE (zoomer): Deliver a single savage heckle in this exact short format:
 [lowercase reaction opener], [quick savage jab] [ONE 3-5 WORD CAPS BLOCK]
@@ -45,7 +45,7 @@ Rules: 8-20 words max. Exactly one caps block (3-5 words). No questions, no meta
 }
 
 /** Mood-specific heckle user prompt. */
-function buildHeckleUserPrompt(mood: string, target: string): string {
+function buildHeckleUserPrompt(mood: MoodStyle, target: string): string {
   if (mood === 'zoomer') {
     return `Heckle this. Format: [reaction opener], [savage jab] [CAPS BLOCK]. 8-20 words. No questions. No metaphors.
 

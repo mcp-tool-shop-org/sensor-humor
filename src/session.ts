@@ -111,7 +111,7 @@ export class Session implements SensorHumorSession {
     return `Catchphrases:\n${lines.join('\n')}`;
   }
 
-  /** Full state summary for prompt context injection. */
+  /** Full state summary for prompt context. */
   stateSummary(): string {
     return [
       `Turn: ${this.turn_counter}`,

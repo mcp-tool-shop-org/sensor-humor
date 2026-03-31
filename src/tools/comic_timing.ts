@@ -10,6 +10,7 @@ import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
 import { COMIC_TECHNIQUES, type ComicTechnique, type ComicTimingResult } from '../types.js';
 import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER, sanitizeForPrompt } from '../validators.js';
+import { ROAST_LABEL_PATTERN } from './roast.js';
 
 const ComicTimingSchema = z.object({
   rewrite: z.string().max(300),
@@ -140,7 +141,9 @@ Respond with JSON only.`;
     );
     // If still leaking after retry, replace with safe fallback
     if (hasSimileLeak(result.data.rewrite)) {
-      result.data.rewrite = `${text}. No further comment.`;
+      result.data.rewrite = session.mood === 'roast'
+        ? `Verdict: ${text}. No further comment.`
+        : `${text}. No further comment.`;
       result.data.technique_used = 'understatement';
     }
   }
@@ -160,7 +163,6 @@ Respond with JSON only.`;
   }
 
   // Roast pattern nudge: if roast mood and no verdict/label pattern, retry with hint
-  const ROAST_LABEL_PATTERN = /^(Verdict|Diagnosis|Official status|Classification|Case closed|Exhibit A|File under|Status|Designation):/i;
   if (session.mood === 'roast' && !ROAST_LABEL_PATTERN.test(result.data.rewrite)) {
     const labelRetryPrompt = `${userPrompt}\n\nStart with a label like "Verdict:", "Diagnosis:", or "Classification:" followed by 1 tight sentence.`;
     result = await generateComedy<ComicTimingResult>(

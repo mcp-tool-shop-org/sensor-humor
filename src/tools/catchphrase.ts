@@ -97,7 +97,7 @@ export function catchphraseCallback(): CatchphraseCallbackResult | null {
   let bestPhrase = '';
   let bestCount = 0;
   for (const [phrase, count] of session.catchphrases) {
-    if (count >= bestCount) {
+    if (count > bestCount) {
       bestPhrase = phrase;
       bestCount = count;
     }

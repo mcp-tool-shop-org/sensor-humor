@@ -8,6 +8,8 @@ on:
       - 'package.json'
       - 'tsconfig.json'
       - '.github/workflows/ci.yml'
+      - 'CHANGELOG.md'
+      - '.npmignore'
   pull_request:
     paths:
       - 'src/**'
@@ -15,6 +17,8 @@ on:
       - 'package.json'
       - 'tsconfig.json'
       - '.github/workflows/ci.yml'
+      - 'CHANGELOG.md'
+      - '.npmignore'
   workflow_dispatch:
 
 concurrency:

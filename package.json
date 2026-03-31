@@ -4,6 +4,12 @@
   "description": "MCP comedy sidekick — gives LLMs a sense of humor via Ollama-powered comedic personality",
   "type": "module",
   "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "bin": {
     "sensor-humor": "dist/index.js"
   },

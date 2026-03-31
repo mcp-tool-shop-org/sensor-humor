@@ -641,3 +641,83 @@ describe('simile/comparison post-validation', () => {
     expect(result.rewrite).toBe('Forty-seven builds. Persistence personified.');
   });
 });
+
+describe('edge cases', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  it('roast handles empty target gracefully', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { roast: 'Verdict: Nothing to roast.', severity: 1 },
+    });
+
+    const result = await roast('', 'code');
+    expect(result.roast).toBeDefined();
+    expect(result.severity).toBeGreaterThanOrEqual(1);
+  });
+
+  it('heckle handles empty target gracefully', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { heckle: 'Bold move.' },
+    });
+
+    const result = await heckle('');
+    expect(result.heckle).toBeDefined();
+  });
+
+  it('comic_timing handles empty text gracefully', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'Nothing. Literally.', technique_used: 'understatement' },
+    });
+
+    const result = await comicTiming('');
+    expect(result.rewrite).toBeDefined();
+  });
+
+  it('roast handles very long input (truncated by sanitizer)', async () => {
+    const longInput = 'a'.repeat(600);
+    mockGenerate.mockResolvedValue({
+      data: { roast: 'Verdict: Too much.', severity: 5 },
+    });
+
+    const result = await roast(longInput, 'code');
+    expect(result.roast).toBeDefined();
+    // Verify sanitizer was applied — the prompt should have truncated input
+    const call = mockGenerate.mock.calls[0];
+    const opts = call[0] as { userPrompt: string };
+    expect(opts.userPrompt.length).toBeLessThan(longInput.length + 200);
+  });
+
+  it('comic_timing handles special characters in text', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'JSON in curly braces. Peak comedy.', technique_used: 'understatement' },
+    });
+
+    const result = await comicTiming('{"key": "value"}');
+    expect(result.rewrite).toBeDefined();
+  });
+
+  it('catchphraseGenerate handles empty context', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { phrase: 'Ship it.' },
+    });
+
+    const result = await catchphraseGenerate('');
+    expect(result.is_fresh).toBe(true);
+  });
+
+  it('catchphraseGenerate handles context with newlines (sanitized)', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { phrase: 'Clean code.' },
+    });
+
+    const result = await catchphraseGenerate('buggy\ncode\neverywhere');
+    expect(result.is_fresh).toBe(true);
+    // Verify sanitizer stripped newlines from the prompt
+    const call = mockGenerate.mock.calls[0];
+    const opts = call[0] as { userPrompt: string };
+    expect(opts.userPrompt).not.toContain('\n\nContext: buggy\ncode');
+  });
+});
