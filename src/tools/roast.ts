@@ -117,11 +117,17 @@ export async function roast(
       },
       fallback,
     );
-    // If still leaking after retry, use safe fallback
+    // If still leaking after retry, use mood-specific safe fallback
     if (COMPARISON_LEAK.test(result.data.roast) || hasSimileLeak(result.data.roast)) {
-      result.data.roast = mood === 'roast'
-        ? `Verdict: ${target}. No further comment.`
-        : `${target}. No further comment.`;
+      const moodFallbacks: Record<string, string> = {
+        dry: `${sanitizeForPrompt(target)}. No further comment.`,
+        roast: `Verdict: ${sanitizeForPrompt(target)}. No further comment.`,
+        cynic: `Of course: ${sanitizeForPrompt(target)}. Predictable.`,
+        cheeky: `Oh honey, ${sanitizeForPrompt(target)}. Bless.`,
+        chaotic: `${sanitizeForPrompt(target)}. Sources confirm it's fine.`,
+        zoomer: `${sanitizeForPrompt(target)}, absolute state, no cap.`,
+      };
+      result.data.roast = moodFallbacks[mood] ?? `${sanitizeForPrompt(target)}. No further comment.`;
       if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
         console.error('[sensor-humor] Roast: simile leak persisted after retry, using safe fallback');
       }
@@ -141,6 +147,15 @@ export async function roast(
       },
       fallback,
     );
+    // Safe fallback if harsh filter still triggers after retry
+    if (HARSH_FILTER.test(result.data.roast)) {
+      result.data.roast = mood === 'roast'
+        ? `Verdict: ${sanitizeForPrompt(target)}. No further comment.`
+        : `${sanitizeForPrompt(target)}. No further comment.`;
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+        console.error('[sensor-humor] Roast: harsh filter persisted after retry, using safe fallback');
+      }
+    }
   }
 
   // Clamp severity

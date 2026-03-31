@@ -624,6 +624,77 @@ describe('harsh filter retry', () => {
     expect(mockGenerate).toHaveBeenCalledTimes(2);
     expect(result.rewrite).not.toMatch(/retard/i);
   });
+
+  it('roast falls back safely on double harsh violation', async () => {
+    mockGenerate
+      .mockResolvedValueOnce({ data: { roast: 'you stupid retard.', severity: 3 } })
+      .mockResolvedValueOnce({ data: { roast: 'you dumb bitch.', severity: 3 } });
+
+    const result = await roast('bad code');
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+    // Should return safe fallback, not the harsh text
+    expect(result.roast).not.toMatch(/retard|bitch/i);
+    expect(result.roast).toContain('bad code');
+  });
+
+  it('heckle falls back safely on double harsh violation', async () => {
+    mockGenerate
+      .mockResolvedValueOnce({ data: { heckle: 'you retard.' } })
+      .mockResolvedValueOnce({ data: { heckle: 'you bitch.' } });
+
+    const result = await heckle('bad code');
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+    expect(result.heckle).not.toMatch(/retard|bitch/i);
+    expect(result.heckle).toContain('bad code');
+  });
+
+  it('comic_timing falls back safely on double harsh violation', async () => {
+    mockGenerate
+      .mockResolvedValueOnce({ data: { rewrite: 'you stupid retard.', technique_used: 'roast' } })
+      .mockResolvedValueOnce({ data: { rewrite: 'you dumb bitch.', technique_used: 'roast' } });
+
+    const result = await comicTiming('bad code');
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+    expect(result.rewrite).not.toMatch(/retard|bitch/i);
+    expect(result.rewrite).toContain('bad code');
+  });
+});
+
+describe('mood-specific fallbacks', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  it('roast simile fallback uses cynic voice in cynic mood', async () => {
+    moodSet('cynic');
+    mockGenerate
+      .mockResolvedValueOnce({ data: { roast: 'Verdict: Like a dumpster fire.', severity: 3 } })
+      .mockResolvedValueOnce({ data: { roast: 'Verdict: Similar to a trainwreck.', severity: 3 } });
+
+    const result = await roast('messy code');
+    expect(result.roast).toMatch(/^Of course:/);
+  });
+
+  it('heckle simile fallback uses zoomer voice in zoomer mood', async () => {
+    moodSet('zoomer');
+    mockGenerate
+      .mockResolvedValueOnce({ data: { heckle: 'Coding like a toddler.' } })
+      .mockResolvedValueOnce({ data: { heckle: 'Similar to finger painting.' } });
+
+    const result = await heckle('no types');
+    expect(result.heckle).toContain('cooked fr');
+  });
+
+  it('comic_timing simile fallback uses chaotic voice in chaotic mood', async () => {
+    moodSet('chaotic');
+    mockGenerate
+      .mockResolvedValueOnce({ data: { rewrite: 'That is like a bad dream.', technique_used: 'misdirection' } })
+      .mockResolvedValueOnce({ data: { rewrite: 'Similar to watching paint dry.', technique_used: 'understatement' } });
+
+    const result = await comicTiming('slow build');
+    expect(result.rewrite).toContain('Sources confirm');
+  });
 });
 
 describe('simile/comparison post-validation', () => {

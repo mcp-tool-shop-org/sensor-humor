@@ -105,7 +105,15 @@ export async function heckle(target: string): Promise<HeckleResult> {
       fallback,
     );
     if (hasSimileLeak(result.data.heckle)) {
-      result.data.heckle = `${target}. That's a choice.`;
+      const moodFallbacks: Record<string, string> = {
+        dry: `${sanitizeForPrompt(target)}. That's a choice.`,
+        roast: `Verdict: ${sanitizeForPrompt(target)}.`,
+        cynic: `Of course: ${sanitizeForPrompt(target)}.`,
+        cheeky: `Oh honey, ${sanitizeForPrompt(target)}.`,
+        chaotic: `${sanitizeForPrompt(target)}. The server weeps.`,
+        zoomer: `${sanitizeForPrompt(target)}, cooked fr.`,
+      };
+      result.data.heckle = moodFallbacks[mood] ?? `${sanitizeForPrompt(target)}. That's a choice.`;
       if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
         console.error('[sensor-humor] Heckle: simile leak persisted after retry, using safe fallback');
       }
@@ -125,6 +133,13 @@ export async function heckle(target: string): Promise<HeckleResult> {
       },
       fallback,
     );
+    // Safe fallback if harsh filter still triggers after retry
+    if (HARSH_FILTER.test(result.data.heckle)) {
+      result.data.heckle = `${sanitizeForPrompt(target)}. That's a choice.`;
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+        console.error('[sensor-humor] Heckle: harsh filter persisted after retry, using safe fallback');
+      }
+    }
   }
 
   // Update session
