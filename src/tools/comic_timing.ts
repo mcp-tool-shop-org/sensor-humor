@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
 import { COMIC_TECHNIQUES, type ComicTechnique, type ComicTimingResult } from '../types.js';
-import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER } from '../validators.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER, sanitizeForPrompt } from '../validators.js';
 
 const ComicTimingSchema = z.object({
   rewrite: z.string().max(300),
@@ -93,7 +93,7 @@ TECHNIQUE: ${techniqueGuide}
 ${callbackContext}
 
 TEXT TO REWRITE:
-${text}
+${sanitizeForPrompt(text)}
 
 Respond with JSON only.`;
 

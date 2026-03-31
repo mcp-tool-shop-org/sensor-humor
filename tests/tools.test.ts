@@ -417,7 +417,7 @@ describe('catchphrase tools', () => {
       expect(result.rewrite).toMatch(/^(Of course|Predictably|As expected|Right on schedule|Per the pattern|Confirmed):/);
     });
 
-    it('cynic: rejects output without label starter', async () => {
+    it('cynic: accepts output without label starter (no cynic retry)', async () => {
       moodSet('cynic');
       mockGenerate
         .mockResolvedValueOnce({
@@ -428,8 +428,8 @@ describe('catchphrase tools', () => {
         });
 
       const result = await comicTiming('config is broken');
-      // Model should have produced a label-started line (mock gives it on retry or first pass)
-      expect(result.rewrite).toBeDefined();
+      // Cynic mood has no label enforcement retry — first response is returned as-is
+      expect(result.rewrite).toBe('The config is a mess.');
     });
 
     it('cynic: cold factual delivery, no emotional words', async () => {

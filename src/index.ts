@@ -20,7 +20,7 @@ import { getMoodVoiceNotes } from './prompts/loader.js';
 
 const server = new McpServer({
   name: 'sensor-humor',
-  version: '1.0.0',
+  version: '1.0.1',
 });
 
 // --- mood_set ---
@@ -206,7 +206,7 @@ server.tool(
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('[sensor-humor] MCP server v1.0.0 running on stdio');
+  console.error('[sensor-humor] MCP server v1.0.1 running on stdio');
 }
 
 main().catch((err) => {

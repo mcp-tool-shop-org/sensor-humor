@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
 import type { HeckleResult } from '../types.js';
-import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER } from '../validators.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER, sanitizeForPrompt } from '../validators.js';
 
 const HeckleSchema = z.object({
   heckle: z.string().max(120),
@@ -50,14 +50,14 @@ function buildHeckleUserPrompt(mood: string, target: string): string {
     return `Heckle this. Format: [reaction opener], [savage jab] [CAPS BLOCK]. 8-20 words. No questions. No metaphors.
 
 TARGET:
-${target}
+${sanitizeForPrompt(target)}
 
 Respond with JSON only.`;
   }
   return `Heckle this. One short punchy line in your mood's voice pattern, 8-20 words. Direct hit.
 
 TARGET:
-${target}
+${sanitizeForPrompt(target)}
 
 Respond with JSON only.`;
 }

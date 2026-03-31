@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
 import type { RoastContext, RoastResult } from '../types.js';
-import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER } from '../validators.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER, sanitizeForPrompt } from '../validators.js';
 
 const RoastSchema = z.object({
   roast: z.string().max(200),
@@ -48,10 +48,10 @@ function buildRoastGuidance(mood: string): string {
 /** Build roast user prompt that respects mood voice. */
 function buildRoastUserPrompt(mood: string, target: string, context: RoastContext): string {
   if (mood === 'roast') {
-    return `Roast the following ${context}. Pick ONE label (Verdict: OR Diagnosis: OR Classification:) then deliver 1 tight sentence.\n\nTARGET:\n${target}\n\nRespond with JSON only.`;
+    return `Roast the following ${context}. Pick ONE label (Verdict: OR Diagnosis: OR Classification:) then deliver 1 tight sentence.\n\nTARGET:\n${sanitizeForPrompt(target)}\n\nRespond with JSON only.`;
   }
   // Other moods: roast the target using mood's own pattern
-  return `Roast the following ${context}. Use your mood's delivery pattern — do NOT use "Verdict:" or other roast labels.\n\nTARGET:\n${target}\n\nRespond with JSON only.`;
+  return `Roast the following ${context}. Use your mood's delivery pattern — do NOT use "Verdict:" or other roast labels.\n\nTARGET:\n${sanitizeForPrompt(target)}\n\nRespond with JSON only.`;
 }
 
 export async function roast(

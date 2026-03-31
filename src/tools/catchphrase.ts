@@ -9,6 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
 import type { CatchphraseCallbackResult, CatchphraseGenerateResult } from '../types.js';
+import { sanitizeForPrompt } from '../validators.js';
 
 const CatchphraseSchema = z.object({
   phrase: z.string().max(60),
@@ -40,7 +41,8 @@ export async function catchphraseGenerate(
   if (context && session.catchphrases.size > 0) {
     const lower = context.toLowerCase();
     for (const [phrase] of session.catchphrases) {
-      if (lower.includes(phrase.toLowerCase().split(' ')[0])) {
+      const firstWord = phrase.toLowerCase().split(' ')[0];
+      if (firstWord.length >= 3 && new RegExp(`\\b${firstWord}\\b`).test(lower)) {
         const count = session.useCatchphrase(phrase);
         session.pushBit(phrase, 'catchphrase');
         return { phrase, is_fresh: false };
@@ -55,7 +57,7 @@ export async function catchphraseGenerate(
     `\nSESSION CONTEXT:\n${session.stateSummary()}`,
   ].join('\n\n');
 
-  const contextLine = context ? `\nContext: ${context}` : '';
+  const contextLine = context ? `\nContext: ${sanitizeForPrompt(context)}` : '';
   const userPrompt = `Generate a catchphrase for this session. 3-8 words, punchy, reusable.${contextLine}
 
 Respond with JSON only.`;

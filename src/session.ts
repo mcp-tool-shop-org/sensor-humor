@@ -10,6 +10,7 @@ import {
   type RunningGag,
   type SensorHumorSession,
 } from './types.js';
+import { sanitizeForPrompt } from './validators.js';
 
 const MAX_RECENT_BITS = 20;
 
@@ -87,7 +88,7 @@ export class Session implements SensorHumorSession {
   recentBitsSummary(): string {
     if (this.recent_bits.length === 0) return 'No bits yet this session.';
     const lines = this.recent_bits.slice(-5).map(
-      (b, i) => `${i + 1}. [turn ${b.turn}, ${b.technique}] ${b.text}`
+      (b, i) => `${i + 1}. [turn ${b.turn}, ${b.technique}] ${sanitizeForPrompt(b.text)}`
     );
     return `Recent bits:\n${lines.join('\n')}`;
   }
@@ -96,7 +97,7 @@ export class Session implements SensorHumorSession {
   gagsSummary(): string {
     if (this.running_gags.length === 0) return 'No running gags yet.';
     const lines = this.running_gags.map(
-      (g) => `- "${g.setup}" (tag: ${g.tag}, used ${g.used}x, last turn ${g.last_turn})`
+      (g) => `- "${sanitizeForPrompt(g.setup)}" (tag: ${g.tag}, used ${g.used}x, last turn ${g.last_turn})`
     );
     return `Running gags:\n${lines.join('\n')}`;
   }
@@ -105,7 +106,7 @@ export class Session implements SensorHumorSession {
   catchphrasesSummary(): string {
     if (this.catchphrases.size === 0) return 'No catchphrases yet.';
     const lines = Array.from(this.catchphrases.entries()).map(
-      ([phrase, count]) => `- "${phrase}" (used ${count}x)`
+      ([phrase, count]) => `- "${sanitizeForPrompt(phrase)}" (used ${count}x)`
     );
     return `Catchphrases:\n${lines.join('\n')}`;
   }
