@@ -418,6 +418,19 @@ describe('catchphrase tools', () => {
       await catchphraseGenerate();
       expect(getSession().recent_bits[0].technique).toBe('catchphrase');
     });
+
+    it('returns existing catchphrase when context matches (reuse path)', async () => {
+      const session = getSession();
+      // Pre-seed a catchphrase with a clean first word >= 3 chars
+      session.useCatchphrase('Ship it and pray.');
+
+      // Context contains "ship" which matches first word of existing phrase
+      const result = await catchphraseGenerate('time to ship this feature');
+      expect(result.phrase).toBe('Ship it and pray.');
+      expect(result.is_fresh).toBe(false);
+      // Should NOT have called generateComedy since it reused existing
+      expect(mockGenerate).not.toHaveBeenCalled();
+    });
   });
 
   describe('mood-specific comic_timing patterns', () => {
@@ -600,6 +613,16 @@ describe('harsh filter retry', () => {
     const result = await heckle('bad code');
     expect(mockGenerate).toHaveBeenCalledTimes(2);
     expect(result.heckle).not.toMatch(/bitch/i);
+  });
+
+  it('comic_timing retries on harsh output', async () => {
+    mockGenerate
+      .mockResolvedValueOnce({ data: { rewrite: 'you stupid retard.', technique_used: 'roast' } })
+      .mockResolvedValueOnce({ data: { rewrite: 'Bold architectural choices.', technique_used: 'understatement' } });
+
+    const result = await comicTiming('bad architecture');
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+    expect(result.rewrite).not.toMatch(/retard/i);
   });
 });
 

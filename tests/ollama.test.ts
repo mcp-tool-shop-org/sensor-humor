@@ -126,4 +126,19 @@ describe('generateComedy', () => {
     expect(result.data.text).toBe('fallback');
     expect(mockChat).toHaveBeenCalledTimes(2);
   });
+
+  it('returns fallback on timeout after retries', async () => {
+    // Set a very short timeout for testing
+    process.env.SENSOR_HUMOR_TIMEOUT_MS = '10';
+
+    // Mock a chat that takes too long
+    mockChat.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 5000)));
+
+    const result = await generateComedy<TestResult>(makeOptions(), fallback);
+    expect(result.data.text).toBe('fallback');
+    expect(result.fallback_reason).toBeDefined();
+
+    // Clean up
+    delete process.env.SENSOR_HUMOR_TIMEOUT_MS;
+  }, 10000);
 });

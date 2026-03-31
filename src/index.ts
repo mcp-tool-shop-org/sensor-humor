@@ -14,7 +14,7 @@ import { comicTiming } from './tools/comic_timing.js';
 import { roast } from './tools/roast.js';
 import { heckle } from './tools/heckle.js';
 import { catchphraseGenerate, catchphraseCallback } from './tools/catchphrase.js';
-import { getSession } from './session.js';
+import { getSession, resetSession } from './session.js';
 import { MOOD_DESCRIPTIONS } from './types.js';
 import { getMoodVoiceNotes } from './prompts/loader.js';
 
@@ -219,6 +219,19 @@ server.tool(
     };
     return {
       content: [{ type: 'text', text: JSON.stringify(status, null, 2) }],
+    };
+  },
+);
+
+// --- session_reset ---
+server.tool(
+  'session_reset',
+  'Reset all session state: mood returns to dry, gags/bits/catchphrases cleared, turn counter reset. Use when starting a new topic or comedy session.',
+  {},
+  async () => {
+    const session = resetSession();
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ reset: true, mood: session.mood, turn_counter: session.turn_counter }, null, 2) }],
     };
   },
 );

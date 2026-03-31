@@ -15,7 +15,7 @@ describe('index module', () => {
     const src = readFileSync('src/index.ts', 'utf-8');
     const toolRegistrations = src.match(/server\.tool\(/g);
     expect(toolRegistrations).not.toBeNull();
-    expect(toolRegistrations!.length).toBe(8);
+    expect(toolRegistrations!.length).toBe(9);
   });
 
   it('startup log message matches package version', () => {
