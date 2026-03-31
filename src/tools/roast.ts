@@ -59,7 +59,7 @@ export async function roast(
   context: RoastContext = 'code',
 ): Promise<RoastResult> {
   const session = getSession();
-  const turn = session.tick();
+  session.tick();
 
   const systemPrompt = [
     baseSystemPrefix(),

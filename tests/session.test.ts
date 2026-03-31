@@ -65,6 +65,29 @@ describe('Session', () => {
       expect(session.recent_bits[0].text).toBe('Bit 5');
       expect(session.recent_bits[19].text).toBe('Bit 24');
     });
+
+    it('handles single bit without eviction', () => {
+      session.pushBit('Only bit', 'roast');
+      expect(session.recent_bits).toHaveLength(1);
+      expect(session.recent_bits[0].text).toBe('Only bit');
+    });
+
+    it('holds exactly 20 at capacity', () => {
+      for (let i = 0; i < 20; i++) {
+        session.pushBit(`Bit ${i}`, 'auto');
+      }
+      expect(session.recent_bits).toHaveLength(20);
+      expect(session.recent_bits[0].text).toBe('Bit 0');
+      expect(session.recent_bits[19].text).toBe('Bit 19');
+    });
+
+    it('evicts one when buffer is at 21', () => {
+      for (let i = 0; i < 21; i++) {
+        session.pushBit(`Bit ${i}`, 'auto');
+      }
+      expect(session.recent_bits).toHaveLength(20);
+      expect(session.recent_bits[0].text).toBe('Bit 1');
+    });
   });
 
   describe('addGag', () => {

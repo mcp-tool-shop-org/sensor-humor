@@ -84,7 +84,7 @@ mood_set(style: "roast")
 roast(target: "800-line god function")
 ```
 
-Text roast returned, then `voice_speak(mood: "roast")` speaks it with mood-appropriate prosody.
+Text roast returned. If [mcp-voice-soundboard](https://github.com/mcp-tool-shop-org/mcp-voice-soundboard) is also configured, `voice_speak(mood: "roast")` speaks it with mood-appropriate Piper prosody.
 
 ## Tools
 

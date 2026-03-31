@@ -539,6 +539,8 @@ describe('catchphrase tools', () => {
     it('increments use_count on callback', () => {
       const session = getSession();
       session.useCatchphrase('Test phrase');
+      // Verify pre-state before callback
+      expect(session.catchphrases.get('Test phrase')).toBe(1);
 
       const result = catchphraseCallback();
       expect(result!.use_count).toBe(2);

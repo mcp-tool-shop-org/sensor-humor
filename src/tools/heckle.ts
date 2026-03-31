@@ -64,7 +64,7 @@ Respond with JSON only.`;
 
 export async function heckle(target: string): Promise<HeckleResult> {
   const session = getSession();
-  const turn = session.tick();
+  session.tick();
 
   const systemPrompt = [
     baseSystemPrefix(),
