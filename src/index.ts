@@ -211,6 +211,7 @@ server.tool(
       recent_bits_count: session.recent_bits.length,
       running_gags_count: session.running_gags.length,
       catchphrase_count: session.catchphrases.size,
+      buffer_stats: session.bufferStats(),
       catchphrases: Object.fromEntries(session.catchphrases),
       voice_backend: process.env.VOICE_SOUNDBOARD_ENGINE || 'default (kokoro)',
       model: process.env.SENSOR_HUMOR_MODEL || 'qwen2.5:7b',
@@ -242,6 +243,14 @@ async function main() {
 
   // Fire-and-forget health check
   checkOllamaHealth();
+
+  // Graceful shutdown
+  const shutdown = () => {
+    console.error('[sensor-humor] Shutting down...');
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
 main().catch((err) => {

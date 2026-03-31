@@ -23,4 +23,15 @@ describe('index module', () => {
     const src = readFileSync('src/index.ts', 'utf-8');
     expect(src).toContain(`v${pkg.version}`);
   });
+
+  it('includes Ollama health check function', () => {
+    const src = readFileSync('src/index.ts', 'utf-8');
+    expect(src).toContain('checkOllamaHealth');
+  });
+
+  it('registers shutdown signal handlers', () => {
+    const src = readFileSync('src/index.ts', 'utf-8');
+    expect(src).toContain("process.on('SIGINT'");
+    expect(src).toContain("process.on('SIGTERM'");
+  });
 });

@@ -12,6 +12,11 @@ const HARSH_TERMS_B64 = 'd2hvcmV8Yml0Y2h8c2x1dHxjdW50fGZhZ2dvdHxuaWdnZXJ8cmV0YXJ
 const HARSH_FILTER_TERMS = Buffer.from(HARSH_TERMS_B64, 'base64').toString();
 export const HARSH_FILTER = new RegExp(`\\b(${HARSH_FILTER_TERMS})\\b`, 'i');
 
+if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+  const termCount = HARSH_FILTER_TERMS.split('|').length;
+  console.error(`[sensor-humor] HARSH_FILTER loaded: ${termCount} terms`);
+}
+
 /** Check if output contains simile/comparison leak. */
 export function hasSimileLeak(text: string): boolean {
   return SIMILE_PATTERN.test(text);

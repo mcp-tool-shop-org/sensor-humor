@@ -4,7 +4,7 @@
  * Falls back to v1 if requested version doesn't exist.
  */
 
-import type { MoodStyle } from '../types.js';
+import { MOOD_STYLES, type MoodStyle } from '../types.js';
 
 interface MoodPromptModule {
   SYSTEM_PROMPT: string;
@@ -29,6 +29,13 @@ const PROMPT_MAP: Record<string, MoodPromptModule> = {
   'cynic.v1': cynic_v1,
   'zoomer.v1': zoomer_v1,
 };
+
+// Validate all moods have v1 prompts at module load
+for (const mood of MOOD_STYLES) {
+  if (!PROMPT_MAP[`${mood}.v1`]) {
+    console.error(`[sensor-humor] WARNING: No v1 prompt found for mood "${mood}"`);
+  }
+}
 
 function getPromptVersion(): string {
   return process.env.SENSOR_HUMOR_PROMPT_VERSION ?? '1';

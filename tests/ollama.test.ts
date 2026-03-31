@@ -108,6 +108,17 @@ describe('generateComedy', () => {
     expect(result.data.text).toBe('fallback');
   });
 
+  it('strips trailing JSON artifact braces from string fields', async () => {
+    mockChat.mockResolvedValue({
+      message: { content: '{"text": "hello}}}"}' },
+      prompt_eval_count: 10,
+      eval_count: 5,
+    });
+
+    const result = await generateComedy<TestResult>(makeOptions(), fallback);
+    expect(result.data.text).toBe('hello');
+  });
+
   it('returns fallback on network error after retries', async () => {
     mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
 

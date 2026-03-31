@@ -119,6 +119,16 @@ export class Session implements SensorHumorSession {
     return `Catchphrases:\n${lines.join('\n')}`;
   }
 
+  /** Buffer occupancy stats for debug_status. */
+  bufferStats(): { recent_bits: number; max: number; running_gags: number; catchphrases: number } {
+    return {
+      recent_bits: this.recent_bits.length,
+      max: MAX_RECENT_BITS,
+      running_gags: this.running_gags.length,
+      catchphrases: this.catchphrases.size,
+    };
+  }
+
   /** Full state summary for prompt context. */
   stateSummary(): string {
     return [

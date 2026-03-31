@@ -70,6 +70,7 @@ export interface GenerateComedyOptions<T> {
 export interface GenerateComedyResult<T> {
   data: T;
   metadata?: GenerationMetadata;
+  fallback_reason?: string;
 }
 
 /**
@@ -157,11 +158,11 @@ export async function generateComedy<T>(
         if (debug) {
           console.error(`[sensor-humor] All retries exhausted (last: ${errType}), returning fallback`);
         }
-        return { data: fallback };
+        return { data: fallback, fallback_reason: errType };
       }
     }
   }
 
   // TypeScript exhaustiveness guard — loop always returns or falls through to the catch block's return
-  return { data: fallback };
+  return { data: fallback, fallback_reason: 'exhausted' };
 }
