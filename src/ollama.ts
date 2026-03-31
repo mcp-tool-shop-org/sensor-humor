@@ -16,6 +16,22 @@ const DEFAULT_MIROSTAT = 2;
 const DEFAULT_MIROSTAT_TAU = 5.0;
 const MAX_PREDICT = 60;
 const MAX_RETRIES = 1;
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+function getTimeoutMs(): number {
+  const env = process.env.SENSOR_HUMOR_TIMEOUT_MS;
+  return env ? parseInt(env, 10) : DEFAULT_TIMEOUT_MS;
+}
+
+function classifyError(err: unknown): string {
+  if (err instanceof SyntaxError) return 'json-parse';
+  if (err instanceof Error) {
+    if (err.message.includes('ECONNREFUSED') || err.message.includes('ENOTFOUND')) return 'connection';
+    if (err.message.includes('timeout') || err.message.includes('abort')) return 'timeout';
+    if (err.message.includes('ZodError') || err.name === 'ZodError') return 'validation';
+  }
+  return 'unknown';
+}
 
 function getModel(): string {
   return process.env.SENSOR_HUMOR_MODEL ?? DEFAULT_MODEL;
@@ -80,7 +96,8 @@ export async function generateComedy<T>(
     }
 
     try {
-      const response = await client.chat({
+      const timeoutMs = getTimeoutMs();
+      const chatPromise = client.chat({
         model,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -96,6 +113,10 @@ export async function generateComedy<T>(
           num_predict: numPredict ?? MAX_PREDICT,
         },
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Ollama timeout after ${timeoutMs}ms`)), timeoutMs),
+      );
+      const response = await Promise.race([chatPromise, timeoutPromise]);
 
       const raw = response.message.content;
       const latencyMs = Date.now() - startMs;
@@ -128,12 +149,13 @@ export async function generateComedy<T>(
 
       return { data: validated, metadata };
     } catch (err) {
+      const errType = classifyError(err);
       if (debug) {
-        console.error(`[sensor-humor] Attempt ${attempt + 1} failed:`, err);
+        console.error(`[sensor-humor] Attempt ${attempt + 1} failed [${errType}]:`, (err as Error).message);
       }
       if (attempt === MAX_RETRIES) {
         if (debug) {
-          console.error('[sensor-humor] All retries exhausted, returning fallback');
+          console.error(`[sensor-humor] All retries exhausted (last: ${errType}), returning fallback`);
         }
         return { data: fallback };
       }

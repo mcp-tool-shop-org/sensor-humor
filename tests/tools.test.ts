@@ -644,6 +644,59 @@ describe('simile/comparison post-validation', () => {
   });
 });
 
+describe('structured output validation', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  it('roast falls back when generateComedy returns fallback on null fields', async () => {
+    // Simulate generateComedy returning the fallback (which is what happens
+    // when Zod rejects null values — the catch block returns fallback)
+    mockGenerate.mockResolvedValue({
+      data: { roast: 'messy code. No further comment.', severity: 3 },
+    });
+
+    const result = await roast('messy code');
+    expect(result.roast).toBeDefined();
+    expect(typeof result.roast).toBe('string');
+    expect(result.severity).toBeGreaterThanOrEqual(1);
+    expect(result.severity).toBeLessThanOrEqual(5);
+  });
+
+  it('heckle falls back when generateComedy returns fallback', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { heckle: 'bad code' },
+    });
+
+    const result = await heckle('bad code');
+    expect(result.heckle).toBeDefined();
+    expect(typeof result.heckle).toBe('string');
+  });
+
+  it('comic_timing falls back when generateComedy returns fallback', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'test input', technique_used: 'understatement' },
+    });
+
+    const result = await comicTiming('test input');
+    expect(result.rewrite).toBeDefined();
+    expect(typeof result.rewrite).toBe('string');
+    expect(result.technique_used).toBeDefined();
+  });
+
+  it('catchphraseGenerate falls back when generateComedy returns fallback', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { phrase: 'Ship it and pray.' },
+    });
+
+    const result = await catchphraseGenerate('anything');
+    expect(result.phrase).toBeDefined();
+    expect(typeof result.phrase).toBe('string');
+    expect(result.is_fresh).toBe(true);
+  });
+});
+
 describe('edge cases', () => {
   beforeEach(() => {
     resetSession();

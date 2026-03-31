@@ -11,6 +11,11 @@ import { generateComedy } from '../ollama.js';
 import type { CatchphraseCallbackResult, CatchphraseGenerateResult } from '../types.js';
 import { sanitizeForPrompt } from '../validators.js';
 
+/** Escape regex special characters in a string. */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 const CatchphraseSchema = z.object({
   phrase: z.string().max(60),
 });
@@ -42,7 +47,7 @@ export async function catchphraseGenerate(
     const lower = context.toLowerCase();
     for (const [phrase] of session.catchphrases) {
       const firstWord = phrase.toLowerCase().split(' ')[0];
-      if (firstWord.length >= 3 && new RegExp(`\\b${firstWord}\\b`).test(lower)) {
+      if (firstWord.length >= 3 && new RegExp(`\\b${escapeRegex(firstWord)}\\b`).test(lower)) {
         const count = session.useCatchphrase(phrase);
         session.pushBit(phrase, 'catchphrase');
         return { phrase, is_fresh: false };

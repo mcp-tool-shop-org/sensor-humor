@@ -97,6 +97,17 @@ describe('generateComedy', () => {
     expect(result.data.text).toBe('hello');
   });
 
+  it('returns fallback when response has null required fields', async () => {
+    mockChat.mockResolvedValue({
+      message: { content: '{"text": null}' },
+      prompt_eval_count: 10,
+      eval_count: 5,
+    });
+
+    const result = await generateComedy<TestResult>(makeOptions(), fallback);
+    expect(result.data.text).toBe('fallback');
+  });
+
   it('returns fallback on network error after retries', async () => {
     mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
 
