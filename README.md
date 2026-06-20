@@ -18,7 +18,7 @@ Built for developers: gentle burns on code smells, dry deadpan error messages, c
 
 ## Features
 
-- 6 moods, all at 70%+ hit rate in real dev sessions
+- 6 moods, each tuned with a fill-in-the-blank skeleton prompt for predictable, high-quality output
 - Session state: running gags, recent bits ring buffer (max 20), catchphrase Map
 - 9 tools: mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status, session_reset
 - Local Ollama backend (qwen2.5:7b default, configurable via `SENSOR_HUMOR_MODEL`)
@@ -49,8 +49,8 @@ All moods inherit voice + prosody via mcp-voice-soundboard (Piper recommended).
 
 ```bash
 npm install sensor-humor
-# or link local dev version
-npm link /path/to/sensor-humor
+# or install a local dev checkout
+npm install /path/to/sensor-humor
 ```
 
 ## Quick Start
@@ -120,8 +120,8 @@ Each mood maps to a distinct Piper voice + prosody configuration:
 ```bash
 # sensor-humor
 SENSOR_HUMOR_DEBUG=true                # verbose prompt/response dumps
-SENSOR_HUMOR_OBSERVE=true              # full chain trace (prompt -> text -> piper params)
-SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (for A/B tuning)
+SENSOR_HUMOR_TIMEOUT_MS=30000          # Ollama call timeout in ms (default: 30000; invalid values fall back to default)
+SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (falls back to v1 if missing)
 SENSOR_HUMOR_MODEL=qwen2.5:7b         # Ollama model (default: qwen2.5:7b)
 OLLAMA_HOST=http://127.0.0.1:11434    # Ollama API host (default: http://127.0.0.1:11434)
 
@@ -138,16 +138,16 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 
 ## Quality Notes
 
-- Comedy hit rate: 70-100% per mood/tool in real dev sessions (skeleton-based prompt engineering)
-- Simile/comparison filter: post-validation regex + retry/fallback prevents leaks in dry/cheeky
-- All moods at 70%+ in real sessions; roast/cynic/chaotic often 90-100%
+- Comedy quality comes from skeleton-based prompt engineering, not one model knob — each mood forces a predictable shape. Measure hit rate on your own model/hardware with `scripts/ab-scorecard.ts` (template in SCORECARD.md)
+- Simile/comparison filter: post-validation regex + retry, then a mood-voiced safe fallback if a leak persists
+- Harsh-language filter runs as a terminal gate, so slurs can't reach the user even when a late retry re-introduces one
 - Deterministic: JSON schema enforcement, retry on bad output, mood inheritance enforced across all tools
 - Voice: Piper gives prosody separation (length/noise/volume per mood); Kokoro fallback is speed-only
 - Dev-tool sidekick only. Humor is subjective; disable any mood via env or tune prompts if needed
 
 ## Security & Trust
 
-- **Local only** — communicates with Ollama on localhost via HTTP, no external network egress
+- **Local by default** — talks to Ollama on `localhost` via HTTP. `OLLAMA_HOST` may point elsewhere (e.g. a remote/cloud Ollama); that is the only external egress and is the operator's explicit choice
 - **No file system access** — reads and writes no files
 - **No secrets handling** — does not read, store, or transmit credentials
 - **No telemetry** — nothing is collected or sent

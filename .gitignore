@@ -6,3 +6,6 @@ site/.astro/
 site/dist/
 site/node_modules/
 .polyglot-cache.json
+
+# Local voice demo artifacts (large .wav binaries; regenerate with scripts/voice-demo.py)
+voice-demos/

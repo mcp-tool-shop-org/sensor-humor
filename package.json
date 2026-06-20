@@ -29,6 +29,19 @@
   ],
   "author": "mcp-tool-shop",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcp-tool-shop-org/sensor-humor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mcp-tool-shop-org/sensor-humor/issues"
+  },
+  "homepage": "https://mcp-tool-shop-org.github.io/sensor-humor/",
+  "files": [
+    "dist",
+    "CHANGELOG.md",
+    "SECURITY.md"
+  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "ollama": "^0.5.14",

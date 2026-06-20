@@ -40,3 +40,26 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Production-tree dependency audit. The runtime tree pulls hono/express/etc.
+      # transitively through @modelcontextprotocol/sdk's HTTP/SSE transport, which this
+      # server never uses (stdio only); the critical-level gate still blocks any new,
+      # genuinely reachable critical from landing in the shipped dependency tree.
+      - name: Dependency audit (prod tree, critical gate)
+        run: npm audit --omit=dev --audit-level=critical
+      # Secret scan with TruffleHog OSS — verified findings only (gitleaks-action needs a
+      # paid license on org repos; TruffleHog OSS is free).
+      - name: Secret scan (TruffleHog OSS)
+        uses: trufflesecurity/trufflehog@30d5bb91af1a771378349dbbb0c82129392acf70 # v3.95.6
+        with:
+          path: ./
+          extra_args: --results=verified --only-verified
