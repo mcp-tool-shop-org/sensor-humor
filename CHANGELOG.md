@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-06-20
+
+### Fixed
+- npm README rendering: the logo and CI badge did not render on npmjs.com (npm does not proxy the absolute brand-repo image URL or the GitHub Actions `badge.svg`). The logo is now a repo-local `logo.png` referenced relatively, and the CI badge uses shields.io — both render on npm and GitHub.
+
 ## [1.1.0] - 2026-06-20
 
 Comprehensive dogfood swarm: health pass (bug/security + proactive + humanization), a feature wave, and the full treatment.
