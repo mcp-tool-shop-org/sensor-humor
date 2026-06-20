@@ -12,48 +12,57 @@
   <a href="https://mcp-tool-shop-org.github.io/sensor-humor/"><img src="https://img.shields.io/badge/landing-page-34d399" alt="Landing Page"></a>
 </p>
 
-MCP (Model Context Protocol) que oferece ao seu LLM (Large Language Model) um companheiro cômico persistente: personalidade baseada no humor, callbacks conscientes da sessão, piadas recorrentes, críticas, provocações e frases de efeito — tudo com integração de voz via Piper TTS (com controle de prosódia).
+Ferramenta MCP que oferece ao seu LLM um companheiro cômico persistente: personalidade baseada no humor, respostas contextuais com base na sessão, piadas recorrentes, comentários sarcásticos, provocações e frases de efeito — tudo com integração de voz via Piper TTS (com controle da prosódia).
 
-Desenvolvido para desenvolvedores: críticas sutis sobre código mal escrito, mensagens de erro secas e diretas, caos descontrolado em caso de falhas de compilação. Nunca sobrescreve o tom do LLM principal — voz distinta que entra em ação quando solicitada.
+Criado para desenvolvedores: críticas suaves sobre problemas no código, mensagens de erro secas e diretas, escalada caótica em caso de falhas na compilação. Nunca substitui o tom do LLM principal — voz distinta que se manifesta quando solicitado.
 
-## Características
+## Recursos
 
-- 6 modos, todos com uma taxa de acerto de 70% ou mais em sessões de desenvolvimento reais.
-- Estado da sessão: piadas recorrentes, buffer circular das últimas falas (máximo de 20), mapa de frases características.
-- 9 ferramentas: mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status, session_reset.
-- Backend local do Ollama (qwen2.5:7b por padrão, configurável via `SENSOR_HUMOR_MODEL`).
-- Emparelhamento de voz: mcp-voice-soundboard com Piper TTS (controles de prosódia: length_scale, noise_scale, noise_w_scale, volume).
-- Determinístico: aplicação e validação de esquema JSON, repetição em caso de saída inválida, herança de modo forçada.
+- 6 humores, cada um ajustado com um modelo básico de preenchimento para obter resultados previsíveis e de alta qualidade
+- Estado da sessão: piadas recorrentes, buffer de frases recentes (máximo de 20), mapa de frases de efeito — opcionalmente persistido em disco (`SENSOR_HUMOR_PERSIST`) para que as respostas contextuais sobrevivam a uma reinicialização do servidor
+- 9 ferramentas: mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status, session_reset
+- Backend local Ollama (qwen2.5:7b padrão, configurável via `SENSOR_HUMOR_MODEL`)
+- Pareamento de voz: mcp-voice-soundboard com Piper TTS (controles de prosódia: length_scale, noise_scale, noise_w_scale, volume)
+- Determinístico: aplicação do esquema JSON, validação, repetição em caso de resultados ruins, herança do humor aplicada
 
-## Modos
+## Humores
 
-Cada modo utiliza um modelo de prompt com espaços em branco que força o modelo a adotar uma forma previsível e de alta qualidade.
+Cada humor usa um modelo básico de preenchimento que força o modelo a adotar uma forma previsível e de alta qualidade.
 
-- **neutro** — tom sério, minimalista, óbvio (padrão)
-- **sarcástico** — críticas afetuosas e incisivas, rótulos de veredicto/diagnóstico
-- **cínico** — realismo cínico e discreto ("Claro:", "Previsivelmente:")
-- **travesso** — brincadeiras e provocações ("Oh, querido", "Movimento ousado")
-- **caótico** — frase inicial, seguida de uma reviravolta absurda ("Aparentemente...")
-- **moderno** — sarcasmo da geração Z, excessivamente conectado ("reação", "provocação", "MAIÚSCULAS", "marcação")
+- **dry** (seco) — direto, minimalista, dolorosamente óbvio (padrão)
+- **roast** (sarcástico) — comentários sarcásticos afetuosos, rótulos de veredicto/diagnóstico
+- **cynic** (cínico) — realismo taciturno e amargo ("Claro:", "Previsivelmente:")
+- **cheeky** (atrevido) — brincadeiras divertidas ("Oh, querida", "Atitude ousada")
+- **chaotic** (caótico) — frase coerente, seguida de uma reviravolta absurda repentina ("Aparentemente...")
+- **zoomer** — gírias da Geração Z, viciados em internet (reação, comentário sarcástico, letras maiúsculas, tag)
 
-Todos os modos herdam a voz e a entonação através do mcp-voice-soundboard (Piper recomendado).
+Todos os humores herdam a voz + prosódia via mcp-voice-soundboard (Piper recomendado).
 
 ## Requisitos
 
 - Node.js 18+
-- Ollama em execução localmente com o modelo `qwen2.5:7b` baixado (ou defina `SENSOR_HUMOR_MODEL` para um modelo diferente).
-- mcp-voice-soundboard instalado e em execução (backend Piper recomendado, opcional).
+- Ollama em execução localmente com `qwen2.5:7b` baixado (ou defina `SENSOR_HUMOR_MODEL` para um modelo diferente)
+- mcp-voice-soundboard instalado e em execução (backend Piper recomendado, opcional)
 - @modelcontextprotocol/sdk
 
 ## Instalação
 
 ```bash
-npm install sensor-humor
-# or link local dev version
-npm link /path/to/sensor-humor
+npm install @mcptoolshop/sensor-humor
+# or install a local dev checkout
+npm install /path/to/sensor-humor
 ```
 
-## Início rápido
+### Docker
+
+Uma imagem de contêiner é publicada no GHCR a cada lançamento. sensor-humor se comunica via MCP através do stdio, então execute-o interativamente e direcione-o para um Ollama acessível:
+
+```bash
+docker run -i --rm -e OLLAMA_HOST=http://host.docker.internal:11434 \
+  ghcr.io/mcp-tool-shop-org/sensor-humor:latest
+```
+
+## Início Rápido
 
 1. Inicie o Ollama:
 
@@ -61,7 +70,7 @@ npm link /path/to/sensor-humor
 ollama pull qwen2.5:7b
 ```
 
-2. Inicie o servidor MCP sensor-humor (transporte stdio):
+2. Inicie o servidor MCP do sensor-humor (transporte stdio):
 
 ```bash
 cd sensor-humor
@@ -75,8 +84,8 @@ cd ../mcp-voice-soundboard
 VOICE_SOUNDBOARD_ENGINE=piper VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models npm start
 ```
 
-4. No seu cliente MCP (Claude Code, Cursor, etc.):
-- Adicione ambos os servidores.
+4. Em seu cliente MCP (Claude Code, Cursor, etc.):
+- Adicione ambos os servidores
 - Teste a cadeia:
 
 ```
@@ -84,7 +93,7 @@ mood_set(style: "roast")
 roast(target: "800-line god function")
 ```
 
-Texto "roast" retornado. Se o [mcp-voice-soundboard](https://github.com/mcp-tool-shop-org/mcp-voice-soundboard) também estiver configurado, `voice_speak(mood: "roast")` reproduzirá o texto com a prosódia apropriada para o modo.
+Texto sarcástico retornado. Se [mcp-voice-soundboard](https://github.com/mcp-tool-shop-org/mcp-voice-soundboard) também estiver configurado, `voice_speak(mood: "roast")` o reproduzirá com a prosódia Piper apropriada para o humor.
 
 ## Ferramentas
 
@@ -92,38 +101,44 @@ Todas as ferramentas herdam o humor atual da sessão.
 
 | Ferramenta | Assinatura | Descrição |
 |------|-----------|-------------|
-| `mood_set` | `(style: string)` | Definir o estado de espírito (neutro, sarcástico, caótico, irreverente, cínico, "zoomer") |
-| `mood_get` | `()` | Humor atual + contagem de piadas. |
-| `comic_timing` | `(text, technique?)` | Reescreve com entrega cômica (regra de três, desvio de atenção, escalada, referência, subestimação, automático). |
-| `roast` | `(target, context?)` | Crítica afetuosa na voz do modo atual, com nível de intensidade de 1 a 5. Contexto: código, erro, ideia, situação. |
-| `heckle` | `(target)` | Crítica curta e direta. |
-| `catchphrase_generate` | `(context?)` | Cria um "bit" reutilizável (armazenado na sessão). |
-| `catchphrase_callback` | `()` | Reutiliza a frase de efeito mais usada (ou nula). |
-| `debug_status` | `()` | Descarrega o estado atual da sessão, a configuração do modo e o backend da voz. |
-| `session_reset` | `()` | Reseta todo o estado da sessão (modo, piadas, falas, frases características, contador de turnos). |
+| `mood_set` | `(style: string)` | Define o humor ativo (dry, roast, chaotic, cheeky, cynic, zoomer) |
+| `mood_get` | `()` | Humor atual + contagem de piadas |
+| `comic_timing` | `(text, technique?)` | Reescreve com uma entrega cômica (regra dos três, desvio de atenção, escalada, resposta contextual, subestimação, automático) |
+| `roast` | `(target, context?)` | Comentário sarcástico no humor atual, retorna a severidade de 1 a 5. Contexto: código, erro, ideia, situação |
+| `heckle` | `(target)` | Comentário curto e direto |
+| `catchphrase_generate` | `(context?)` | Cria uma frase reutilizável (armazenada na sessão) |
+| `catchphrase_callback` | `()` | Reutiliza a frase mais usada (ou retorna nulo) |
+| `debug_status` | `()` | Estado de saúde do backend ao vivo (Ollama acessível, modelo baixado), configuração resolvida, contagens de fallback e estado da sessão |
+| `session_reset` | `()` | Redefine todo o estado da sessão (humor, piadas, frases, contador) |
+
+**Saída degradada:** quando o Ollama não está acessível ou o modelo não foi baixado, as ferramentas de comédia retornam uma frase pré-gravada na voz apropriada, além de `degraded: true` e um `degraded_reason` (`connection`, `model-not-found`, `timeout`, `safety-filter`, ...) para que o chamador possa distinguir uma piada real de uma resposta padrão — uma geração genuína do modelo não carrega a flag `degraded`. Chame `debug_status` para ver a acessibilidade em tempo real, o modelo/host/tempo limite resolvidos e as contagens de fallback. `roast` e `heckle` também ecoam o `mood` ativo; `catchphrase_generate` retorna `is_fresh` (`true` = recém-criada, `false` = uma frase existente da sessão foi reutilizada).
 
 ## Prosódia do Humor (Voz Piper)
 
-Cada humor corresponde a uma voz Piper distinta e configuração de prosódia:
+Cada humor é mapeado para uma voz e configuração de prosódia distintas do Piper:
 
 | Humor | Voz | length_scale | noise_scale | noise_w_scale | volume | Característica |
 |------|-------|-------------|-------------|---------------|--------|-----------|
-| seco | en_GB-alan-medium | 1.15 | 0.3 | 0.3 | 0.9 | Monótono, cansado, metronômico. |
-| crítico | en_US-ryan-high | 0.95 | 0.667 | 0.8 | 1.0 | Sarcasmo confiante. |
-| Caótico | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | Apresentador de notícias falando bobagens |
-| Irreverente | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Piscadela calorosa, provocadora e brincalhona |
-| Cínico | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | Frio, sem emoção, sem surpresa |
-| "Zoomer" | en_US-lessac-high | 0.90 | 0.85 | 0.9 | 1.15 | Rápido, alto, energia de streamer |
+| dry | en_GB-alan-medium | 1.15 | 0.3 | 0.3 | 0.9 | Plano, cansado, metronômico |
+| roast | en_US-ryan-high | 0.95 | 0.667 | 0.8 | 1.0 | Sarcasmo confiante |
+| chaotic | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | Apresentador de notícias transmitindo absurdos |
+| cheeky | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Quente, divertido, piscadela brincalhona |
+| cynic | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | Frio, plano, sem surpresas |
+| zoomer | en_US-lessac-high | 0.90 | 0.85 | 0.9 | 1.15 | Rápido, alto, energia de streamer |
 
 ## Variáveis de Ambiente
 
 ```bash
 # sensor-humor
 SENSOR_HUMOR_DEBUG=true                # verbose prompt/response dumps
-SENSOR_HUMOR_OBSERVE=true              # full chain trace (prompt -> text -> piper params)
-SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (for A/B tuning)
+SENSOR_HUMOR_TIMEOUT_MS=30000          # Ollama call timeout in ms (default: 30000; invalid values fall back to default)
+SENSOR_HUMOR_TEMPERATURE=0.55          # generation temperature, clamped 0.0-2.0 (default: 0.55)
+SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (only v1 ships today; other values fall back to v1)
 SENSOR_HUMOR_MODEL=qwen2.5:7b         # Ollama model (default: qwen2.5:7b)
+SENSOR_HUMOR_PERSIST=false             # persist session to ~/.sensor-humor/session.json (survives restart; 24h expiry)
+SENSOR_HUMOR_SESSION_DIR=              # override the session directory (default: ~/.sensor-humor)
 OLLAMA_HOST=http://127.0.0.1:11434    # Ollama API host (default: http://127.0.0.1:11434)
+OLLAMA_API_KEY=                        # Bearer token for a remote/cloud Ollama (e.g. https://ollama.com); unset for local
 
 # voice integration (in voice-soundboard)
 VOICE_SOUNDBOARD_ENGINE=piper          # or kokoro (default)
@@ -132,28 +147,28 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 
 ## Observabilidade e Depuração
 
-- Cada chamada de ferramenta registra: prompt enviado, resposta bruta do Ollama, saída analisada, atualização da sessão.
-- Voz: os logs de depuração mostram os parâmetros do Piper aplicados para cada humor.
-- Defina `SENSOR_HUMOR_DEBUG=true` para ver tudo.
+- Cada chamada de ferramenta registra: prompt enviado, resposta bruta do Ollama, saída analisada, atualização da sessão
+- Voz: os logs de depuração mostram os parâmetros do Piper aplicados por humor
+- Defina `SENSOR_HUMOR_DEBUG=true` para ver tudo
 
-## Observações sobre a Qualidade
+## Notas sobre Qualidade
 
-- Taxa de sucesso cômico: 70-100% por modo/ferramenta em sessões de desenvolvimento reais (engenharia de prompts baseada em modelos).
-- Filtro de comparação/analogia: expressão regular de validação posterior + tentativas/alternativas para evitar falhas nos modos neutro/travesso.
-- Todos os modos com 70%+ em sessões reais; sarcástico/cínico/caótico frequentemente com 90-100%.
-- Determinístico: aplicação de esquema JSON, repetição em caso de saída incorreta, herança de modo aplicada a todas as ferramentas.
-- Voz: Piper oferece separação de entonação (duração/ruído/volume por modo); Kokoro é uma alternativa mais rápida.
-- Apenas uma ferramenta de desenvolvimento. O humor é subjetivo; desative qualquer modo através de variáveis de ambiente ou ajuste os prompts, se necessário.
+- A qualidade do humor provém da engenharia de prompts baseada em estruturas, e não de um único parâmetro do modelo — cada estado emocional força uma forma previsível. Avalie a taxa de sucesso no seu próprio modelo/hardware com `scripts/ab-scorecard.ts` (modelo em SCORECARD.md)
+- Filtro de semelhança/comparação: expressão regular pós-validação + nova tentativa, seguido por um recurso de segurança alternativo com base no estado emocional, caso a ocorrência persista
+- O filtro de linguagem ofensiva funciona como uma barreira final, para que os termos pejorativos não cheguem ao utilizador, mesmo quando uma nova tentativa posterior os reintroduz
+- Determinístico: aplicação do esquema JSON, nova tentativa em caso de saída incorreta, herança do estado emocional aplicada a todas as ferramentas
+- Voz: o Piper oferece separação da prosódia (duração/ruído/volume por estado emocional); o Kokoro serve como alternativa, focando apenas na velocidade
+- Apenas para uso em ferramentas de desenvolvimento. O humor é subjetivo; desative qualquer estado emocional através de variáveis de ambiente ou ajuste os prompts, se necessário
 
 ## Segurança e Confiança
 
-- **Apenas local** — comunica-se com o Ollama no localhost via HTTP, sem saída para a rede externa.
-- **Sem acesso ao sistema de arquivos** — não lê nem grava arquivos.
-- **Sem tratamento de segredos** — não lê, armazena nem transmite credenciais.
-- **Sem telemetria** — nada é coletado ou enviado.
-- **O estado da sessão é apenas na memória** — é perdido quando o processo do servidor é interrompido.
-- **Sanitização da entrada** — todo o texto fornecido pelo usuário é sanitizado antes da injeção de prompt (quebras de linha removidas, limite de comprimento aplicado, caracteres de controle removidos).
-- **Filtragem da saída** — filtro de linguagem ofensiva (lista de termos codificados em base64) com repetição + fallback seguro para evitar que insultos cheguem ao usuário.
+- **Local por padrão** — comunica com o Ollama em `localhost` via HTTP. `OLLAMA_HOST` pode apontar para outro local (por exemplo, um Ollama remoto/na nuvem); este é o único ponto de saída externo e é a escolha explícita do operador
+- **Sistema de arquivos** — nenhum por padrão. Com `SENSOR_HUMOR_PERSIST=true`, lê/escreve um arquivo, `~/.sensor-humor/session.json` (substitua o diretório com `SENSOR_HUMOR_SESSION_DIR`), contendo apenas o estado de humor da sua sessão (piadas, gags, frases) — sem credenciais. O arquivo expira automaticamente após 24 horas
+- **Segredos** — nenhum por padrão. Se apontar `OLLAMA_HOST` para um Ollama remoto/na nuvem, defina `OLLAMA_API_KEY`; esta é lida do ambiente e enviada apenas como um cabeçalho `Bearer` para esse host — nunca é registada, armazenada ou exibida (`debug_status` relata apenas *se* uma chave está definida, nunca o seu valor)
+- **Sem telemetria** — nada é coletado ou enviado
+- **O estado da sessão fica na memória por padrão** — desaparece quando o processo do servidor é interrompido; opte pelo armazenamento em disco com `SENSOR_HUMOR_PERSIST`
+- **Sanitização de entrada** — todo o texto fornecido pelo utilizador é sanitizado antes da injeção de prompt (quebras de linha removidas, comprimento limitado, caracteres de controle eliminados)
+- **Filtragem de saída** — filtro de linguagem ofensiva (lista de termos codificada em base64) com nova tentativa + uma barreira de segurança final impede que os termos pejorativos cheguem ao utilizador, mesmo numa nova tentativa posterior ou a partir de entradas que contenham esses termos
 
 ## Arquitetura
 

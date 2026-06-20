@@ -12,48 +12,57 @@
   <a href="https://mcp-tool-shop-org.github.io/sensor-humor/"><img src="https://img.shields.io/badge/landing-page-34d399" alt="Landing Page"></a>
 </p>
 
-MCP 工具，为您的 LLM 提供一个持久的喜剧伙伴：基于情绪的个性，会话感知的回调，持续的笑话，嘲讽，挖苦和口头禅——所有这些都通过 Piper TTS（基于韵律控制的语音合成）集成语音。
+一种 MCP 工具，为您的 LLM 提供一个持久的喜剧搭档：基于情绪的个性、感知会话的回调、持续的笑点、讽刺、挖苦和常用语——所有这些都通过 Piper TTS（控制韵律）进行语音集成。
 
-专为开发者设计：对代码问题的温和提醒，干巴巴的错误信息，以及构建失败时的混乱场面。它不会覆盖主 LLM 的语气，而是以一种独特的语音在需要时加入。
+专为开发者设计：对代码问题的温和批评，平淡无奇的错误信息，构建失败时的混乱升级。绝不会覆盖主机 LLM 的语气——一种独特的语音，在被调用时会适时地加入对话。
 
 ## 功能
 
-- 6种情绪模式，在实际开发测试中，命中率均达到70%以上。
-- 会话状态：包含持续的笑话、最近的段子（最大20个）、以及常用语列表。
-- 9个工具：mood_set/mood_get（设置/获取情绪模式）、comic_timing（喜剧节奏）、roast（调侃）、heckle（嘲讽）、catchphrase_generate/catchphrase_callback（生成/回调常用语）、debug_status（调试状态）、session_reset（重置会话）。
-- 本地 Ollama 后端（默认使用 qwen2.5:7b 模型，可通过 `SENSOR_HUMOR_MODEL` 变量进行配置）。
-- 语音配对：使用 mcp-voice-soundboard 配合 Piper TTS（韵律控制参数：长度比例、噪音比例、噪音权重、音量）。
-- 确定性：JSON 模式验证，对无效输出进行重试，强制执行情绪模式继承。
+- 6 种情绪，每种情绪都配备了一个填空式模板提示，以实现可预测的高质量输出。
+- 会话状态：持续的笑点、最近的片段环形缓冲区（最多 20 个）、常用语映射——可以选择性地持久保存到磁盘 (`SENSOR_HUMOR_PERSIST`)，以便回调在服务器重启后仍然有效。
+- 9 种工具：mood_set/mood_get、comic_timing、roast、heckle、catchphrase_generate/catchphrase_callback、debug_status、session_reset。
+- 本地 Ollama 后端（默认 qwen2.5:7b，可通过 `SENSOR_HUMOR_MODEL` 进行配置）。
+- 语音配对：mcp-voice-soundboard 与 Piper TTS（韵律旋钮：length_scale、noise_scale、noise_w_scale、volume）配合使用。
+- 确定性：JSON 模式强制执行、验证，在输出不良时进行重试，强制执行情绪继承。
 
-## 情绪模式
+## 情绪
 
-每个情绪模式都使用一个填空式的提示语，这会引导模型生成结构清晰、高质量的文本。
+每种情绪都使用一个填空式模板提示，迫使模型呈现出可预测的高质量形式。
 
-- **dry**（冷静）：冷幽默、简约、显而易见（默认）
-- **roast**（吐槽）：带有善意的尖锐讽刺，带有“评判/诊断”标签
-- **cynic**（愤世嫉俗）：玩世不恭、冷酷的现实主义（常用语：“当然：”，“可预料地：”）
-- **cheeky**（俏皮）：充满玩味和恶作剧（常用语：“哦，亲爱的”，“大胆的举动”）
-- **chaotic**（混乱）：先给出看似正常的句子，然后突然出现荒谬的转折（常用语：“据报道...”）
-- **zoomer**（Z世代）：极具网络攻击性的Z世代风格（常用语：反应、嘲讽、大写字母、标签）
+- **dry（平淡）**——冷静、简约、令人痛苦地显而易见（默认）。
+- **roast（讽刺）**——友好的尖锐批评，判决/诊断标签。
+- **cynic（愤世嫉俗者）**——玩世不恭、安静的残酷现实主义（“当然：”、“不出所料：”）。
+- **cheeky（调皮的）**——俏皮的戏弄（“哦，亲爱的”，“大胆的举动”）。
+- **chaotic（混乱的）**——先是正常的句子，然后突然出现荒谬的反转（“据报道……”）。
+- **zoomer（Z 世代）**——终极网络上的 Z 世代尖刻评论（反应、嘲讽、大写字母、标签）。
 
-所有情绪模式都通过 mcp-voice-soundboard 继承语音和语调（推荐使用 Piper）。
+所有情绪都通过 mcp-voice-soundboard 继承语音 + 韵律（推荐使用 Piper）。
 
 ## 要求
 
 - Node.js 18+
-- 本地运行 Ollama，已下载 `qwen2.5:7b` 模型（或通过设置 `SENSOR_HUMOR_MODEL` 变量选择其他模型）。
-- 安装并运行 mcp-voice-soundboard（推荐使用 Piper 后端，可选）。
+- 本地运行的 Ollama，并已拉取 `qwen2.5:7b`（或设置 `SENSOR_HUMOR_MODEL` 以使用不同的模型）。
+- 已安装并正在运行 mcp-voice-soundboard（推荐 Piper 后端，可选）。
 - @modelcontextprotocol/sdk
 
 ## 安装
 
 ```bash
-npm install sensor-humor
-# or link local dev version
-npm link /path/to/sensor-humor
+npm install @mcptoolshop/sensor-humor
+# or install a local dev checkout
+npm install /path/to/sensor-humor
 ```
 
-## 快速开始
+### Docker
+
+每次发布时，都会将容器镜像发布到 GHCR。sensor-humor 通过 stdio 传输 MCP，因此以交互方式运行它并指向一个可访问的 Ollama：
+
+```bash
+docker run -i --rm -e OLLAMA_HOST=http://host.docker.internal:11434 \
+  ghcr.io/mcp-tool-shop-org/sensor-humor:latest
+```
+
+## 快速入门
 
 1. 启动 Ollama：
 
@@ -61,69 +70,75 @@ npm link /path/to/sensor-humor
 ollama pull qwen2.5:7b
 ```
 
-2. 启动 sensor-humor MCP 服务器（使用 stdio 传输）：
+2. 启动 sensor-humor MCP 服务器（stdio 传输）：
 
 ```bash
 cd sensor-humor
 SENSOR_HUMOR_DEBUG=true npm start
 ```
 
-3. 启动语音合成器（Piper 模式）：
+3. 启动 voice-soundboard（Piper 模式）：
 
 ```bash
 cd ../mcp-voice-soundboard
 VOICE_SOUNDBOARD_ENGINE=piper VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models npm start
 ```
 
-4. 在您的 MCP 客户端（Claude Code, Cursor 等）：
-- 添加两个服务器
-- 测试流程：
+4. 在您的 MCP 客户端中（Claude Code、Cursor 等）：
+- 添加这两个服务器。
+- 测试链：
 
 ```
 mood_set(style: "roast")
 roast(target: "800-line god function")
 ```
 
-返回调侃文本。如果也配置了 [mcp-voice-soundboard](https://github.com/mcp-tool-shop-org/mcp-voice-soundboard)，则 `voice_speak(mood: "roast")` 会使用与情绪相符的 Piper 韵律朗读该文本。
+返回文本讽刺。如果也配置了 [mcp-voice-soundboard](https://github.com/mcp-tool-shop-org/mcp-voice-soundboard)，`voice_speak(mood: "roast")` 将使用适合当前情绪的 Piper 韵律来朗读它。
 
 ## 工具
 
-所有工具都继承会话中的当前情绪。
+所有工具都从会话中继承当前的“情绪”。
 
 | 工具 | 签名 | 描述 |
 |------|-----------|-------------|
-| `mood_set` | `(style: string)` | 设置当前情绪模式（dry、roast、chaotic、cheeky、cynic、zoomer）。 |
-| `mood_get` | `()` | 当前情绪 + 笑话计数 |
-| `comic_timing` | `(text, technique?)` | 使用喜剧风格进行重写（遵循三段式结构，误导，升级，回调，含蓄，自动） |
-| `roast` | `(target, context?)` | 以当前情绪模式的语音，进行带有善意的讽刺，并返回严重程度（1-5）。 上下文：代码、错误、想法、情况。 |
-| `heckle` | `(target)` | 简短的尖锐评论 |
-| `catchphrase_generate` | `(context?)` | 创建可重用的片段（存储在会话中） |
-| `catchphrase_callback` | `()` | 重用最常用的口头禅（或 null） |
-| `debug_status` | `()` | 导出当前会话状态、情绪配置和语音后端。 |
-| `session_reset` | `()` | 重置所有会话状态（情绪、笑话、段子、常用语、回合计数）。 |
+| `mood_set` | `(style: string)` | 设置活动情绪（dry、roast、chaotic、cheeky、cynic、zoomer） |
+| `mood_get` | `()` | 当前的情绪 + 笑点计数 |
+| `comic_timing` | `(text, technique?)` | 以喜剧的方式重写（三段式结构、误导、升级、回调、低调、自动）。 |
+| `roast` | `(target, context?)` | 以当前情绪的语音进行友好的讽刺，返回严重程度 1-5。上下文：代码、错误、想法、情况。 |
+| `heckle` | `(target)` | 简短而尖锐的嘲讽。 |
+| `catchphrase_generate` | `(context?)` | 创建可重复使用的片段（存储在会话中）。 |
+| `catchphrase_callback` | `()` | 重用最常用的常用语（或为空）。 |
+| `debug_status` | `()` | 实时后端状态（Ollama 是否可访问、模型是否已拉取）、已解析的配置、回退计数和会话状态。 |
+| `session_reset` | `()` | 重置所有会话状态（情绪、笑点、片段、常用语、轮次计数）。 |
+
+**输出质量下降：**当 Ollama 无法访问或模型未拉取时，喜剧工具将返回一种语音提示，并带有 `degraded: true` 和一个 `degraded_reason`（“连接”、“模型未找到”、“超时”、“安全过滤器”等），以便调用者可以区分真实的笑话和回退——真正的模型生成不会包含 `degraded` 标志。调用 `debug_status` 以查看实时可访问性、已解析的模型/主机/超时以及回退计数。`roast` 和 `heckle` 也会回显当前的“情绪”；`catchphrase_generate` 返回 `is_fresh`（“true”=全新， “false”=重用了现有的会话常用语）。
 
 ## 情绪韵律（Piper 语音）
 
 每种情绪都映射到一种独特的 Piper 语音 + 韵律配置：
 
-| 情绪 | 语音 | length_scale | noise_scale | noise_w_scale | volume | 特点 |
+| 情绪 | 语音 | length_scale | noise_scale | noise_w_scale | volume | 特征 |
 |------|-------|-------------|-------------|---------------|--------|-----------|
-| 平淡 | en_GB-alan-medium | 1.15 | 0.3 | 0.3 | 0.9 | 平淡，疲惫，有节奏 |
-| 嘲讽 | en_US-ryan-high | 0.95 | 0.667 | 0.8 | 1.0 | 充满自信的讽刺 |
-| chaotic | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | 新闻主播播报无意义的内容。 |
-| cheeky | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | 温暖、调皮、充满玩味的眨眼。 |
-| cynic | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | 冷淡、平淡、毫无惊喜。 |
-| zoomer | en_US-lessac-high | 0.90 | 0.85 | 0.9 | 1.15 | 快速、喧闹、直播主风格。 |
+| dry | en_GB-alan-medium | 1.15 | 0.3 | 0.3 | 0.9 | 平淡、疲惫、单调 |
+| roast | en_US-ryan-high | 0.95 | 0.667 | 0.8 | 1.0 | 自信的讽刺 |
+| chaotic | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | 新闻播报员讲述荒谬的事情 |
+| cheeky | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | 温暖、俏皮、调皮的眨眼 |
+| cynic | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | 冷漠、平淡、毫无惊喜 |
+| zoomer | en_US-lessac-high | 0.90 | 0.85 | 0.9 | 1.15 | 快速、响亮、直播能量 |
 
 ## 环境变量
 
 ```bash
 # sensor-humor
 SENSOR_HUMOR_DEBUG=true                # verbose prompt/response dumps
-SENSOR_HUMOR_OBSERVE=true              # full chain trace (prompt -> text -> piper params)
-SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (for A/B tuning)
+SENSOR_HUMOR_TIMEOUT_MS=30000          # Ollama call timeout in ms (default: 30000; invalid values fall back to default)
+SENSOR_HUMOR_TEMPERATURE=0.55          # generation temperature, clamped 0.0-2.0 (default: 0.55)
+SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (only v1 ships today; other values fall back to v1)
 SENSOR_HUMOR_MODEL=qwen2.5:7b         # Ollama model (default: qwen2.5:7b)
+SENSOR_HUMOR_PERSIST=false             # persist session to ~/.sensor-humor/session.json (survives restart; 24h expiry)
+SENSOR_HUMOR_SESSION_DIR=              # override the session directory (default: ~/.sensor-humor)
 OLLAMA_HOST=http://127.0.0.1:11434    # Ollama API host (default: http://127.0.0.1:11434)
+OLLAMA_API_KEY=                        # Bearer token for a remote/cloud Ollama (e.g. https://ollama.com); unset for local
 
 # voice integration (in voice-soundboard)
 VOICE_SOUNDBOARD_ENGINE=piper          # or kokoro (default)
@@ -132,28 +147,28 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 
 ## 可观察性和调试
 
-- 每次工具调用都会记录：发送的提示，原始的 Ollama 响应，解析的输出，会话更新
-- 语音：调试日志显示为每种情绪应用了哪些 Piper 参数
-- 设置 `SENSOR_HUMOR_DEBUG=true` 以查看所有内容
+- 每次工具调用都会记录：发送的提示、原始 Ollama 响应、解析后的输出、会话更新。
+- 语音：调试日志显示应用于每种情绪的 Piper 参数。
+- 设置 `SENSOR_HUMOR_DEBUG=true` 以查看所有内容。
 
 ## 质量说明
 
-- 喜剧命中率：在实际开发过程中，每个情绪模式/工具的命中率在 70-100% 之间（基于骨架的提示工程）。
-- 相似/比较过滤器：后验证的正则表达式 + 重试/备用机制，防止 dry/cheeky 模式出现问题。
-- 所有情绪模式在实际会话中的命中率均在 70% 以上； roast/cynic/chaotic 模式的命中率通常在 90-100%。
-- 确定性：JSON 模式强制执行，对不良输出进行重试，所有工具都强制执行情绪模式继承。
-- 语音：Piper 提供语调分离（根据情绪模式调整长度、音调和音量）；Kokoro 作为备用方案，仅提供语速调整。
-- 仅为开发工具的辅助功能。 幽默是主观的；如果需要，可以通过环境变量禁用任何情绪模式，或调整提示语。
+- 喜剧效果源于基于骨架的提示工程，而非单一的模型参数调整——每种情绪都会产生可预测的结果。使用 `scripts/ab-scorecard.ts`（模板位于 SCORECARD.md 中）来衡量您自己的模型/硬件上的命中率。
+- 类比/比较过滤器：先进行后验证正则表达式匹配 + 重试，然后如果仍然存在问题，则采用一种情绪化的安全回退方案。
+- 粗俗语言过滤器作为终端网关运行，因此即使在后期重试时重新引入了粗俗语言，用户也无法接收到。
+- 确定性：强制执行 JSON 模式，对不良输出进行重试，并在所有工具中强制执行情绪继承。
+- 语音：Piper 提供韵律分离（每种情绪的长度/噪音/音量）；Kokoro 回退方案仅提供速度调整。
+- 仅作为开发工具的辅助组件。幽默感是主观的；如果需要，可以通过环境变量禁用任何情绪或调整提示语。
 
 ## 安全与信任
 
-- **仅本地运行** — 通过 HTTP 与本地的 Ollama 进行通信，不涉及任何外部网络连接。
-- **不访问文件系统** — 不读取或写入任何文件。
-- **不处理敏感信息** — 不读取、存储或传输任何凭据。
-- **无数据收集** — 不收集或发送任何数据。
-- **会话状态仅保存在内存中** — 当服务器进程停止时，会话状态会丢失。
-- **输入净化** — 所有用户提供的文本在提示注入之前都会进行净化（去除换行符，限制长度，移除控制字符）。
-- **输出过滤** — 采用严格的语言过滤器（base64 编码的词汇列表），并通过重试和安全回退机制，防止冒犯性词语传递给用户。
+- **默认情况下为本地**——通过 HTTP 与 `localhost` 上的 Ollama 进行通信。`OLLAMA_HOST` 可以指向其他位置（例如远程/云端 Ollama）；这是唯一的外部出口，并且由操作员明确选择。
+- **文件系统**——默认情况下不使用。如果设置了 `SENSOR_HUMOR_PERSIST=true`，它将读取/写入一个文件，即 `~/.sensor-humor/session.json`（可以使用 `SENSOR_HUMOR_SESSION_DIR` 覆盖目录），其中仅包含您会话的喜剧状态（段子、笑话、流行语）——不包含任何凭据。该文件将在 24 小时后自动过期。
+- **密钥**——默认情况下不使用。如果您将 `OLLAMA_HOST` 指向远程/云端 Ollama，请设置 `OLLAMA_API_KEY`；它将从环境变量中读取，并仅作为 `Bearer` 标头发送到该主机——绝不会记录、持久化或回显（`debug_status` 仅报告是否设置了密钥，而不会显示其值）。
+- **无遥测**——不收集或发送任何数据。
+- **会话状态默认情况下存储在内存中**——当服务器进程停止时，所有内容都会消失；可以通过 `SENSOR_HUMOR_PERSIST` 选择启用磁盘持久化。
+- **输入清理**——在进行提示注入之前，会对所有用户提供的文本进行清理（删除换行符、限制长度、删除控制字符）。
+- **输出过滤**——粗俗语言过滤器（base64 编码的术语列表）与重试 + 终端安全回退网关相结合，可以防止粗俗语言到达用户，即使在后期重试或来自包含粗俗语言的输入时也是如此。
 
 ## 架构
 
