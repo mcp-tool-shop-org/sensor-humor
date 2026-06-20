@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.github
+site
+tests
+scripts
+voice-demos
+.env
+.polyglot-cache.json
+*.tsbuildinfo
+README.*.md
+ROADMAP.md
+SHIP_GATE.md
+SCORECARD.md

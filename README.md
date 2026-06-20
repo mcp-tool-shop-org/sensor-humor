@@ -48,9 +48,18 @@ All moods inherit voice + prosody via mcp-voice-soundboard (Piper recommended).
 ## Install
 
 ```bash
-npm install sensor-humor
+npm install @mcptoolshop/sensor-humor
 # or install a local dev checkout
 npm install /path/to/sensor-humor
+```
+
+### Docker
+
+A container image is published to GHCR on each release. sensor-humor speaks MCP over stdio, so run it interactively and point it at a reachable Ollama:
+
+```bash
+docker run -i --rm -e OLLAMA_HOST=http://host.docker.internal:11434 \
+  ghcr.io/mcp-tool-shop-org/sensor-humor:latest
 ```
 
 ## Quick Start

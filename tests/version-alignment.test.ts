@@ -18,7 +18,7 @@ describe('version alignment', () => {
     expect(changelog).toContain(pkg.version);
   });
 
-  it('package name is sensor-humor', () => {
-    expect(pkg.name).toBe('sensor-humor');
+  it('package name is @mcptoolshop/sensor-humor', () => {
+    expect(pkg.name).toBe('@mcptoolshop/sensor-humor');
   });
 });
