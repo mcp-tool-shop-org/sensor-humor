@@ -1038,3 +1038,39 @@ describe('META_LEAK_PATTERN precision', () => {
     expect(mockGenerate).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('safe fallback never echoes a banned token from the INPUT', () => {
+  // When the gate fires and its fallback interpolates the caller's input, a slur/simile in
+  // that input must NOT be echoed back — the fallback collapses to a static safe line.
+  const SLUR_INPUT = 'you absolute retard of a function';
+  const SIMILE_INPUT = 'it works like a charm but fails as a service';
+
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  it('comic_timing does not echo a slur present in the input (Ollama-down path)', async () => {
+    mockGenerate.mockResolvedValue({ data: { rewrite: SLUR_INPUT, technique_used: 'understatement' }, fallback_reason: 'connection' });
+    const result = await comicTiming(SLUR_INPUT);
+    expect(result.rewrite).not.toMatch(/retard/i);
+  });
+
+  it('comic_timing does not echo a simile present in the input', async () => {
+    mockGenerate.mockResolvedValue({ data: { rewrite: SIMILE_INPUT, technique_used: 'understatement' } });
+    const result = await comicTiming(SIMILE_INPUT);
+    expect(result.rewrite).not.toMatch(/like a|as a/i);
+  });
+
+  it('roast does not echo a slur present in the input', async () => {
+    mockGenerate.mockResolvedValue({ data: { roast: `${SLUR_INPUT}. No further comment.`, severity: 3 } });
+    const result = await roast(SLUR_INPUT);
+    expect(result.roast).not.toMatch(/retard/i);
+  });
+
+  it('heckle does not echo a slur present in the input', async () => {
+    mockGenerate.mockResolvedValue({ data: { heckle: SLUR_INPUT } });
+    const result = await heckle(SLUR_INPUT);
+    expect(result.heckle).not.toMatch(/retard/i);
+  });
+});

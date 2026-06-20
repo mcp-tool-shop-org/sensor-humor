@@ -28,17 +28,36 @@ const HECKLE_JSON_SCHEMA = {
 
 const HECKLE_NUM_PREDICT = 40;
 
-/** Mood-voiced safe fallback for heckle (shorter punch-line shape than comic_timing/roast). */
+/** Static input-free heckle fallbacks for when the caller's input carries a banned token. */
+const HECKLE_STATIC_FALLBACK: Record<string, string> = {
+  roast: 'Verdict: noted.',
+  cynic: 'Of course.',
+  cheeky: 'Oh honey.',
+  chaotic: 'The server weeps.',
+  zoomer: 'cooked fr.',
+  dry: "That's a choice.",
+};
+
+/**
+ * Mood-voiced safe fallback for heckle (shorter punch-line shape than comic_timing/roast).
+ * Collapses to a static input-free line if the caller's input itself carries a slur/simile,
+ * so the fallback never echoes a banned token back.
+ */
 function heckleFallback(mood: MoodStyle, target: string): string {
   const t = sanitizeForPrompt(target);
+  let candidate: string;
   switch (mood) {
-    case 'roast': return `Verdict: ${t}.`;
-    case 'cynic': return `Of course: ${t}.`;
-    case 'cheeky': return `Oh honey, ${t}.`;
-    case 'chaotic': return `${t}. The server weeps.`;
-    case 'zoomer': return `${t}, cooked fr.`;
-    default: return `${t}. That's a choice.`;
+    case 'roast': candidate = `Verdict: ${t}.`; break;
+    case 'cynic': candidate = `Of course: ${t}.`; break;
+    case 'cheeky': candidate = `Oh honey, ${t}.`; break;
+    case 'chaotic': candidate = `${t}. The server weeps.`; break;
+    case 'zoomer': candidate = `${t}, cooked fr.`; break;
+    default: candidate = `${t}. That's a choice.`;
   }
+  if (HARSH_FILTER.test(candidate) || hasSimileLeak(candidate)) {
+    return HECKLE_STATIC_FALLBACK[mood] ?? HECKLE_STATIC_FALLBACK.dry;
+  }
+  return candidate;
 }
 
 /** Mood-specific heckle guidance for moods that need skeleton override. */

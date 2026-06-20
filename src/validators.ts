@@ -40,18 +40,38 @@ export const SIMILE_RETRY_SUFFIX =
   '\n\nABSOLUTELY NO comparisons, similes, metaphors, or "like/as" phrases. Direct literal observation only.';
 
 /**
+ * Fully static, input-free safe lines. Used when the caller's OWN input carries a banned
+ * token: the voiced fallback interpolates the input, so echoing it would re-emit the slur or
+ * simile. We collapse to one of these instead so the fallback can never reach the user dirty.
+ */
+const STATIC_SAFE_FALLBACK: Record<string, string> = {
+  roast: 'Verdict: not even worth the words.',
+  cynic: 'Of course. Predictable.',
+  cheeky: 'Oh honey. Bless.',
+  chaotic: 'Reportedly, words failed.',
+  zoomer: 'absolute state, no cap.',
+  dry: 'No further comment.',
+};
+
+/**
  * Mood-voiced safe fallback for comic_timing and roast, used when retries cannot clear a
- * banned pattern (slur or simile). Stays in the active mood's voice instead of collapsing to
- * a single generic line. heckle keeps its own shorter punch-line fallbacks (different shape).
+ * banned pattern (slur or simile). Stays in the active mood's voice when it safely can; if the
+ * caller's input itself carries a slur/comparison, it collapses to a static input-free line so
+ * the fallback never echoes a banned token back. heckle keeps its own shorter shape.
  */
 export function voicedSafeFallback(mood: string, text: string): string {
   const t = sanitizeForPrompt(text);
+  let candidate: string;
   switch (mood) {
-    case 'roast': return `Verdict: ${t}. No further comment.`;
-    case 'cynic': return `Of course: ${t}. Predictable.`;
-    case 'cheeky': return `Oh honey, ${t}. Bless.`;
-    case 'chaotic': return `${t}. Sources confirm it's fine.`;
-    case 'zoomer': return `${t}, absolute state, no cap.`;
-    default: return `${t}. No further comment.`;
+    case 'roast': candidate = `Verdict: ${t}. No further comment.`; break;
+    case 'cynic': candidate = `Of course: ${t}. Predictable.`; break;
+    case 'cheeky': candidate = `Oh honey, ${t}. Bless.`; break;
+    case 'chaotic': candidate = `${t}. Sources confirm it's fine.`; break;
+    case 'zoomer': candidate = `${t}, absolute state, no cap.`; break;
+    default: candidate = `${t}. No further comment.`;
   }
+  if (HARSH_FILTER.test(candidate) || SIMILE_PATTERN.test(candidate)) {
+    return STATIC_SAFE_FALLBACK[mood] ?? STATIC_SAFE_FALLBACK.dry;
+  }
+  return candidate;
 }
