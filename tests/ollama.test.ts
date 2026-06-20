@@ -108,15 +108,34 @@ describe('generateComedy', () => {
     expect(result.data.text).toBe('fallback');
   });
 
-  it('strips trailing JSON artifact braces from string fields', async () => {
+  it('preserves braces that are part of legitimate content (no lossy brace-stripping)', async () => {
+    // A code-comedy tool legitimately produces output ending in '}', e.g. a roast of
+    // "function(){}". JSON.parse already guarantees balanced delimiters, so the content
+    // must survive intact — the old trailing-brace stripper corrupted it. (BK-02)
     mockChat.mockResolvedValue({
-      message: { content: '{"text": "hello}}}"}' },
+      message: { content: '{"text": "your empty handler function(){}"}' },
       prompt_eval_count: 10,
       eval_count: 5,
     });
 
     const result = await generateComedy<TestResult>(makeOptions(), fallback);
-    expect(result.data.text).toBe('hello');
+    expect(result.data.text).toBe('your empty handler function(){}');
+  });
+
+  it('adds a NaN/invalid SENSOR_HUMOR_TIMEOUT_MS guard (does not collapse to instant timeout)', async () => {
+    // A fat-fingered non-numeric timeout must fall back to the default, NOT make every
+    // call time out instantly (BK-01).
+    process.env.SENSOR_HUMOR_TIMEOUT_MS = 'abc';
+    mockChat.mockResolvedValue({
+      message: { content: '{"text": "still works"}' },
+      prompt_eval_count: 10,
+      eval_count: 5,
+    });
+
+    const result = await generateComedy<TestResult>(makeOptions(), fallback);
+    expect(result.data.text).toBe('still works');
+
+    delete process.env.SENSOR_HUMOR_TIMEOUT_MS;
   });
 
   it('returns fallback on network error after retries', async () => {

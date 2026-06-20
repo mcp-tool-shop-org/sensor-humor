@@ -20,15 +20,35 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 
 function getTimeoutMs(): number {
   const env = process.env.SENSOR_HUMOR_TIMEOUT_MS;
-  return env ? parseInt(env, 10) : DEFAULT_TIMEOUT_MS;
+  if (env === undefined) return DEFAULT_TIMEOUT_MS;
+  const n = Number.parseInt(env, 10);
+  if (!Number.isFinite(n) || n <= 0) {
+    if (isDebug()) {
+      console.error(
+        `[sensor-humor] Invalid SENSOR_HUMOR_TIMEOUT_MS="${env}"; falling back to ${DEFAULT_TIMEOUT_MS}ms`,
+      );
+    }
+    return DEFAULT_TIMEOUT_MS;
+  }
+  return n;
 }
 
 function classifyError(err: unknown): string {
   if (err instanceof SyntaxError) return 'json-parse';
   if (err instanceof Error) {
-    if (err.message.includes('ECONNREFUSED') || err.message.includes('ENOTFOUND')) return 'connection';
-    if (err.message.includes('timeout') || err.message.includes('abort')) return 'timeout';
-    if (err.message.includes('ZodError') || err.name === 'ZodError') return 'validation';
+    const msg = err.message;
+    // HTTP errors from the ollama client surface as ResponseError with a status_code.
+    if (err.name === 'ResponseError') {
+      const status = (err as { status_code?: number }).status_code;
+      if (status === 401 || status === 403) return 'auth';
+      if (status === 429) return 'rate-limit';
+      if (typeof status === 'number' && status >= 500) return 'server';
+      if (/not found/i.test(msg)) return 'model-not-found';
+      return 'http';
+    }
+    if (/ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET/.test(msg)) return 'connection';
+    if (/Ollama timeout after|timeout|abort/i.test(msg)) return 'timeout';
+    if (err.name === 'ZodError' || /ZodError/.test(msg)) return 'validation';
   }
   return 'unknown';
 }
@@ -114,10 +134,22 @@ export async function generateComedy<T>(
           num_predict: numPredict ?? MAX_PREDICT,
         },
       });
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Ollama timeout after ${timeoutMs}ms`)), timeoutMs),
-      );
-      const response = await Promise.race([chatPromise, timeoutPromise]);
+      // The timeout timer is cleared in the finally below so a winning chat
+      // never leaves a dangling timer holding the event loop open (BK-03).
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(
+          () => reject(new Error(`Ollama timeout after ${timeoutMs}ms`)),
+          timeoutMs,
+        );
+        timeoutHandle.unref?.();
+      });
+      let response: Awaited<typeof chatPromise>;
+      try {
+        response = await Promise.race([chatPromise, timeoutPromise]);
+      } finally {
+        clearTimeout(timeoutHandle);
+      }
 
       const raw = response.message.content;
       const latencyMs = Date.now() - startMs;
@@ -129,10 +161,12 @@ export async function generateComedy<T>(
 
       const parsed = JSON.parse(raw);
 
-      // Clean trailing JSON artifacts from string fields (Ollama leak)
+      // Trim surrounding whitespace from string fields. JSON.parse already guarantees
+      // balanced delimiters, so we must NOT strip trailing braces — doing so silently
+      // corrupted legitimate output ending in '}' (e.g. a roast of "function(){}"). (BK-02)
       for (const key of Object.keys(parsed)) {
         if (typeof parsed[key] === 'string') {
-          parsed[key] = parsed[key].replace(/\s+$/, '').replace(/\}+$/, '').trim();
+          parsed[key] = parsed[key].trim();
         }
       }
 

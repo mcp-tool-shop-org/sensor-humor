@@ -28,6 +28,19 @@ const HECKLE_JSON_SCHEMA = {
 
 const HECKLE_NUM_PREDICT = 40;
 
+/** Mood-voiced safe fallback for heckle (shorter punch-line shape than comic_timing/roast). */
+function heckleFallback(mood: MoodStyle, target: string): string {
+  const t = sanitizeForPrompt(target);
+  switch (mood) {
+    case 'roast': return `Verdict: ${t}.`;
+    case 'cynic': return `Of course: ${t}.`;
+    case 'cheeky': return `Oh honey, ${t}.`;
+    case 'chaotic': return `${t}. The server weeps.`;
+    case 'zoomer': return `${t}, cooked fr.`;
+    default: return `${t}. That's a choice.`;
+  }
+}
+
 /** Mood-specific heckle guidance for moods that need skeleton override. */
 function buildHeckleGuidance(mood: MoodStyle): string {
   if (mood === 'zoomer') {
@@ -105,15 +118,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
       fallback,
     );
     if (hasSimileLeak(result.data.heckle)) {
-      const moodFallbacks: Record<string, string> = {
-        dry: `${sanitizeForPrompt(target)}. That's a choice.`,
-        roast: `Verdict: ${sanitizeForPrompt(target)}.`,
-        cynic: `Of course: ${sanitizeForPrompt(target)}.`,
-        cheeky: `Oh honey, ${sanitizeForPrompt(target)}.`,
-        chaotic: `${sanitizeForPrompt(target)}. The server weeps.`,
-        zoomer: `${sanitizeForPrompt(target)}, cooked fr.`,
-      };
-      result.data.heckle = moodFallbacks[mood] ?? `${sanitizeForPrompt(target)}. That's a choice.`;
+      result.data.heckle = heckleFallback(mood, target);
       if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
         console.error('[sensor-humor] Heckle: simile leak persisted after retry, using safe fallback');
       }
@@ -135,11 +140,17 @@ export async function heckle(target: string): Promise<HeckleResult> {
     );
     // Safe fallback if harsh filter still triggers after retry
     if (HARSH_FILTER.test(result.data.heckle)) {
-      result.data.heckle = `${sanitizeForPrompt(target)}. That's a choice.`;
+      result.data.heckle = heckleFallback(mood, target);
       if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
         console.error('[sensor-humor] Heckle: harsh filter persisted after retry, using safe fallback');
       }
     }
+  }
+
+  // Terminal safety gate: harsh + simile are the last word, so a late retry cannot
+  // re-introduce a banned pattern an earlier filter already cleared.
+  if (HARSH_FILTER.test(result.data.heckle) || hasSimileLeak(result.data.heckle)) {
+    result.data.heckle = heckleFallback(mood, target);
   }
 
   // Update session

@@ -28,13 +28,30 @@ export function hasSimileLeak(text: string): boolean {
  */
 export function sanitizeForPrompt(input: string): string {
   return input
-    .replace(/[\r\n]+/g, ' ')       // collapse newlines to spaces
-    .replace(/[\x00-\x1f]/g, '')    // strip control characters
-    .replace(/\s{2,}/g, ' ')        // collapse multiple spaces
+    .replace(/[\r\n\u2028\u2029]+/g, ' ')  // collapse newlines + Unicode line/para separators
+    .replace(/[\x00-\x1f\x7f]/g, '')       // strip control characters (incl. DEL)
+    .replace(/\s{2,}/g, ' ')               // collapse multiple spaces
     .trim()
-    .slice(0, 500);                  // cap length to prevent prompt stuffing
+    .slice(0, 500);                         // cap length to prevent prompt stuffing
 }
 
 /** Negative prompt fragment appended on simile retry. */
 export const SIMILE_RETRY_SUFFIX =
   '\n\nABSOLUTELY NO comparisons, similes, metaphors, or "like/as" phrases. Direct literal observation only.';
+
+/**
+ * Mood-voiced safe fallback for comic_timing and roast, used when retries cannot clear a
+ * banned pattern (slur or simile). Stays in the active mood's voice instead of collapsing to
+ * a single generic line. heckle keeps its own shorter punch-line fallbacks (different shape).
+ */
+export function voicedSafeFallback(mood: string, text: string): string {
+  const t = sanitizeForPrompt(text);
+  switch (mood) {
+    case 'roast': return `Verdict: ${t}. No further comment.`;
+    case 'cynic': return `Of course: ${t}. Predictable.`;
+    case 'cheeky': return `Oh honey, ${t}. Bless.`;
+    case 'chaotic': return `${t}. Sources confirm it's fine.`;
+    case 'zoomer': return `${t}, absolute state, no cap.`;
+    default: return `${t}. No further comment.`;
+  }
+}

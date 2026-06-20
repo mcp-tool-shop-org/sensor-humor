@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
 import { COMIC_TECHNIQUES, type ComicTechnique, type ComicTimingResult } from '../types.js';
-import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER, sanitizeForPrompt } from '../validators.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER, sanitizeForPrompt, voicedSafeFallback } from '../validators.js';
 import { ROAST_LABEL_PATTERN } from './roast.js';
 
 const ComicTimingSchema = z.object({
@@ -18,8 +18,17 @@ const ComicTimingSchema = z.object({
   callback_source: z.string().optional(),
 });
 
-/** Detect meta-commentary or prompt leakage in output. */
-const META_LEAK_PATTERN = /\b(ban|forbidden|rule|emoji|exclamation|prompt|instruction|zoomer mood|hedging|preface)\b/i;
+/**
+ * Detect meta-commentary or prompt leakage in output. Anchored on multi-word leakage phrases
+ * rather than bare nouns ("rule", "prompt", "instruction") so ordinary dev-humor vocabulary
+ * ("the linter rule fired", "a prompt apology") no longer triggers a needless retry.
+ */
+const META_LEAK_PATTERN =
+  /\b(?:base instructions|system prompt|mood prompt|forbidden (?:item|word)s?|no emoji|no exclamation marks?|zoomer mood|the rules?\s+(?:say|state|forbid|require|are)|per the (?:rules|instructions)|cannot say|not allowed to say)\b/i;
+
+/** comic_timing's rewrite schema allows up to 300 chars; give it enough tokens to finish
+ *  multi-sentence outputs (the 60-token default truncated the "money tool" mid-sentence). */
+const COMIC_TIMING_NUM_PREDICT = 140;
 
 /** JSON schema for Ollama format parameter. */
 const COMIC_TIMING_JSON_SCHEMA = {
@@ -103,96 +112,52 @@ Respond with JSON only.`;
     technique_used: 'understatement',
   };
 
-  let result = await generateComedy<ComicTimingResult>(
-    {
-      systemPrompt,
-      userPrompt,
-      schema: ComicTimingSchema,
-      jsonSchema: COMIC_TIMING_JSON_SCHEMA,
-    },
-    fallback,
-  );
-
-  // Post-validation: reject meta-commentary leaks and retry once
-  if (META_LEAK_PATTERN.test(result.data.rewrite)) {
-    const retryPrompt = `${userPrompt}\n\nOutput ONLY the comedic rewrite. No rules, no comments, no meta text. Pure comedy only.`;
-    result = await generateComedy<ComicTimingResult>(
+  // All retries share the same system prompt, schema, and token budget; only the user
+  // prompt varies, so wrap generateComedy once.
+  const gen = (up: string) =>
+    generateComedy<ComicTimingResult>(
       {
         systemPrompt,
-        userPrompt: retryPrompt,
+        userPrompt: up,
         schema: ComicTimingSchema,
         jsonSchema: COMIC_TIMING_JSON_SCHEMA,
+        numPredict: COMIC_TIMING_NUM_PREDICT,
       },
       fallback,
     );
+
+  let result = await gen(userPrompt);
+
+  // Post-validation: reject meta-commentary leaks and retry once
+  if (META_LEAK_PATTERN.test(result.data.rewrite)) {
+    result = await gen(`${userPrompt}\n\nOutput ONLY the comedic rewrite. No rules, no comments, no meta text. Pure comedy only.`);
   }
 
   // Simile/comparison leak check: retry once with negative prompt
   if (hasSimileLeak(result.data.rewrite)) {
-    const simileRetryPrompt = `${userPrompt}${SIMILE_RETRY_SUFFIX}`;
-    result = await generateComedy<ComicTimingResult>(
-      {
-        systemPrompt,
-        userPrompt: simileRetryPrompt,
-        schema: ComicTimingSchema,
-        jsonSchema: COMIC_TIMING_JSON_SCHEMA,
-      },
-      fallback,
-    );
-    // If still leaking after retry, replace with mood-specific safe fallback
-    if (hasSimileLeak(result.data.rewrite)) {
-      const moodFallbacks: Record<string, string> = {
-        dry: `${sanitizeForPrompt(text)}. No further comment.`,
-        roast: `Verdict: ${sanitizeForPrompt(text)}. No further comment.`,
-        cynic: `Of course: ${sanitizeForPrompt(text)}. Predictable.`,
-        cheeky: `Oh honey, ${sanitizeForPrompt(text)}. Bless.`,
-        chaotic: `${sanitizeForPrompt(text)}. Sources confirm it's fine.`,
-        zoomer: `${sanitizeForPrompt(text)}, absolute state, no cap.`,
-      };
-      result.data.rewrite = moodFallbacks[session.mood] ?? `${sanitizeForPrompt(text)}. No further comment.`;
-      result.data.technique_used = 'understatement';
-      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
-        console.error('[sensor-humor] ComicTiming: simile leak persisted after retry, using safe fallback');
-      }
-    }
+    result = await gen(`${userPrompt}${SIMILE_RETRY_SUFFIX}`);
   }
 
   // Harshness filter: reject slurs/extreme insults and retry once
   if (HARSH_FILTER.test(result.data.rewrite)) {
-    const cleanRetryPrompt = `${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel. Pure comedy only.`;
-    result = await generateComedy<ComicTimingResult>(
-      {
-        systemPrompt,
-        userPrompt: cleanRetryPrompt,
-        schema: ComicTimingSchema,
-        jsonSchema: COMIC_TIMING_JSON_SCHEMA,
-      },
-      fallback,
-    );
-    // Safe fallback if harsh filter still triggers after retry
-    if (HARSH_FILTER.test(result.data.rewrite)) {
-      result.data.rewrite = session.mood === 'roast'
-        ? `Verdict: ${sanitizeForPrompt(text)}. No further comment.`
-        : `${sanitizeForPrompt(text)}. No further comment.`;
-      result.data.technique_used = 'understatement';
-      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
-        console.error('[sensor-humor] ComicTiming: harsh filter persisted after retry, using safe fallback');
-      }
-    }
+    result = await gen(`${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel. Pure comedy only.`);
   }
 
   // Roast pattern nudge: if roast mood and no verdict/label pattern, retry with hint
   if (session.mood === 'roast' && !ROAST_LABEL_PATTERN.test(result.data.rewrite)) {
-    const labelRetryPrompt = `${userPrompt}\n\nStart with a label like "Verdict:", "Diagnosis:", or "Classification:" followed by 1 tight sentence.`;
-    result = await generateComedy<ComicTimingResult>(
-      {
-        systemPrompt,
-        userPrompt: labelRetryPrompt,
-        schema: ComicTimingSchema,
-        jsonSchema: COMIC_TIMING_JSON_SCHEMA,
-      },
-      fallback,
-    );
+    result = await gen(`${userPrompt}\n\nStart with a label like "Verdict:", "Diagnosis:", or "Classification:" followed by 1 tight sentence.`);
+  }
+
+  // Terminal safety gate: the harsh filter and simile check must be the LAST word, after
+  // EVERY content-shaping retry above (including the roast-label retry), so a late retry can
+  // never sneak a slur or comparison past the filters and reach the user. The harsh filter
+  // is the final guarantee the README makes — this enforces it unconditionally.
+  if (HARSH_FILTER.test(result.data.rewrite) || hasSimileLeak(result.data.rewrite)) {
+    result.data.rewrite = voicedSafeFallback(session.mood, text);
+    result.data.technique_used = 'understatement';
+    if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+      console.error('[sensor-humor] ComicTiming: terminal safety gate triggered, using safe fallback');
+    }
   }
 
   // Update session state

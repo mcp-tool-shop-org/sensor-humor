@@ -48,7 +48,7 @@ export async function catchphraseGenerate(
     for (const [phrase] of session.catchphrases) {
       const firstWord = phrase.toLowerCase().split(' ')[0];
       if (firstWord.length >= 3 && new RegExp(`\\b${escapeRegex(firstWord)}\\b`).test(lower)) {
-        const count = session.useCatchphrase(phrase);
+        session.useCatchphrase(phrase);
         session.pushBit(phrase, 'catchphrase');
         return { phrase, is_fresh: false };
       }
@@ -85,7 +85,7 @@ Respond with JSON only.`;
   const phrase = result.data.phrase;
   // If Ollama returned a phrase we already have, treat as reuse not fresh
   if (session.catchphrases.has(phrase)) {
-    const count = session.useCatchphrase(phrase);
+    session.useCatchphrase(phrase);
     session.pushBit(phrase, 'catchphrase');
     return { phrase, is_fresh: false };
   }
