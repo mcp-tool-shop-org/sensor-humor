@@ -23,7 +23,7 @@
 
 ## B. Error Handling
 
-- [x] `[all]` Errors follow the Structured Error Shape: `code`, `message`, `hint`, `cause?`, `retryable?` (2026-03-31)
+- [x] `[all]` Errors follow the Structured Error Shape: `code`, `message`, `hint`, `cause?`, `retryable?` (2026-06-20) — `toolError()` in index.ts
 - [ ] `[cli]` SKIP: Not a standalone CLI — runs as MCP stdio server
 - [ ] `[cli]` SKIP: Not a standalone CLI
 - [x] `[mcp]` Tool errors return structured results — server never crashes on bad input (2026-03-31)
@@ -44,8 +44,8 @@
 ## D. Shipping Hygiene
 
 - [x] `[all]` `verify` script exists (test + build + smoke in one command) (2026-03-31)
-- [x] `[all]` Version in manifest matches git tag (2026-03-31)
-- [x] `[all]` Dependency scanning runs in CI (ecosystem-appropriate) (2026-03-31)
+- [x] `[all]` Version in manifest matches git tag (2026-06-20) — v1.1.0 tagged at release
+- [x] `[all]` Dependency scanning runs in CI (ecosystem-appropriate) (2026-06-20) — ci.yml `security` job: `npm audit --omit=dev --audit-level=critical` + TruffleHog OSS
 - [ ] `[all]` SKIP: Automated dependency updates not configured — manual monthly review
 - [x] `[npm]` `npm pack --dry-run` includes: dist/, README.md, CHANGELOG.md, LICENSE (2026-03-31)
 - [x] `[npm]` `engines.node` set (2026-03-31) — >=18.0.0

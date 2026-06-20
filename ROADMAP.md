@@ -1,7 +1,7 @@
 # sensor-humor Roadmap
 
-**Current:** v1.0.2 — shipped 2026-03-31
-**Quality baseline:** 6 moods at 70%+, 160 tests, simile post-validation, harsh filter safe fallback, mood-specific fallbacks, Piper prosody, live sessions addictive with voice on.
+**Current:** v1.1.0 — shipped 2026-06-20
+**Quality baseline:** 6 moods at 70%+, 187 tests, terminal safety gate, degradation signal (`degraded`), persistent session, Ollama Cloud auth, simile post-validation, mood-specific fallbacks, Piper prosody, live sessions addictive with voice on.
 
 Everything below must meaningfully move quality, determinism, debuggability, developer time, or end-user edge. Nothing else gets in.
 
@@ -40,13 +40,15 @@ The prompt war taught us that small wording changes cause 20%+ swings. Lock what
 
 In-memory session dies on server stop. For long coding marathons, callbacks to turn-47 on turn-120 after restart is the killer feature.
 
-- [ ] Add `serialize()` / `deserialize()` to session.ts (JSON-safe: convert Map to entries)
-- [ ] File-based persistence: `~/.sensor-humor/session.json` (write on every tick, read on startup)
-- [ ] `SENSOR_HUMOR_PERSIST=true` env toggle — off by default, falls back to in-memory
-- [ ] Session expiry: auto-clear if file > 24h old (stale gags aren't funny)
-- [ ] Tests: serialize → deserialize roundtrip, catchphrase Map survives, ring buffer capped
+**SHIPPED in v1.1.0 (2026-06-20).**
 
-**Gate:** Callback references turn-47 bits on turn-120 after full server restart.
+- [x] Add `serialize()` / `fromSnapshot()` to session.ts (JSON-safe: convert Map to entries)
+- [x] File-based persistence: `~/.sensor-humor/session.json` (write on every state mutation, read on startup; dir overridable via `SENSOR_HUMOR_SESSION_DIR`)
+- [x] `SENSOR_HUMOR_PERSIST=true` env toggle — off by default, falls back to in-memory
+- [x] Session expiry: auto-clear if file > 24h old (stale gags aren't funny)
+- [x] Tests: serialize → fromSnapshot roundtrip, catchphrase Map survives, ring buffer capped
+
+**Gate:** Callback references turn-47 bits on turn-120 after full server restart. ✅
 
 ### Priority 2: Chain Trace Tool (1 day)
 
