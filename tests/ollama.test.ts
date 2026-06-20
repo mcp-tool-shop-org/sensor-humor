@@ -11,7 +11,7 @@ vi.mock('ollama', () => ({
 }));
 
 // Must import AFTER mock setup
-const { generateComedy, getTemperature } = await import('../src/ollama.js');
+const { generateComedy, getTemperature, hasApiKey } = await import('../src/ollama.js');
 
 const TestSchema = z.object({
   text: z.string(),
@@ -165,6 +165,14 @@ describe('generateComedy', () => {
     // Clean up
     delete process.env.SENSOR_HUMOR_TIMEOUT_MS;
   }, 10000);
+
+  it('hasApiKey reflects OLLAMA_API_KEY presence (for cloud auth)', () => {
+    delete process.env.OLLAMA_API_KEY;
+    expect(hasApiKey()).toBe(false);
+    process.env.OLLAMA_API_KEY = 'sk-test-key';
+    expect(hasApiKey()).toBe(true);
+    delete process.env.OLLAMA_API_KEY;
+  });
 
   it('getTemperature defaults, reads valid overrides, and guards invalid/out-of-range', () => {
     delete process.env.SENSOR_HUMOR_TEMPERATURE;

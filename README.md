@@ -19,7 +19,7 @@ Built for developers: gentle burns on code smells, dry deadpan error messages, c
 ## Features
 
 - 6 moods, each tuned with a fill-in-the-blank skeleton prompt for predictable, high-quality output
-- Session state: running gags, recent bits ring buffer (max 20), catchphrase Map
+- Session state: running gags, recent bits ring buffer (max 20), catchphrase Map — optionally persisted to disk (`SENSOR_HUMOR_PERSIST`) so callbacks survive a server restart
 - 9 tools: mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status, session_reset
 - Local Ollama backend (qwen2.5:7b default, configurable via `SENSOR_HUMOR_MODEL`)
 - Voice pairing: mcp-voice-soundboard with Piper TTS (prosody knobs: length_scale, noise_scale, noise_w_scale, volume)
@@ -126,7 +126,10 @@ SENSOR_HUMOR_TIMEOUT_MS=30000          # Ollama call timeout in ms (default: 300
 SENSOR_HUMOR_TEMPERATURE=0.55          # generation temperature, clamped 0.0-2.0 (default: 0.55)
 SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (only v1 ships today; other values fall back to v1)
 SENSOR_HUMOR_MODEL=qwen2.5:7b         # Ollama model (default: qwen2.5:7b)
+SENSOR_HUMOR_PERSIST=false             # persist session to ~/.sensor-humor/session.json (survives restart; 24h expiry)
+SENSOR_HUMOR_SESSION_DIR=              # override the session directory (default: ~/.sensor-humor)
 OLLAMA_HOST=http://127.0.0.1:11434    # Ollama API host (default: http://127.0.0.1:11434)
+OLLAMA_API_KEY=                        # Bearer token for a remote/cloud Ollama (e.g. https://ollama.com); unset for local
 
 # voice integration (in voice-soundboard)
 VOICE_SOUNDBOARD_ENGINE=piper          # or kokoro (default)
@@ -151,12 +154,12 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 ## Security & Trust
 
 - **Local by default** — talks to Ollama on `localhost` via HTTP. `OLLAMA_HOST` may point elsewhere (e.g. a remote/cloud Ollama); that is the only external egress and is the operator's explicit choice
-- **No file system access** — reads and writes no files
-- **No secrets handling** — does not read, store, or transmit credentials
+- **File system** — none by default. With `SENSOR_HUMOR_PERSIST=true` it reads/writes one file, `~/.sensor-humor/session.json` (override the directory with `SENSOR_HUMOR_SESSION_DIR`), containing only your session's comedy state (bits, gags, catchphrases) — no credentials. The file auto-expires after 24h
+- **Secrets** — none by default. If you point `OLLAMA_HOST` at a remote/cloud Ollama, set `OLLAMA_API_KEY`; it is read from the environment and sent only as a `Bearer` header to that host — never logged, persisted, or echoed (`debug_status` reports only *whether* a key is set, never its value)
 - **No telemetry** — nothing is collected or sent
-- **Session state is in-memory only** — dies when the server process stops
+- **Session state is in-memory by default** — dies when the server process stops; opt into disk persistence with `SENSOR_HUMOR_PERSIST`
 - **Input sanitization** — all user-provided text is sanitized before prompt injection (newlines stripped, length capped, control chars removed)
-- **Output filtering** — harsh language filter (base64-encoded term list) with retry + safe fallback prevents slurs from reaching the user
+- **Output filtering** — harsh language filter (base64-encoded term list) with retry + a terminal safe-fallback gate prevents slurs from reaching the user, even on a late retry or from slur-bearing input
 
 ## Architecture
 

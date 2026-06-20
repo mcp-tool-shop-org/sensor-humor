@@ -1,6 +1,22 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { Session, resetSession, getSession } from '../src/session.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Session, resetSession, getSession, snapshotIsFresh, type SessionSnapshot } from '../src/session.js';
 import { MOOD_STYLES, DEFAULT_MOOD } from '../src/types.js';
+
+function makeSnapshot(over: Partial<SessionSnapshot> = {}): SessionSnapshot {
+  return {
+    version: 1,
+    saved_at: 1_000_000_000_000,
+    mood: 'dry',
+    running_gags: [],
+    recent_bits: [],
+    catchphrases: [],
+    turn_counter: 0,
+    ...over,
+  };
+}
 
 describe('Session', () => {
   let session: Session;
@@ -221,6 +237,82 @@ describe('types', () => {
 
   it('defaults to dry', () => {
     expect(DEFAULT_MOOD).toBe('dry');
+  });
+});
+
+describe('Session persistence (serialize / snapshot)', () => {
+  it('serialize -> fromSnapshot roundtrip preserves all state', () => {
+    const s = resetSession();
+    s.setMood('cynic');
+    s.tick();
+    s.pushBit('a bit', 'roast');
+    s.addGag('the deadbeef incident', 'deadbeef');
+    s.useCatchphrase('Ship it and pray.');
+    s.useCatchphrase('Ship it and pray.');
+
+    const restored = Session.fromSnapshot(s.serialize());
+    expect(restored.mood).toBe('cynic');
+    expect(restored.turn_counter).toBe(s.turn_counter);
+    expect(restored.recent_bits).toEqual(s.recent_bits);
+    expect(restored.running_gags).toEqual(s.running_gags);
+    // catchphrase Map survives the entries roundtrip
+    expect(restored.catchphrases.get('Ship it and pray.')).toBe(2);
+  });
+
+  it('caps recent_bits to the ring-buffer max on restore, keeping the most recent', () => {
+    const bits = Array.from({ length: 50 }, (_, i) => ({ text: `b${i}`, turn: i, technique: 'roast' }));
+    const restored = Session.fromSnapshot(makeSnapshot({ recent_bits: bits, turn_counter: 50 }));
+    expect(restored.recent_bits).toHaveLength(20);
+    expect(restored.recent_bits[19].text).toBe('b49');
+  });
+
+  it('rejects an unknown mood from a tampered snapshot', () => {
+    const restored = Session.fromSnapshot(makeSnapshot({ mood: 'gremlin' as never }));
+    expect(restored.mood).toBe('dry');
+  });
+
+  it('snapshotIsFresh: fresh within 24h, stale beyond, false for null', () => {
+    const now = 1_000_000_000_000;
+    expect(snapshotIsFresh(makeSnapshot({ saved_at: now - 1000 }), now)).toBe(true);
+    expect(snapshotIsFresh(makeSnapshot({ saved_at: now - 25 * 60 * 60 * 1000 }), now)).toBe(false);
+    expect(snapshotIsFresh(null, now)).toBe(false);
+  });
+});
+
+describe('Session file persistence (SENSOR_HUMOR_PERSIST)', () => {
+  const dir = join(tmpdir(), `sensor-humor-test-${process.pid}`);
+
+  beforeEach(() => {
+    process.env.SENSOR_HUMOR_PERSIST = 'true';
+    process.env.SENSOR_HUMOR_SESSION_DIR = dir;
+    resetSession();
+  });
+
+  afterEach(() => {
+    delete process.env.SENSOR_HUMOR_PERSIST;
+    delete process.env.SENSOR_HUMOR_SESSION_DIR;
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('writes the session file on mutation and the snapshot reflects state', () => {
+    const s = getSession();
+    s.setMood('zoomer');
+    s.tick();
+    s.pushBit('persisted bit', 'heckle');
+
+    const file = join(dir, 'session.json');
+    expect(existsSync(file)).toBe(true);
+    const raw = JSON.parse(readFileSync(file, 'utf-8'));
+    expect(raw.mood).toBe('zoomer');
+    expect(raw.recent_bits.some((b: { text: string }) => b.text === 'persisted bit')).toBe(true);
+  });
+
+  it('does not write when SENSOR_HUMOR_PERSIST is off', () => {
+    delete process.env.SENSOR_HUMOR_PERSIST;
+    rmSync(dir, { recursive: true, force: true });
+    const s = resetSession();
+    s.pushBit('ephemeral', 'heckle');
+    expect(existsSync(join(dir, 'session.json'))).toBe(false);
   });
 });
 

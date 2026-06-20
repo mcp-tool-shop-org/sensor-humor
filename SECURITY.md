@@ -4,7 +4,7 @@
 
 | Version | Supported |
 |---------|-----------|
-| 1.0.x   | Yes       |
+| 1.x     | Yes       |
 | < 1.0   | No        |
 
 ## Reporting a Vulnerability
@@ -27,11 +27,11 @@ Include:
 
 ## Scope
 
-This tool operates **locally only** via MCP stdio transport.
+This tool runs over MCP stdio transport and is local-first.
 
-- **Data touched:** User-provided text for comedic rewriting (in-memory only, not persisted)
-- **Network egress:** Connects to local Ollama instance only (default `http://127.0.0.1:11434`)
-- **No secrets handling** — does not read, store, or transmit credentials
+- **Data touched:** User-provided text for comedic rewriting (in-memory; persisted to disk only when `SENSOR_HUMOR_PERSIST=true`)
+- **Network egress:** Connects to Ollama at `OLLAMA_HOST` (default local `http://127.0.0.1:11434`). Pointing it at a remote/cloud Ollama is the operator's explicit choice
+- **Secrets:** none required for local use. If `OLLAMA_API_KEY` is set (for a remote/cloud host), it is read from the environment and sent only as a `Bearer` header to `OLLAMA_HOST` — never logged, persisted, or echoed (`debug_status` reports only whether a key is set)
 - **No telemetry** is collected or sent
-- **No file system access** — reads no files, writes no files
-- **Session state is in-memory only** — dies when the server process stops
+- **File system:** none by default. With `SENSOR_HUMOR_PERSIST=true`, reads/writes one file — `~/.sensor-humor/session.json` (override dir via `SENSOR_HUMOR_SESSION_DIR`) — containing only session comedy state, no credentials. Auto-expires after 24h
+- **Session state is in-memory by default** — dies when the server process stops unless persistence is enabled

@@ -81,11 +81,22 @@ export function isDebug(): boolean {
   return process.env.SENSOR_HUMOR_DEBUG === 'true';
 }
 
+/** True when an Ollama API key is configured (for a remote/cloud OLLAMA_HOST). */
+export function hasApiKey(): boolean {
+  return !!process.env.OLLAMA_API_KEY;
+}
+
 let _client: Ollama | null = null;
 
 function getClient(): Ollama {
   if (!_client) {
-    _client = new Ollama({ host: getOllamaHost() });
+    const apiKey = process.env.OLLAMA_API_KEY;
+    // When OLLAMA_API_KEY is set (e.g. Ollama Cloud at https://ollama.com), send it as a
+    // Bearer header to OLLAMA_HOST. The key is never logged, persisted, or echoed.
+    _client = new Ollama({
+      host: getOllamaHost(),
+      ...(apiKey ? { headers: { Authorization: `Bearer ${apiKey}` } } : {}),
+    });
   }
   return _client;
 }

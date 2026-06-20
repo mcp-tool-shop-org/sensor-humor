@@ -17,7 +17,7 @@ import { catchphraseGenerate, catchphraseCallback } from './tools/catchphrase.js
 import { getSession, resetSession } from './session.js';
 import { MOOD_DESCRIPTIONS } from './types.js';
 import { getMoodVoiceNotes, getPromptVersion } from './prompts/loader.js';
-import { getModel, getOllamaHost, getTimeoutMs, getOllamaStats, isDebug, probeOllama } from './ollama.js';
+import { getModel, getOllamaHost, getTimeoutMs, getOllamaStats, isDebug, probeOllama, hasApiKey } from './ollama.js';
 
 const server = new McpServer({
   name: 'sensor-humor',
@@ -225,6 +225,7 @@ server.tool(
       voice_backend: process.env.VOICE_SOUNDBOARD_ENGINE || 'default (kokoro)',
       model: getModel(),
       ollama_host: getOllamaHost(),
+      ollama_api_key_set: hasApiKey(),
       timeout_ms: getTimeoutMs(),
       prompt_version: getPromptVersion(),
       ollama_reachable: probe.reachable,

@@ -156,7 +156,10 @@ Dump the current session state, mood config, and voice backend. Useful for inspe
 | `SENSOR_HUMOR_TIMEOUT_MS` | `30000` | Per-call Ollama timeout in ms (invalid values fall back to the default) |
 | `SENSOR_HUMOR_TEMPERATURE` | `0.55` | Generation temperature, clamped 0.0–2.0 (invalid values fall back to the default) |
 | `SENSOR_HUMOR_PROMPT_VERSION` | `1` | Prompt set version. Only `v1` sets ship today; any other value falls back to v1 |
+| `SENSOR_HUMOR_PERSIST` | `false` | Persist session to `~/.sensor-humor/session.json` so callbacks survive a restart (24h expiry) |
+| `SENSOR_HUMOR_SESSION_DIR` | `~/.sensor-humor` | Override the directory for the persisted session file |
 | `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama API endpoint (may point to a remote/cloud Ollama) |
+| `OLLAMA_API_KEY` | _(unset)_ | Bearer token for a remote/cloud Ollama (e.g. `https://ollama.com`); sent only as an `Authorization` header, never logged |
 
 ## Session State
 
