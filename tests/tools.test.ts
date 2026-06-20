@@ -983,3 +983,58 @@ describe('parameterized regression', () => {
     }
   });
 });
+
+describe('comic_timing terminal safety gate (roast mode)', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  it('catches a slur re-introduced by the roast-label retry (which runs after the harsh filter)', async () => {
+    moodSet('roast');
+    // 1: clean but unlabeled -> triggers the roast-label retry, which runs LAST.
+    // 2: that retry sneaks a slur back in — the terminal safety gate must catch it.
+    mockGenerate
+      .mockResolvedValueOnce({ data: { rewrite: 'This code is questionable.', technique_used: 'understatement' } })
+      .mockResolvedValueOnce({ data: { rewrite: 'Verdict: you absolute retard.', technique_used: 'understatement' } });
+
+    const result = await comicTiming('bad code');
+    expect(result.rewrite).not.toMatch(/retard/i);
+    expect(result.rewrite).toContain('bad code');
+  });
+
+  it('catches a simile re-introduced by the roast-label retry', async () => {
+    moodSet('roast');
+    mockGenerate
+      .mockResolvedValueOnce({ data: { rewrite: 'This code is questionable.', technique_used: 'understatement' } })
+      .mockResolvedValueOnce({ data: { rewrite: 'Verdict: this is like a trainwreck.', technique_used: 'understatement' } });
+
+    const result = await comicTiming('bad code');
+    expect(result.rewrite).not.toMatch(/like a/i);
+    expect(result.rewrite).toContain('bad code');
+  });
+});
+
+describe('META_LEAK_PATTERN precision', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  it('does NOT trigger a retry on benign dev vocabulary containing "rule"', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'Broke every rule in the linter and shipped anyway.', technique_used: 'understatement' },
+    });
+    const result = await comicTiming('messy lint config');
+    expect(mockGenerate).toHaveBeenCalledTimes(1); // no false-positive meta retry
+    expect(result.rewrite).toContain('rule');
+  });
+
+  it('still retries on a genuine meta leak ("system prompt", "no emoji")', async () => {
+    mockGenerate
+      .mockResolvedValueOnce({ data: { rewrite: 'The system prompt says no emoji.', technique_used: 'auto' } })
+      .mockResolvedValueOnce({ data: { rewrite: 'Pointer at deadbeef. Naturally.', technique_used: 'understatement' } });
+    await comicTiming('null pointer');
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+  });
+});

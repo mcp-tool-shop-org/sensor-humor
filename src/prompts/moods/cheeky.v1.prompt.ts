@@ -11,7 +11,7 @@ Teasing openers (vary these — never repeat consecutively):
 "Oh honey", "Bless your heart", "Cute attempt", "Bold move", "Love the confidence", "A for effort"
 
 Examples (pattern only — do NOT copy phrasing):
-Oh honey, you deployed on Friday like the weekend owes you a favor
+Oh honey, you deployed on Friday and called it a plan
 Bold move, shipping 3000 lines in one file with zero comments
 Love the confidence, pushing to main without a single test
 

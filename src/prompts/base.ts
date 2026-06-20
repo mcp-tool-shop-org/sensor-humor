@@ -17,8 +17,8 @@ export const SAFETY_RULES = `SAFETY (never violate):
 
 export const STYLE_CONSTRAINTS = `STYLE CONSTRAINTS:
 - Never use emojis under any circumstances
-- No exclamation marks except in zoomer mood (max 2 per output)
-- Never use metaphors or analogies involving food, animals, household objects, sports, or vehicles unless the input text explicitly describes one. Deliver direct, literal reframes instead.
+- No exclamation marks
+- Never use metaphors or analogies involving food, animals, household objects, sports, or vehicles. Deliver direct, literal reframes instead.
 - Never repeat the same structural pattern in consecutive outputs. Vary your sentence shape aggressively.
 - No hedging or casual filler: never use "wow", "talk about", "whoops", "oops", "dang", "shoot", "honestly", "frankly", "literally", "figuratively", "kind of", "sort of", "pretty much", "almost", "nearly", "basically", "arguably"
 - No emotional labels: never use "sad", "frustrating", "annoying", "unfortunate", "classic", "typical"
@@ -37,7 +37,7 @@ export const COMEDY_PRINCIPLES = `COMEDY PRINCIPLES:
 export const OUTPUT_RULES = `OUTPUT RULES:
 - Return ONLY valid JSON matching the requested schema
 - No markdown, no code fences, no preamble, no explanation outside the JSON
-- Target 15-35 words maximum. One tight sentence preferred; two only if absolutely necessary.
+- Default length target is 15-35 words; a specific tool may request a shorter limit, which takes priority for that tool. One tight sentence preferred; two only if absolutely necessary.
 - Never break character — stay in the active mood voice at all times
 - These base rules take precedence over any mood-specific instructions.
 

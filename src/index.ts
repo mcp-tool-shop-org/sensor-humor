@@ -23,6 +23,42 @@ const server = new McpServer({
   version: '1.0.2',
 });
 
+/** Hints keyed by error code, so a tool error tells the caller how to fix it. */
+const ERROR_HINTS: Record<string, string> = {
+  validation: 'Check the tool arguments against the documented schema (e.g. a valid mood).',
+  connection: 'Ensure Ollama is running and OLLAMA_HOST is reachable.',
+  timeout: 'The model took too long — raise SENSOR_HUMOR_TIMEOUT_MS or use a smaller model.',
+  unknown: 'Set SENSOR_HUMOR_DEBUG=true and check stderr for detail.',
+};
+
+function classifyToolError(e: Error): string {
+  if (e.name === 'ZodError' || /ZodError|Invalid mood|Valid moods/i.test(e.message)) return 'validation';
+  if (/ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET/.test(e.message)) return 'connection';
+  if (/timeout/i.test(e.message)) return 'timeout';
+  return 'unknown';
+}
+
+/**
+ * Map any thrown error to the studio Structured Error Shape ({ code, message, hint,
+ * retryable, cause? }) and return it as an MCP tool error result. The server never
+ * exposes a raw stack trace — only this structured, actionable shape.
+ */
+function toolError(err: unknown) {
+  const e = err instanceof Error ? err : new Error(String(err));
+  const code = classifyToolError(e);
+  const body: Record<string, unknown> = {
+    code,
+    message: e.message,
+    hint: ERROR_HINTS[code] ?? ERROR_HINTS.unknown,
+    retryable: code === 'connection' || code === 'timeout',
+  };
+  if (process.env.SENSOR_HUMOR_DEBUG === 'true') body.cause = e.name;
+  return {
+    content: [{ type: 'text' as const, text: JSON.stringify(body, null, 2) }],
+    isError: true,
+  };
+}
+
 // --- mood_set ---
 server.tool(
   'mood_set',
@@ -39,14 +75,7 @@ server.tool(
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
     } catch (err) {
-      const e = err as Error;
-      const detail = process.env.SENSOR_HUMOR_DEBUG === 'true'
-        ? `Error [${e.name}]: ${e.message}`
-        : `Error: ${e.message}`;
-      return {
-        content: [{ type: 'text', text: detail }],
-        isError: true,
-      };
+      return toolError(err);
     }
   },
 );
@@ -84,14 +113,7 @@ server.tool(
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
     } catch (err) {
-      const e = err as Error;
-      const detail = process.env.SENSOR_HUMOR_DEBUG === 'true'
-        ? `Error [${e.name}]: ${e.message}`
-        : `Error: ${e.message}`;
-      return {
-        content: [{ type: 'text', text: detail }],
-        isError: true,
-      };
+      return toolError(err);
     }
   },
 );
@@ -114,14 +136,7 @@ server.tool(
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
     } catch (err) {
-      const e = err as Error;
-      const detail = process.env.SENSOR_HUMOR_DEBUG === 'true'
-        ? `Error [${e.name}]: ${e.message}`
-        : `Error: ${e.message}`;
-      return {
-        content: [{ type: 'text', text: detail }],
-        isError: true,
-      };
+      return toolError(err);
     }
   },
 );
@@ -140,14 +155,7 @@ server.tool(
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
     } catch (err) {
-      const e = err as Error;
-      const detail = process.env.SENSOR_HUMOR_DEBUG === 'true'
-        ? `Error [${e.name}]: ${e.message}`
-        : `Error: ${e.message}`;
-      return {
-        content: [{ type: 'text', text: detail }],
-        isError: true,
-      };
+      return toolError(err);
     }
   },
 );
@@ -166,14 +174,7 @@ server.tool(
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
     } catch (err) {
-      const e = err as Error;
-      const detail = process.env.SENSOR_HUMOR_DEBUG === 'true'
-        ? `Error [${e.name}]: ${e.message}`
-        : `Error: ${e.message}`;
-      return {
-        content: [{ type: 'text', text: detail }],
-        isError: true,
-      };
+      return toolError(err);
     }
   },
 );
@@ -257,9 +258,20 @@ async function main() {
   // Fire-and-forget health check
   checkOllamaHealth();
 
-  // Graceful shutdown
-  const shutdown = () => {
+  // Graceful shutdown — close the transport (flushing buffered stdout) before exit,
+  // guarded against a double signal, with a hard-exit safety net. (BK-06)
+  let shuttingDown = false;
+  const shutdown = async () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     console.error('[sensor-humor] Shutting down...');
+    const hardExit = setTimeout(() => process.exit(0), 2000);
+    hardExit.unref?.();
+    try {
+      await server.close();
+    } catch {
+      // Already closing / not connected — we're exiting regardless.
+    }
     process.exit(0);
   };
   process.on('SIGINT', shutdown);

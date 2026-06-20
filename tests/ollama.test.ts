@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 
 const mockChat = vi.fn();
@@ -39,6 +39,11 @@ function makeOptions() {
 describe('generateComedy', () => {
   beforeEach(() => {
     mockChat.mockReset();
+  });
+
+  afterEach(() => {
+    // Guard against a thrown assertion leaking the timeout env into later tests (TEST-09).
+    delete process.env.SENSOR_HUMOR_TIMEOUT_MS;
   });
 
   it('returns parsed data on success', async () => {
@@ -160,4 +165,24 @@ describe('generateComedy', () => {
     // Clean up
     delete process.env.SENSOR_HUMOR_TIMEOUT_MS;
   }, 10000);
+
+  it('classifies error reasons into the fallback_reason tag (table-driven)', async () => {
+    const respErr = (msg: string, status: number) =>
+      Object.assign(new Error(msg), { name: 'ResponseError', status_code: status });
+    const cases: Array<[Error, string]> = [
+      [new Error('connect ECONNREFUSED 127.0.0.1:11434'), 'connection'],
+      [new Error('getaddrinfo EAI_AGAIN ollama.com'), 'connection'],
+      [respErr('model "nope" not found', 404), 'model-not-found'],
+      [respErr('unauthorized', 401), 'auth'],
+      [respErr('too many requests', 429), 'rate-limit'],
+      [respErr('internal server error', 500), 'server'],
+    ];
+    for (const [err, expected] of cases) {
+      mockChat.mockReset();
+      mockChat.mockRejectedValue(err);
+      const result = await generateComedy<TestResult>(makeOptions(), fallback);
+      expect(result.data.text).toBe('fallback');
+      expect(result.fallback_reason).toBe(expected);
+    }
+  });
 });

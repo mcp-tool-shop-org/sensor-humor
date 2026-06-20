@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Session, resetSession } from '../src/session.js';
+import { Session, resetSession, getSession } from '../src/session.js';
 import { MOOD_STYLES, DEFAULT_MOOD } from '../src/types.js';
 
 describe('Session', () => {
@@ -221,5 +221,32 @@ describe('types', () => {
 
   it('defaults to dry', () => {
     expect(DEFAULT_MOOD).toBe('dry');
+  });
+});
+
+describe('Session introspection', () => {
+  beforeEach(() => resetSession());
+
+  it('bufferStats reports buffer occupancy', () => {
+    const s = getSession();
+    s.tick();
+    s.pushBit('a bit', 'roast');
+    s.addGag('setup', 'tag');
+    s.useCatchphrase('phrase');
+    expect(s.bufferStats()).toEqual({ recent_bits: 1, max: 20, running_gags: 1, catchphrases: 1 });
+  });
+
+  it('findCallbackCandidates uses substring match for short (<3 char) tags', () => {
+    const s = getSession();
+    s.addGag('the j2 build', 'j2');
+    expect(s.findCallbackCandidates('debugging j2 again')).toHaveLength(1);
+  });
+
+  it('findCallbackCandidates uses word-boundary match for >=3 char tags', () => {
+    const s = getSession();
+    s.addGag('segfault city', 'seg');
+    // 'seg' as a whole word does NOT match inside 'segfaulting'
+    expect(s.findCallbackCandidates('the app is segfaulting')).toHaveLength(0);
+    expect(s.findCallbackCandidates('that seg again')).toHaveLength(1);
   });
 });

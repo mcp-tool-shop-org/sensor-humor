@@ -41,16 +41,31 @@ function getPromptVersion(): string {
   return process.env.SENSOR_HUMOR_PROMPT_VERSION ?? '1';
 }
 
+// loadMoodPrompt runs on every tool call, so a version-downgrade warning is emitted at most
+// once per mood+version combo to surface the misconfig without spamming stderr.
+const _warnedDowngrades = new Set<string>();
+
 export function loadMoodPrompt(mood: MoodStyle): MoodPromptModule {
   const version = getPromptVersion();
   const key = `${mood}.v${version}`;
   const fallbackKey = `${mood}.v1`;
 
-  const module = PROMPT_MAP[key] ?? PROMPT_MAP[fallbackKey];
-  if (!module) {
+  const module = PROMPT_MAP[key];
+  if (module) return module;
+
+  // Requested version is missing — fall back to v1, but surface the downgrade so an
+  // operator who set SENSOR_HUMOR_PROMPT_VERSION knows their A/B knob is not active.
+  if (version !== '1' && !_warnedDowngrades.has(key)) {
+    _warnedDowngrades.add(key);
+    console.error(
+      `[sensor-humor] No "${mood}" prompt at v${version}; falling back to v1`,
+    );
+  }
+  const fallback = PROMPT_MAP[fallbackKey];
+  if (!fallback) {
     throw new Error(`No prompt found for mood "${mood}" at version ${version} or v1`);
   }
-  return module;
+  return fallback;
 }
 
 export function getMoodSystemPrompt(mood: MoodStyle): string {
