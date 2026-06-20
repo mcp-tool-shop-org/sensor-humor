@@ -107,8 +107,10 @@ ${sanitizeForPrompt(text)}
 
 Respond with JSON only.`;
 
+  // Voiced fallback so a backend-down result reads as an in-voice stock line, not a bare echo
+  // of the caller's input (OBS-06); voicedSafeFallback also guarantees it is slur/simile-free.
   const fallback: ComicTimingResult = {
-    rewrite: text,
+    rewrite: voicedSafeFallback(session.mood, text),
     technique_used: 'understatement',
   };
 
@@ -152,9 +154,11 @@ Respond with JSON only.`;
   // EVERY content-shaping retry above (including the roast-label retry), so a late retry can
   // never sneak a slur or comparison past the filters and reach the user. The harsh filter
   // is the final guarantee the README makes — this enforces it unconditionally.
+  let gateFired = false;
   if (HARSH_FILTER.test(result.data.rewrite) || hasSimileLeak(result.data.rewrite)) {
     result.data.rewrite = voicedSafeFallback(session.mood, text);
     result.data.technique_used = 'understatement';
+    gateFired = true;
     if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
       console.error('[sensor-humor] ComicTiming: terminal safety gate triggered, using safe fallback');
     }
@@ -173,6 +177,13 @@ Respond with JSON only.`;
     } else if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
       console.error(`[sensor-humor] callback_source "${result.data.callback_source}" did not match any gag candidate`);
     }
+  }
+
+  // Surface the degradation signal: backend failure (fallback_reason) or a safety substitution.
+  const degradedReason = result.fallback_reason ?? (gateFired ? 'safety-filter' : undefined);
+  if (degradedReason) {
+    result.data.degraded = true;
+    result.data.degraded_reason = degradedReason;
   }
 
   return result.data;

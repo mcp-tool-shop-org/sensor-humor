@@ -28,8 +28,8 @@ const HECKLE_JSON_SCHEMA = {
 
 const HECKLE_NUM_PREDICT = 40;
 
-/** Static input-free heckle fallbacks for when the caller's input carries a banned token. */
-const HECKLE_STATIC_FALLBACK: Record<string, string> = {
+// Record<MoodStyle, string> so adding a mood fails the build until it has a static fallback.
+const HECKLE_STATIC_FALLBACK: Record<MoodStyle, string> = {
   roast: 'Verdict: noted.',
   cynic: 'Of course.',
   cheeky: 'Oh honey.',
@@ -55,7 +55,7 @@ function heckleFallback(mood: MoodStyle, target: string): string {
     default: candidate = `${t}. That's a choice.`;
   }
   if (HARSH_FILTER.test(candidate) || hasSimileLeak(candidate)) {
-    return HECKLE_STATIC_FALLBACK[mood] ?? HECKLE_STATIC_FALLBACK.dry;
+    return HECKLE_STATIC_FALLBACK[mood];
   }
   return candidate;
 }
@@ -108,8 +108,10 @@ export async function heckle(target: string): Promise<HeckleResult> {
 
   const userPrompt = buildHeckleUserPrompt(mood, target);
 
+  // Voiced fallback so a backend-down heckle reads as an in-voice stock line, not a bare
+  // echo of the caller's input (OBS-06).
   const fallback: z.infer<typeof HeckleSchema> = {
-    heckle: target,
+    heckle: heckleFallback(mood, target),
   };
 
   let result = await generateComedy<z.infer<typeof HeckleSchema>>(
@@ -168,15 +170,19 @@ export async function heckle(target: string): Promise<HeckleResult> {
 
   // Terminal safety gate: harsh + simile are the last word, so a late retry cannot
   // re-introduce a banned pattern an earlier filter already cleared.
+  let gateFired = false;
   if (HARSH_FILTER.test(result.data.heckle) || hasSimileLeak(result.data.heckle)) {
     result.data.heckle = heckleFallback(mood, target);
+    gateFired = true;
   }
 
   // Update session
   session.pushBit(result.data.heckle, 'heckle');
 
+  const degradedReason = result.fallback_reason ?? (gateFired ? 'safety-filter' : undefined);
   return {
     heckle: result.data.heckle,
     mood,
+    ...(degradedReason ? { degraded: true, degraded_reason: degradedReason } : {}),
   };
 }

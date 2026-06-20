@@ -3,6 +3,8 @@
  * Used by comic_timing, roast, and heckle to reject banned output patterns.
  */
 
+import type { MoodStyle } from './types.js';
+
 /** Detect similes, comparisons, and figurative language. */
 export const SIMILE_PATTERN =
   /\blike a\b|\blike doing\b|\blike picking\b|\blike organizing\b|\blike flying\b|\bas if\b|\bas though\b|\bas a\b|\bsimilar to\b|\bresembles\b|\bakin to\b|\bcomparable to\b|\banalogous\b/i;
@@ -44,7 +46,8 @@ export const SIMILE_RETRY_SUFFIX =
  * token: the voiced fallback interpolates the input, so echoing it would re-emit the slur or
  * simile. We collapse to one of these instead so the fallback can never reach the user dirty.
  */
-const STATIC_SAFE_FALLBACK: Record<string, string> = {
+// Record<MoodStyle, string> so adding a mood fails the build until it has a static fallback.
+const STATIC_SAFE_FALLBACK: Record<MoodStyle, string> = {
   roast: 'Verdict: not even worth the words.',
   cynic: 'Of course. Predictable.',
   cheeky: 'Oh honey. Bless.',
@@ -59,7 +62,7 @@ const STATIC_SAFE_FALLBACK: Record<string, string> = {
  * caller's input itself carries a slur/comparison, it collapses to a static input-free line so
  * the fallback never echoes a banned token back. heckle keeps its own shorter shape.
  */
-export function voicedSafeFallback(mood: string, text: string): string {
+export function voicedSafeFallback(mood: MoodStyle, text: string): string {
   const t = sanitizeForPrompt(text);
   let candidate: string;
   switch (mood) {
@@ -71,7 +74,7 @@ export function voicedSafeFallback(mood: string, text: string): string {
     default: candidate = `${t}. No further comment.`;
   }
   if (HARSH_FILTER.test(candidate) || SIMILE_PATTERN.test(candidate)) {
-    return STATIC_SAFE_FALLBACK[mood] ?? STATIC_SAFE_FALLBACK.dry;
+    return STATIC_SAFE_FALLBACK[mood];
   }
   return candidate;
 }

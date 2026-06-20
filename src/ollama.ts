@@ -18,7 +18,7 @@ const MAX_PREDICT = 60;
 const MAX_RETRIES = 1;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
-function getTimeoutMs(): number {
+export function getTimeoutMs(): number {
   const env = process.env.SENSOR_HUMOR_TIMEOUT_MS;
   if (env === undefined) return DEFAULT_TIMEOUT_MS;
   const n = Number.parseInt(env, 10);
@@ -29,6 +29,22 @@ function getTimeoutMs(): number {
       );
     }
     return DEFAULT_TIMEOUT_MS;
+  }
+  return n;
+}
+
+/** Resolve the generation temperature, env-overridable for A/B sweeps (clamped 0.0-2.0). */
+export function getTemperature(): number {
+  const env = process.env.SENSOR_HUMOR_TEMPERATURE;
+  if (env === undefined) return DEFAULT_TEMPERATURE;
+  const n = Number.parseFloat(env);
+  if (!Number.isFinite(n) || n < 0 || n > 2) {
+    if (isDebug()) {
+      console.error(
+        `[sensor-humor] Invalid SENSOR_HUMOR_TEMPERATURE="${env}"; falling back to ${DEFAULT_TEMPERATURE}`,
+      );
+    }
+    return DEFAULT_TEMPERATURE;
   }
   return n;
 }
@@ -53,15 +69,15 @@ function classifyError(err: unknown): string {
   return 'unknown';
 }
 
-function getModel(): string {
+export function getModel(): string {
   return process.env.SENSOR_HUMOR_MODEL ?? DEFAULT_MODEL;
 }
 
-function getOllamaHost(): string {
+export function getOllamaHost(): string {
   return process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434';
 }
 
-function isDebug(): boolean {
+export function isDebug(): boolean {
   return process.env.SENSOR_HUMOR_DEBUG === 'true';
 }
 
@@ -72,6 +88,49 @@ function getClient(): Ollama {
     _client = new Ollama({ host: getOllamaHost() });
   }
   return _client;
+}
+
+/** Lightweight in-process generation stats, surfaced by the debug_status tool. */
+export interface OllamaStats {
+  total_calls: number;
+  fallback_calls: number;
+  last_fallback_reason?: string;
+  last_latency_ms?: number;
+}
+
+const _stats: OllamaStats = { total_calls: 0, fallback_calls: 0 };
+
+/** Read a snapshot of generation stats (does not perform any live Ollama call). */
+export function getOllamaStats(): OllamaStats {
+  return { ..._stats };
+}
+
+/** Best-effort liveness probe: is Ollama reachable, and is the configured model pulled? */
+export async function probeOllama(
+  timeoutMs = 3000,
+): Promise<{ reachable: boolean; model_available: boolean; model: string; reason?: string }> {
+  const model = getModel();
+  try {
+    const client = getClient();
+    let handle: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      handle = setTimeout(() => reject(new Error(`Ollama timeout after ${timeoutMs}ms`)), timeoutMs);
+      handle.unref?.();
+    });
+    let res: Awaited<ReturnType<typeof client.list>>;
+    try {
+      res = await Promise.race([client.list(), timeout]);
+    } finally {
+      clearTimeout(handle);
+    }
+    const names = (res.models ?? []).map((m) => (m as { name?: string; model?: string }).name ?? (m as { model?: string }).model ?? '');
+    const model_available = names.some(
+      (n) => n === model || n === `${model}:latest` || n.startsWith(`${model}:`),
+    );
+    return { reachable: true, model_available, model };
+  } catch (err) {
+    return { reachable: false, model_available: false, model, reason: classifyError(err) };
+  }
 }
 
 export interface GenerateComedyOptions<T> {
@@ -103,8 +162,10 @@ export async function generateComedy<T>(
 ): Promise<GenerateComedyResult<T>> {
   const { systemPrompt, userPrompt, schema, jsonSchema, numPredict } = options;
   const model = getModel();
+  const temperature = getTemperature();
   const debug = isDebug();
   const client = getClient();
+  _stats.total_calls++;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const startMs = Date.now();
@@ -126,7 +187,7 @@ export async function generateComedy<T>(
         ],
         format: jsonSchema,
         options: {
-          temperature: DEFAULT_TEMPERATURE,
+          temperature,
           top_p: DEFAULT_TOP_P,
           top_k: DEFAULT_TOP_K,
           mirostat: DEFAULT_MIROSTAT,
@@ -175,13 +236,14 @@ export async function generateComedy<T>(
       const metadata: GenerationMetadata | undefined = debug
         ? {
             model,
-            temperature: DEFAULT_TEMPERATURE,
+            temperature,
             tokens_in: response.prompt_eval_count ?? 0,
             tokens_out: response.eval_count ?? 0,
             latency_ms: latencyMs,
           }
         : undefined;
 
+      _stats.last_latency_ms = latencyMs;
       return { data: validated, metadata };
     } catch (err) {
       const errType = classifyError(err);
@@ -192,11 +254,15 @@ export async function generateComedy<T>(
         if (debug) {
           console.error(`[sensor-humor] All retries exhausted (last: ${errType}), returning fallback`);
         }
+        _stats.fallback_calls++;
+        _stats.last_fallback_reason = errType;
         return { data: fallback, fallback_reason: errType };
       }
     }
   }
 
   // TypeScript exhaustiveness guard — loop always returns or falls through to the catch block's return
+  _stats.fallback_calls++;
+  _stats.last_fallback_reason = 'exhausted';
   return { data: fallback, fallback_reason: 'exhausted' };
 }

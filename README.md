@@ -99,8 +99,10 @@ All tools inherit current mood from session.
 | `heckle` | `(target)` | Short pointed jab |
 | `catchphrase_generate` | `(context?)` | Create reusable bit (stored in session) |
 | `catchphrase_callback` | `()` | Reuse most-used catchphrase (or null) |
-| `debug_status` | `()` | Dump current session state, mood config, and voice backend |
+| `debug_status` | `()` | Live backend health (Ollama reachable, model pulled), resolved config, fallback counts, and session state |
 | `session_reset` | `()` | Reset all session state (mood, gags, bits, catchphrases, turn counter) |
+
+**Degraded output:** when Ollama is unreachable or the model isn't pulled, the comedy tools return an in-voice canned line plus `degraded: true` and a `degraded_reason` (`connection`, `model-not-found`, `timeout`, `safety-filter`, …) so a caller can tell a real joke from a fallback — a genuine model generation carries no `degraded` flag. Call `debug_status` to see live reachability, the resolved model/host/timeout, and fallback counts. `roast` and `heckle` also echo the active `mood`; `catchphrase_generate` returns `is_fresh` (`true` = newly minted, `false` = an existing session catchphrase was reused).
 
 ## Mood Prosody (Piper Voice)
 
@@ -121,7 +123,8 @@ Each mood maps to a distinct Piper voice + prosody configuration:
 # sensor-humor
 SENSOR_HUMOR_DEBUG=true                # verbose prompt/response dumps
 SENSOR_HUMOR_TIMEOUT_MS=30000          # Ollama call timeout in ms (default: 30000; invalid values fall back to default)
-SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (falls back to v1 if missing)
+SENSOR_HUMOR_TEMPERATURE=0.55          # generation temperature, clamped 0.0-2.0 (default: 0.55)
+SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (only v1 ships today; other values fall back to v1)
 SENSOR_HUMOR_MODEL=qwen2.5:7b         # Ollama model (default: qwen2.5:7b)
 OLLAMA_HOST=http://127.0.0.1:11434    # Ollama API host (default: http://127.0.0.1:11434)
 

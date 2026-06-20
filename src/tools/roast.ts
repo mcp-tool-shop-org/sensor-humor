@@ -150,12 +150,14 @@ export async function roast(
 
   // Terminal safety gate: harsh + comparison + simile are the last word, so a late retry
   // cannot re-introduce a banned pattern an earlier filter already cleared.
+  let gateFired = false;
   if (
     HARSH_FILTER.test(result.data.roast) ||
     hasSimileLeak(result.data.roast) ||
     COMPARISON_LEAK.test(result.data.roast)
   ) {
     result.data.roast = voicedSafeFallback(mood, target);
+    gateFired = true;
   }
 
   // Clamp severity. The schema already constrains 1-5, so this only guards the fallback
@@ -165,9 +167,11 @@ export async function roast(
   // Update session
   session.pushBit(result.data.roast, 'roast');
 
+  const degradedReason = result.fallback_reason ?? (gateFired ? 'safety-filter' : undefined);
   return {
     roast: result.data.roast,
     severity,
     mood,
+    ...(degradedReason ? { degraded: true, degraded_reason: degradedReason } : {}),
   };
 }

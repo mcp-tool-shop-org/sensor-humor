@@ -16,7 +16,8 @@ import { heckle } from './tools/heckle.js';
 import { catchphraseGenerate, catchphraseCallback } from './tools/catchphrase.js';
 import { getSession, resetSession } from './session.js';
 import { MOOD_DESCRIPTIONS } from './types.js';
-import { getMoodVoiceNotes } from './prompts/loader.js';
+import { getMoodVoiceNotes, getPromptVersion } from './prompts/loader.js';
+import { getModel, getOllamaHost, getTimeoutMs, getOllamaStats, isDebug, probeOllama } from './ollama.js';
 
 const server = new McpServer({
   name: 'sensor-humor',
@@ -27,12 +28,16 @@ const server = new McpServer({
 const ERROR_HINTS: Record<string, string> = {
   validation: 'Check the tool arguments against the documented schema (e.g. a valid mood).',
   connection: 'Ensure Ollama is running and OLLAMA_HOST is reachable.',
+  'model-not-found': 'The configured model is not pulled. Run: ollama pull <SENSOR_HUMOR_MODEL> (default qwen2.5:7b).',
   timeout: 'The model took too long — raise SENSOR_HUMOR_TIMEOUT_MS or use a smaller model.',
+  auth: 'Ollama rejected the request (auth). Check credentials for a remote/cloud OLLAMA_HOST.',
+  'rate-limit': 'Rate limited by the Ollama host. Retry after a short delay.',
   unknown: 'Set SENSOR_HUMOR_DEBUG=true and check stderr for detail.',
 };
 
 function classifyToolError(e: Error): string {
   if (e.name === 'ZodError' || /ZodError|Invalid mood|Valid moods/i.test(e.message)) return 'validation';
+  if (e.name === 'ResponseError' && /not found|no such model/i.test(e.message)) return 'model-not-found';
   if (/ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET/.test(e.message)) return 'connection';
   if (/timeout/i.test(e.message)) return 'timeout';
   return 'unknown';
@@ -204,6 +209,9 @@ server.tool(
   {},
   async () => {
     const session = getSession();
+    // Best-effort live probe so the operator gets a one-call answer to "is the backend healthy
+    // and correctly configured?" — bounded timeout, never throws.
+    const probe = await probeOllama(2000);
     const status = {
       mood: session.mood,
       mood_description: MOOD_DESCRIPTIONS[session.mood],
@@ -215,8 +223,14 @@ server.tool(
       buffer_stats: session.bufferStats(),
       catchphrases: Object.fromEntries(session.catchphrases),
       voice_backend: process.env.VOICE_SOUNDBOARD_ENGINE || 'default (kokoro)',
-      model: process.env.SENSOR_HUMOR_MODEL || 'qwen2.5:7b',
-      debug: process.env.SENSOR_HUMOR_DEBUG === 'true',
+      model: getModel(),
+      ollama_host: getOllamaHost(),
+      timeout_ms: getTimeoutMs(),
+      prompt_version: getPromptVersion(),
+      ollama_reachable: probe.reachable,
+      model_available: probe.model_available,
+      generation: getOllamaStats(),
+      debug: isDebug(),
     };
     return {
       content: [{ type: 'text', text: JSON.stringify(status, null, 2) }],
@@ -239,14 +253,21 @@ server.tool(
 
 // --- Ollama health check (non-blocking) ---
 async function checkOllamaHealth(): Promise<void> {
-  try {
-    const { Ollama } = await import('ollama');
-    const client = new Ollama({ host: process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434' });
-    await client.list();
-    console.error('[sensor-humor] Ollama connection verified');
-  } catch {
-    console.error('[sensor-humor] WARNING: Ollama not reachable. Tools will use fallbacks until available.');
+  const probe = await probeOllama();
+  if (!probe.reachable) {
+    console.error(
+      `[sensor-humor] WARNING: Ollama not reachable at ${getOllamaHost()}. Tools will use fallbacks until available.`,
+    );
+    return;
   }
+  if (!probe.model_available) {
+    // The #1 fresh-install failure: daemon up, model not pulled. Name the exact fix.
+    console.error(
+      `[sensor-humor] WARNING: model "${probe.model}" is not pulled. Tools will use fallbacks. Run: ollama pull ${probe.model}`,
+    );
+    return;
+  }
+  console.error('[sensor-humor] Ollama connection verified');
 }
 
 // --- Start server ---

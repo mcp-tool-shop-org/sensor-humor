@@ -1074,3 +1074,52 @@ describe('safe fallback never echoes a banned token from the INPUT', () => {
     expect(result.heckle).not.toMatch(/retard/i);
   });
 });
+
+describe('degraded signal', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  it('comic_timing flags degraded + reason when the backend fell back', async () => {
+    mockGenerate.mockResolvedValue({ data: { rewrite: 'Forty-seven builds. A record.', technique_used: 'understatement' }, fallback_reason: 'connection' });
+    const result = await comicTiming('Build failed');
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('connection');
+  });
+
+  it('comic_timing carries NO degraded flag on a real generation', async () => {
+    mockGenerate.mockResolvedValue({ data: { rewrite: 'Forty-seven builds. A record.', technique_used: 'understatement' } });
+    const result = await comicTiming('Build failed');
+    expect(result.degraded).toBeUndefined();
+  });
+
+  it('comic_timing reports degraded_reason "safety-filter" when the terminal gate fires', async () => {
+    mockGenerate.mockResolvedValue({ data: { rewrite: 'you absolute retard', technique_used: 'understatement' } });
+    const result = await comicTiming('bad code');
+    expect(result.rewrite).not.toMatch(/retard/i);
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('safety-filter');
+  });
+
+  it('roast flags degraded + reason', async () => {
+    mockGenerate.mockResolvedValue({ data: { roast: 'Verdict: Done.', severity: 3 }, fallback_reason: 'model-not-found' });
+    const result = await roast('bad code');
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('model-not-found');
+  });
+
+  it('heckle flags degraded + reason', async () => {
+    mockGenerate.mockResolvedValue({ data: { heckle: 'Bold.' }, fallback_reason: 'timeout' });
+    const result = await heckle('no tests');
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('timeout');
+  });
+
+  it('catchphrase_generate flags degraded + reason', async () => {
+    mockGenerate.mockResolvedValue({ data: { phrase: 'Ship it and pray.' }, fallback_reason: 'connection' });
+    const result = await catchphraseGenerate('anything');
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('connection');
+  });
+});

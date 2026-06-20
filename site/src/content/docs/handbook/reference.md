@@ -152,10 +152,11 @@ Dump the current session state, mood config, and voice backend. Useful for inspe
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SENSOR_HUMOR_DEBUG` | `false` | Verbose logging of prompts, responses, and session updates |
-| `SENSOR_HUMOR_OBSERVE` | `false` | Full chain trace including voice params |
-| `SENSOR_HUMOR_PROMPT_VERSION` | `1` | Prompt set version for A/B testing |
 | `SENSOR_HUMOR_MODEL` | `qwen2.5:7b` | Ollama model to use for comedy generation |
-| `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama API endpoint |
+| `SENSOR_HUMOR_TIMEOUT_MS` | `30000` | Per-call Ollama timeout in ms (invalid values fall back to the default) |
+| `SENSOR_HUMOR_TEMPERATURE` | `0.55` | Generation temperature, clamped 0.0–2.0 (invalid values fall back to the default) |
+| `SENSOR_HUMOR_PROMPT_VERSION` | `1` | Prompt set version. Only `v1` sets ship today; any other value falls back to v1 |
+| `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama API endpoint (may point to a remote/cloud Ollama) |
 
 ## Session State
 

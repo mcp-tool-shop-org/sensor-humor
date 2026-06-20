@@ -11,7 +11,7 @@ vi.mock('ollama', () => ({
 }));
 
 // Must import AFTER mock setup
-const { generateComedy } = await import('../src/ollama.js');
+const { generateComedy, getTemperature } = await import('../src/ollama.js');
 
 const TestSchema = z.object({
   text: z.string(),
@@ -165,6 +165,18 @@ describe('generateComedy', () => {
     // Clean up
     delete process.env.SENSOR_HUMOR_TIMEOUT_MS;
   }, 10000);
+
+  it('getTemperature defaults, reads valid overrides, and guards invalid/out-of-range', () => {
+    delete process.env.SENSOR_HUMOR_TEMPERATURE;
+    expect(getTemperature()).toBe(0.55);
+    process.env.SENSOR_HUMOR_TEMPERATURE = '0.8';
+    expect(getTemperature()).toBe(0.8);
+    for (const bad of ['abc', '-1', '5', '']) {
+      process.env.SENSOR_HUMOR_TEMPERATURE = bad;
+      expect(getTemperature()).toBe(0.55);
+    }
+    delete process.env.SENSOR_HUMOR_TEMPERATURE;
+  });
 
   it('classifies error reasons into the fallback_reason tag (table-driven)', async () => {
     const respErr = (msg: string, status: number) =>

@@ -76,24 +76,36 @@ export interface MoodGetResult {
   session_gag_count: number;
 }
 
-export interface ComicTimingResult {
+/**
+ * Degradation signal carried on every comedy result. Present (true) only when the output is
+ * NOT a genuine model generation: either the Ollama backend failed (degraded_reason is the
+ * classified error code) or the safety filter had to substitute a canned line
+ * (degraded_reason: 'safety-filter'). Absent on the happy path, so existing callers are
+ * unaffected and the absence of the flag is a positive signal of a real generation.
+ */
+export interface Degradable {
+  degraded?: boolean;
+  degraded_reason?: string;
+}
+
+export interface ComicTimingResult extends Degradable {
   rewrite: string;
   technique_used: string;
   callback_source?: string;
 }
 
-export interface RoastResult {
+export interface RoastResult extends Degradable {
   roast: string;
   severity: number;
   mood: MoodStyle;
 }
 
-export interface HeckleResult {
+export interface HeckleResult extends Degradable {
   heckle: string;
   mood: MoodStyle;
 }
 
-export interface CatchphraseGenerateResult {
+export interface CatchphraseGenerateResult extends Degradable {
   phrase: string;
   is_fresh: boolean;
 }

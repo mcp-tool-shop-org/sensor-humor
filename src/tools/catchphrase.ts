@@ -83,16 +83,19 @@ Respond with JSON only.`;
   );
 
   const phrase = result.data.phrase;
+  const degraded = result.fallback_reason
+    ? { degraded: true, degraded_reason: result.fallback_reason }
+    : {};
   // If Ollama returned a phrase we already have, treat as reuse not fresh
   if (session.catchphrases.has(phrase)) {
     session.useCatchphrase(phrase);
     session.pushBit(phrase, 'catchphrase');
-    return { phrase, is_fresh: false };
+    return { phrase, is_fresh: false, ...degraded };
   }
   session.useCatchphrase(phrase);
   session.pushBit(phrase, 'catchphrase');
 
-  return { phrase, is_fresh: true };
+  return { phrase, is_fresh: true, ...degraded };
 }
 
 /**

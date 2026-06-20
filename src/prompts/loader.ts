@@ -30,14 +30,15 @@ const PROMPT_MAP: Record<string, MoodPromptModule> = {
   'zoomer.v1': zoomer_v1,
 };
 
-// Validate all moods have v1 prompts at module load
+// Fail fast at startup if a mood is missing its v1 prompt, rather than throwing mid-call the
+// first time that mood is invoked (a missing prompt is a build/wiring error, not a runtime one).
 for (const mood of MOOD_STYLES) {
   if (!PROMPT_MAP[`${mood}.v1`]) {
-    console.error(`[sensor-humor] WARNING: No v1 prompt found for mood "${mood}"`);
+    throw new Error(`[sensor-humor] No v1 prompt registered for mood "${mood}" — add it to PROMPT_MAP in loader.ts`);
   }
 }
 
-function getPromptVersion(): string {
+export function getPromptVersion(): string {
   return process.env.SENSOR_HUMOR_PROMPT_VERSION ?? '1';
 }
 
