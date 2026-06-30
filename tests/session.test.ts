@@ -338,6 +338,47 @@ describe('Session persistence (serialize / snapshot)', () => {
     expect([...restored.catchphrases.keys()].some((k) => k.includes(SLUR))).toBe(false);
   });
 
+  // SP-03 (B9): the snapshot version is written (serialize sets version:1) but was never read
+  // on load — an unknown-versioned (future or tampered) file would be force-fit through the v1
+  // field logic. fromSnapshot must guard the version: a known version (1) roundtrips; an unknown
+  // version is discarded and a fresh session is returned.
+  it('discards a snapshot with an unsupported version and starts fresh', () => {
+    const restored = Session.fromSnapshot(
+      makeSnapshot({
+        version: 99 as never,
+        mood: 'roast',
+        running_gags: [{ setup: 'g', tag: 'gag', used: 3, last_turn: 7 }],
+        recent_bits: [{ text: 'b', turn: 5, technique: 'roast' }],
+        catchphrases: [['phrase', 4]],
+        turn_counter: 42,
+      })
+    );
+    // None of the v1 fields are admitted — it's a clean default session.
+    expect(restored.mood).toBe(DEFAULT_MOOD);
+    expect(restored.running_gags).toEqual([]);
+    expect(restored.recent_bits).toEqual([]);
+    expect(restored.catchphrases.size).toBe(0);
+    expect(restored.turn_counter).toBe(0);
+  });
+
+  it('still roundtrips a version:1 snapshot (known version preserved)', () => {
+    const restored = Session.fromSnapshot(
+      makeSnapshot({
+        version: 1,
+        mood: 'cynic',
+        running_gags: [{ setup: 'g', tag: 'gag', used: 3, last_turn: 7 }],
+        recent_bits: [{ text: 'b', turn: 5, technique: 'roast' }],
+        catchphrases: [['phrase', 4]],
+        turn_counter: 42,
+      })
+    );
+    expect(restored.mood).toBe('cynic');
+    expect(restored.running_gags).toHaveLength(1);
+    expect(restored.recent_bits).toHaveLength(1);
+    expect(restored.catchphrases.get('phrase')).toBe(4);
+    expect(restored.turn_counter).toBe(42);
+  });
+
   it('snapshotIsFresh: fresh within 24h, stale beyond, false for null', () => {
     const now = 1_000_000_000_000;
     expect(snapshotIsFresh(makeSnapshot({ saved_at: now - 1000 }), now)).toBe(true);
@@ -399,6 +440,81 @@ describe('Session file persistence (SENSOR_HUMOR_PERSIST)', () => {
   });
 });
 
+// SP-05 (B11): running_gags and catchphrases grew without bound (unlike recent_bits, capped at
+// MAX_RECENT_BITS) and were injected verbatim into EVERY prompt, ballooning the system prompt in
+// a long persisted session. Both collections must now (a) cap with LRU eviction of the stalest
+// entry, and (b) inject at most a fixed number of entries into their summaries.
+describe('Session bounded growth (SP-05)', () => {
+  beforeEach(() => resetSession());
+
+  it('caps running_gags and evicts the stalest (lowest last_turn) gag', () => {
+    const s = getSession();
+    // Add 40 distinct gags, each on a later turn so last_turn strictly increases.
+    for (let i = 0; i < 40; i++) {
+      s.tick();
+      s.addGag(`setup ${i}`, `tag${i}`);
+    }
+    const stats = s.bufferStats();
+    expect(stats.running_gags).toBeLessThanOrEqual(stats.max_running_gags);
+    expect(stats.running_gags).toBe(stats.max_running_gags);
+    // The earliest (stalest) tags must have been evicted; the newest must remain.
+    const tags = s.running_gags.map((g) => g.tag);
+    expect(tags).toContain('tag39');
+    expect(tags).not.toContain('tag0');
+  });
+
+  it('caps catchphrases and evicts the least-used / stalest entry', () => {
+    const s = getSession();
+    for (let i = 0; i < 40; i++) {
+      s.tick();
+      s.useCatchphrase(`phrase ${i}`);
+    }
+    const stats = s.bufferStats();
+    expect(stats.catchphrases).toBeLessThanOrEqual(stats.max_catchphrases);
+    expect(stats.catchphrases).toBe(stats.max_catchphrases);
+    expect(s.catchphrases.has('phrase 39')).toBe(true);
+    expect(s.catchphrases.has('phrase 0')).toBe(false);
+  });
+
+  it('re-using a catchphrase keeps it alive (not evicted as stale)', () => {
+    const s = getSession();
+    s.tick();
+    s.useCatchphrase('keepme');
+    // Flood with fresh phrases, but keep bumping 'keepme' so it stays warm.
+    for (let i = 0; i < 40; i++) {
+      s.tick();
+      s.useCatchphrase(`flood ${i}`);
+      s.useCatchphrase('keepme');
+    }
+    expect(s.catchphrases.has('keepme')).toBe(true);
+  });
+
+  it('gagsSummary injects at most the capped number of entries', () => {
+    const s = getSession();
+    for (let i = 0; i < 40; i++) {
+      s.tick();
+      s.addGag(`setup ${i}`, `tag${i}`);
+    }
+    const summary = s.gagsSummary();
+    const lineCount = summary.split('\n').filter((l) => l.startsWith('- ')).length;
+    expect(lineCount).toBeLessThanOrEqual(5);
+    // The most recent gag must be present in the injected slice.
+    expect(summary).toContain('tag39');
+  });
+
+  it('catchphrasesSummary injects at most the capped number of entries', () => {
+    const s = getSession();
+    for (let i = 0; i < 40; i++) {
+      s.tick();
+      s.useCatchphrase(`phrase ${i}`);
+    }
+    const summary = s.catchphrasesSummary();
+    const lineCount = summary.split('\n').filter((l) => l.startsWith('- ')).length;
+    expect(lineCount).toBeLessThanOrEqual(5);
+    expect(summary).toContain('phrase 39');
+  });
+});
+
 describe('Session introspection', () => {
   beforeEach(() => resetSession());
 
@@ -408,7 +524,14 @@ describe('Session introspection', () => {
     s.pushBit('a bit', 'roast');
     s.addGag('setup', 'tag');
     s.useCatchphrase('phrase');
-    expect(s.bufferStats()).toEqual({ recent_bits: 1, max: 20, running_gags: 1, catchphrases: 1 });
+    expect(s.bufferStats()).toEqual({
+      recent_bits: 1,
+      max: 20,
+      running_gags: 1,
+      max_running_gags: 30,
+      catchphrases: 1,
+      max_catchphrases: 30,
+    });
   });
 
   it('findCallbackCandidates uses substring match for short (<3 char) tags', () => {

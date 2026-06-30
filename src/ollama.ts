@@ -6,7 +6,7 @@
 
 import { Ollama } from 'ollama';
 import type { z } from 'zod';
-import type { GenerationMetadata } from './types.js';
+import type { DegradedReason, GenerationMetadata } from './types.js';
 
 const DEFAULT_MODEL = 'qwen2.5:7b';
 const DEFAULT_TEMPERATURE = 0.55;
@@ -17,6 +17,8 @@ const DEFAULT_MIROSTAT_TAU = 5.0;
 const MAX_PREDICT = 60;
 const MAX_RETRIES = 1;
 const DEFAULT_TIMEOUT_MS = 30_000;
+/** Backoff before retrying a throttled/5xx response — an instant retry just re-hits the limit. */
+const RETRY_BACKOFF_MS = 400;
 
 export function getTimeoutMs(): number {
   const env = process.env.SENSOR_HUMOR_TIMEOUT_MS;
@@ -49,7 +51,7 @@ export function getTemperature(): number {
   return n;
 }
 
-function classifyError(err: unknown): string {
+function classifyError(err: unknown): DegradedReason {
   if (err instanceof SyntaxError) return 'json-parse';
   if (err instanceof Error) {
     const msg = err.message;
@@ -69,12 +71,36 @@ function classifyError(err: unknown): string {
   return 'unknown';
 }
 
+const DEFAULT_HOST = 'http://127.0.0.1:11434';
+
 export function getModel(): string {
-  return process.env.SENSOR_HUMOR_MODEL ?? DEFAULT_MODEL;
+  const env = process.env.SENSOR_HUMOR_MODEL;
+  if (env === undefined) return DEFAULT_MODEL;
+  const trimmed = env.trim();
+  if (trimmed === '') {
+    // An empty/whitespace model would surface later as an opaque model-not-found; name it now.
+    if (isDebug()) {
+      console.error(`[sensor-humor] SENSOR_HUMOR_MODEL is empty/whitespace; using default "${DEFAULT_MODEL}"`);
+    }
+    return DEFAULT_MODEL;
+  }
+  return trimmed;
 }
 
 export function getOllamaHost(): string {
-  return process.env.OLLAMA_HOST ?? 'http://127.0.0.1:11434';
+  const env = process.env.OLLAMA_HOST;
+  if (env === undefined) return DEFAULT_HOST;
+  const trimmed = env.trim();
+  if (trimmed === '') return DEFAULT_HOST;
+  try {
+    new URL(trimmed); // validate so a malformed host fails loudly here, not as an opaque connection error
+  } catch {
+    if (isDebug()) {
+      console.error(`[sensor-humor] Invalid OLLAMA_HOST="${env}"; using default "${DEFAULT_HOST}"`);
+    }
+    return DEFAULT_HOST;
+  }
+  return trimmed;
 }
 
 export function isDebug(): boolean {
@@ -85,8 +111,6 @@ export function isDebug(): boolean {
 export function hasApiKey(): boolean {
   return !!process.env.OLLAMA_API_KEY;
 }
-
-let _client: Ollama | null = null;
 
 /**
  * Build the Ollama client config (host + optional cloud auth header), optionally
@@ -109,16 +133,10 @@ function buildClientConfig(signal?: AbortSignal): ConstructorParameters<typeof O
   };
 }
 
-function getClient(): Ollama {
-  if (!_client) {
-    _client = new Ollama(buildClientConfig());
-  }
-  return _client;
-}
-
 /**
- * A client bound to a single call's AbortController. Used when a timeout must be able
- * to cancel the underlying socket, not just stop awaiting it. (A-BK-002)
+ * A client bound to a single call's AbortController. Every live path builds a fresh client per
+ * call so the abort signal can be threaded into the custom fetch (the ollama client does not
+ * forward a signal to fetch on non-streamed requests) — there is no shared cached client. (A-BK-002)
  */
 function getAbortableClient(signal: AbortSignal): Ollama {
   return new Ollama(buildClientConfig(signal));
@@ -128,15 +146,27 @@ function getAbortableClient(signal: AbortSignal): Ollama {
 export interface OllamaStats {
   total_calls: number;
   fallback_calls: number;
-  last_fallback_reason?: string;
+  /** Count of safety-filter substitutions (slur/simile/meta-leak) across all tools — a distinct
+   *  degradation class from backend fallbacks, and the key content-trust signal for an operator. */
+  safety_filter_fires: number;
+  last_fallback_reason?: DegradedReason;
   last_latency_ms?: number;
 }
 
-const _stats: OllamaStats = { total_calls: 0, fallback_calls: 0 };
+const _stats: OllamaStats = { total_calls: 0, fallback_calls: 0, safety_filter_fires: 0 };
 
 /** Read a snapshot of generation stats (does not perform any live Ollama call). */
 export function getOllamaStats(): OllamaStats {
   return { ..._stats };
+}
+
+/**
+ * Record that a tool-layer safety gate substituted a line (slur/simile/meta-leak). The tools call
+ * this when a terminal gate fires, so debug_status can surface how often the safety floor is firing
+ * — invisible otherwise, since these substitutions happen above the generateComedy layer.
+ */
+export function recordSafetyFilterFire(): void {
+  _stats.safety_filter_fires++;
 }
 
 /** Best-effort liveness probe: is Ollama reachable, and is the configured model pulled? */
@@ -188,7 +218,7 @@ export interface GenerateComedyOptions<T> {
 export interface GenerateComedyResult<T> {
   data: T;
   metadata?: GenerationMetadata;
-  fallback_reason?: string;
+  fallback_reason?: DegradedReason;
 }
 
 /**
@@ -305,6 +335,11 @@ export async function generateComedy<T>(
         _stats.fallback_calls++;
         _stats.last_fallback_reason = errType;
         return { data: fallback, fallback_reason: errType };
+      }
+      // A throttled (429) or 5xx response retried instantly just re-hits the same limit; honor
+      // the classification with a short backoff before the bounded retry. (BK-B-07)
+      if (errType === 'rate-limit' || errType === 'server') {
+        await new Promise<void>((resolve) => setTimeout(resolve, RETRY_BACKOFF_MS));
       }
     }
   }

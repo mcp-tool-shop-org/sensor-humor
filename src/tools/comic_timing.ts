@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { getSession } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
-import { generateComedy } from '../ollama.js';
+import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
 import { COMIC_TECHNIQUES, type ComicTechnique, type ComicTimingResult } from '../types.js';
 import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, sanitizeForPrompt, voicedSafeFallback } from '../validators.js';
 import { ROAST_LABEL_PATTERN } from './roast.js';
@@ -150,15 +150,21 @@ Respond with JSON only.`;
     result = await gen(`${userPrompt}\n\nStart with a label like "Verdict:", "Diagnosis:", or "Classification:" followed by 1 tight sentence.`);
   }
 
-  // Terminal safety gate: the harsh filter and simile check must be the LAST word, after
-  // EVERY content-shaping retry above (including the roast-label retry), so a late retry can
-  // never sneak a slur or comparison past the filters and reach the user. The harsh filter
-  // is the final guarantee the README makes — this enforces it unconditionally.
+  // Terminal safety gate: the harsh filter, simile check, AND meta-leak check must be the LAST
+  // word, after EVERY content-shaping retry above (including the roast-label retry), so a late
+  // retry can never sneak a slur, comparison, or leaked prompt-internal past the filters and reach
+  // the user. META_LEAK is included here (BK-B-02) so a persistent prompt/system-instruction leak
+  // is substituted AND flagged degraded, instead of returning verbatim and unflagged.
   let gateFired = false;
-  if (hasHarshLeak(result.data.rewrite) || hasSimileLeak(result.data.rewrite)) {
+  if (
+    hasHarshLeak(result.data.rewrite) ||
+    hasSimileLeak(result.data.rewrite) ||
+    META_LEAK_PATTERN.test(result.data.rewrite)
+  ) {
     result.data.rewrite = voicedSafeFallback(session.mood, text);
     result.data.technique_used = 'understatement';
     gateFired = true;
+    recordSafetyFilterFire();
     if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
       console.error('[sensor-humor] ComicTiming: terminal safety gate triggered, using safe fallback');
     }

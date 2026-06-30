@@ -16,8 +16,10 @@ import { heckle } from './tools/heckle.js';
 import { catchphraseGenerate, catchphraseCallback } from './tools/catchphrase.js';
 import { getSession, resetSession } from './session.js';
 import { MOOD_DESCRIPTIONS } from './types.js';
-import { getMoodVoiceNotes, getPromptVersion } from './prompts/loader.js';
-import { getModel, getOllamaHost, getTimeoutMs, getOllamaStats, isDebug, probeOllama, hasApiKey } from './ollama.js';
+import { createHash } from 'node:crypto';
+import { baseSystemPrefix } from './prompts/base.js';
+import { getMoodVoiceNotes, getMoodSystemPrompt, getPromptVersion, getActivePromptKey } from './prompts/loader.js';
+import { getModel, getOllamaHost, getTimeoutMs, getTemperature, getOllamaStats, isDebug, probeOllama, hasApiKey } from './ollama.js';
 
 const server = new McpServer({
   name: 'sensor-humor',
@@ -221,6 +223,16 @@ server.tool(
       // Best-effort live probe so the operator gets a one-call answer to "is the backend healthy
       // and correctly configured?" — bounded timeout, never throws.
       const probe = await probeOllama(2000);
+      // Prompt fingerprint (B5 / v1.2 F4): a short stable hash binding the ACTIVE prompt text
+      // (base + the resolved mood prompt) + model + temperature, so two runs' outputs can be
+      // attributed to a prompt-vs-model change deterministically. active_prompt_key surfaces the
+      // REAL version in effect (exposes a silent v2->v1 downgrade that prompt_version hides).
+      const activePromptKey = getActivePromptKey(session.mood);
+      const activePromptText = `${baseSystemPrefix()}\n${getMoodSystemPrompt(session.mood)}\n${getMoodVoiceNotes(session.mood)}`;
+      const promptFingerprint = createHash('sha256')
+        .update(`${activePromptKey}|${getModel()}|${getTemperature()}|${activePromptText}`)
+        .digest('hex')
+        .slice(0, 12);
       const status = {
         mood: session.mood,
         mood_description: MOOD_DESCRIPTIONS[session.mood],
@@ -237,7 +249,12 @@ server.tool(
         ollama_api_key_set: hasApiKey(),
         timeout_ms: getTimeoutMs(),
         prompt_version: getPromptVersion(),
+        active_prompt_key: activePromptKey,
+        prompt_fingerprint: promptFingerprint,
         ollama_reachable: probe.reachable,
+        // When unreachable, surface the already-classified cause so the operator gets a one-call
+        // answer (connection vs auth vs timeout) without re-running under SENSOR_HUMOR_DEBUG. (B6)
+        ...(probe.reachable ? {} : { unreachable_reason: probe.reason }),
         model_available: probe.model_available,
         generation: getOllamaStats(),
         debug: isDebug(),

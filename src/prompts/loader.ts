@@ -39,7 +39,28 @@ for (const mood of MOOD_STYLES) {
 }
 
 export function getPromptVersion(): string {
-  return process.env.SENSOR_HUMOR_PROMPT_VERSION ?? '1';
+  const env = process.env.SENSOR_HUMOR_PROMPT_VERSION;
+  if (env === undefined) return '1';
+  const trimmed = env.trim();
+  // Validate the shape (a positive integer) like getTimeoutMs/getTemperature do, so a malformed
+  // value (e.g. '', 'v2', '1.0') is named rather than silently coerced to a missing key -> v1.
+  if (!/^\d+$/.test(trimmed) || trimmed === '0') {
+    if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+      console.error(`[sensor-humor] Invalid SENSOR_HUMOR_PROMPT_VERSION="${env}"; using v1`);
+    }
+    return '1';
+  }
+  return trimmed;
+}
+
+/**
+ * The prompt key actually IN EFFECT for a mood — the resolved 'mood.vN' that loadMoodPrompt would
+ * return, accounting for the silent v->v1 downgrade. Exposed so debug_status can show the real
+ * active version (not just the requested SENSOR_HUMOR_PROMPT_VERSION) for drift attribution. (B5)
+ */
+export function getActivePromptKey(mood: MoodStyle): string {
+  const key = `${mood}.v${getPromptVersion()}`;
+  return PROMPT_MAP[key] ? key : `${mood}.v1`;
 }
 
 // loadMoodPrompt runs on every tool call, so a version-downgrade warning is emitted at most

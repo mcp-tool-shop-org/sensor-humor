@@ -17,7 +17,18 @@ import {
 import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak } from './validators.js';
 
 const MAX_RECENT_BITS = 20;
+// Unbounded collections balloon the system prompt in a long persisted session; cap them like
+// recent_bits and evict the stalest entry (lowest last_turn / use count) when over the cap.
+const MAX_RUNNING_GAGS = 30;
+const MAX_CATCHPHRASES = 30;
+// How many entries each summary injects into the prompt — bounded so the prompt stays small even
+// before eviction kicks in (recentBitsSummary already slices to the last 5; mirror that here).
+const SUMMARY_INJECT_LIMIT = 5;
 const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000; // stale gags aren't funny
+
+// Snapshot schema versions this build can load. Adding a future version is a one-line change here
+// (plus whatever migration fromSnapshot needs). An unknown version is discarded, not force-fit.
+const SUPPORTED_SNAPSHOT_VERSIONS = new Set<number>([1]);
 
 function persistEnabled(): boolean {
   return process.env.SENSOR_HUMOR_PERSIST === 'true';
@@ -106,6 +117,23 @@ export class Session implements SensorHumorSession {
         used: 1,
         last_turn: this.turn_counter,
       });
+      if (this.running_gags.length > MAX_RUNNING_GAGS) {
+        // Evict the stalest gag: lowest last_turn (oldest reference), then lowest use count.
+        let stalest = 0;
+        for (let i = 1; i < this.running_gags.length; i++) {
+          const a = this.running_gags[i];
+          const b = this.running_gags[stalest];
+          if (a.last_turn < b.last_turn || (a.last_turn === b.last_turn && a.used < b.used)) {
+            stalest = i;
+          }
+        }
+        const [evicted] = this.running_gags.splice(stalest, 1);
+        if (process.env.SENSOR_HUMOR_DEBUG === 'true' && evicted) {
+          console.error(
+            `[sensor-humor] Evicted gag "${evicted.tag}" (last turn ${evicted.last_turn}, used ${evicted.used}x; cap ${MAX_RUNNING_GAGS})`
+          );
+        }
+      }
     }
     this.save();
   }
@@ -113,7 +141,29 @@ export class Session implements SensorHumorSession {
   /** Record a catchphrase use. Returns the new use count. */
   useCatchphrase(phrase: string): number {
     const count = (this.catchphrases.get(phrase) ?? 0) + 1;
+    // Re-insert (delete + set) so a reused phrase moves to the end of the Map's insertion order —
+    // it becomes "most recently used" and is last to be evicted on a tie.
+    this.catchphrases.delete(phrase);
     this.catchphrases.set(phrase, count);
+    if (this.catchphrases.size > MAX_CATCHPHRASES) {
+      // Evict the least-used / stalest: lowest use count, ties broken by oldest insertion order.
+      let stalestKey: string | undefined;
+      let stalestCount = Infinity;
+      for (const [k, c] of this.catchphrases) {
+        if (c < stalestCount) {
+          stalestCount = c;
+          stalestKey = k;
+        }
+      }
+      if (stalestKey !== undefined) {
+        this.catchphrases.delete(stalestKey);
+        if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+          console.error(
+            `[sensor-humor] Evicted catchphrase "${stalestKey}" (used ${stalestCount}x; cap ${MAX_CATCHPHRASES})`
+          );
+        }
+      }
+    }
     this.save();
     return count;
   }
@@ -141,31 +191,47 @@ export class Session implements SensorHumorSession {
     return `Recent bits:\n${lines.join('\n')}`;
   }
 
-  /** Compact summary of running gags for prompt injection. */
+  /** Compact summary of running gags for prompt injection (most recent few, to keep the prompt bounded). */
   gagsSummary(): string {
     if (this.running_gags.length === 0) return 'No running gags yet.';
-    const lines = this.running_gags.map(
+    // Inject only the most-recently-referenced gags (highest last_turn); same discipline as
+    // recentBitsSummary's last-5 slice, so the prompt stays small even before eviction.
+    const recent = [...this.running_gags]
+      .sort((a, b) => a.last_turn - b.last_turn)
+      .slice(-SUMMARY_INJECT_LIMIT);
+    const lines = recent.map(
       (g) => `- "${sanitizeForPrompt(g.setup)}" (tag: ${sanitizeForPrompt(g.tag)}, used ${g.used}x, last turn ${g.last_turn})`
     );
     return `Running gags:\n${lines.join('\n')}`;
   }
 
-  /** Compact summary of catchphrases for prompt injection. */
+  /** Compact summary of catchphrases for prompt injection (most recent few, to keep the prompt bounded). */
   catchphrasesSummary(): string {
     if (this.catchphrases.size === 0) return 'No catchphrases yet.';
-    const lines = Array.from(this.catchphrases.entries()).map(
-      ([phrase, count]) => `- "${sanitizeForPrompt(phrase)}" (used ${count}x)`
-    );
+    // The Map's insertion order is recency-ordered (useCatchphrase re-inserts on use); take the
+    // most recent few so the prompt stays bounded, mirroring recentBitsSummary's last-5 slice.
+    const lines = Array.from(this.catchphrases.entries())
+      .slice(-SUMMARY_INJECT_LIMIT)
+      .map(([phrase, count]) => `- "${sanitizeForPrompt(phrase)}" (used ${count}x)`);
     return `Catchphrases:\n${lines.join('\n')}`;
   }
 
   /** Buffer occupancy stats for debug_status. */
-  bufferStats(): { recent_bits: number; max: number; running_gags: number; catchphrases: number } {
+  bufferStats(): {
+    recent_bits: number;
+    max: number;
+    running_gags: number;
+    max_running_gags: number;
+    catchphrases: number;
+    max_catchphrases: number;
+  } {
     return {
       recent_bits: this.recent_bits.length,
       max: MAX_RECENT_BITS,
       running_gags: this.running_gags.length,
+      max_running_gags: MAX_RUNNING_GAGS,
       catchphrases: this.catchphrases.size,
+      max_catchphrases: MAX_CATCHPHRASES,
     };
   }
 
@@ -196,6 +262,18 @@ export class Session implements SensorHumorSession {
   /** Rebuild a Session from a snapshot, defensively (the file may be corrupt or tampered). */
   static fromSnapshot(s: SessionSnapshot): Session {
     const sess = new Session();
+    // Version guard: serialize() stamps a schema version, but older builds never read it on load —
+    // an unknown-versioned (future or tampered) file would be force-fit through the v1 field logic
+    // below. If the version isn't one we support, discard the snapshot and start fresh rather than
+    // run unknown-shaped data through v1 parsing.
+    if (!SUPPORTED_SNAPSHOT_VERSIONS.has((s as { version?: number })?.version as number)) {
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+        console.error(
+          `[sensor-humor] persisted snapshot version ${(s as { version?: number })?.version} not supported, starting fresh`
+        );
+      }
+      return sess;
+    }
     // Defense-in-depth: a tampered or legacy persist file could carry a slur/simile in a stored
     // gag, bit, or catchphrase. Drop dirty content on LOAD so it never enters the live session,
     // reaches a prompt (stateSummary), or is replayed to the user (callback). This complements

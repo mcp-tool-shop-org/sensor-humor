@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { getSession } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
-import { generateComedy } from '../ollama.js';
+import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
 import type { RoastContext, RoastResult, MoodStyle } from '../types.js';
 import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, sanitizeForPrompt, voicedSafeFallback } from '../validators.js';
 
@@ -104,6 +104,11 @@ export async function roast(
     );
   }
 
+  // Track ANY safety substitution (an intermediate fallback OR the terminal gate) so the degraded
+  // signal fires whenever a safe line replaced the model output — not only on the terminal gate.
+  // Without this, an intermediate fallback that cleans the output leaves the response unflagged.
+  let safetySubstituted = false;
+
   // Comparison/metaphor/simile leak check: retry once with negative prompt
   if (COMPARISON_LEAK.test(result.data.roast) || hasSimileLeak(result.data.roast)) {
     const cleanPrompt = `${userPrompt}${SIMILE_RETRY_SUFFIX}`;
@@ -120,6 +125,7 @@ export async function roast(
     // If still leaking after retry, use mood-specific safe fallback
     if (COMPARISON_LEAK.test(result.data.roast) || hasSimileLeak(result.data.roast)) {
       result.data.roast = voicedSafeFallback(mood, target);
+      safetySubstituted = true;
       if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
         console.error('[sensor-humor] Roast: simile leak persisted after retry, using safe fallback');
       }
@@ -142,6 +148,7 @@ export async function roast(
     // Safe fallback if harsh filter still triggers after retry
     if (hasHarshLeak(result.data.roast)) {
       result.data.roast = voicedSafeFallback(mood, target);
+      safetySubstituted = true;
       if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
         console.error('[sensor-humor] Roast: harsh filter persisted after retry, using safe fallback');
       }
@@ -150,15 +157,15 @@ export async function roast(
 
   // Terminal safety gate: harsh + comparison + simile are the last word, so a late retry
   // cannot re-introduce a banned pattern an earlier filter already cleared.
-  let gateFired = false;
   if (
     hasHarshLeak(result.data.roast) ||
     hasSimileLeak(result.data.roast) ||
     COMPARISON_LEAK.test(result.data.roast)
   ) {
     result.data.roast = voicedSafeFallback(mood, target);
-    gateFired = true;
+    safetySubstituted = true;
   }
+  if (safetySubstituted) recordSafetyFilterFire();
 
   // Clamp severity. The schema already constrains 1-5, so this only guards the fallback
   // literal and any future schema relaxation — defensive, intentionally redundant.
@@ -167,7 +174,7 @@ export async function roast(
   // Update session
   session.pushBit(result.data.roast, 'roast');
 
-  const degradedReason = result.fallback_reason ?? (gateFired ? 'safety-filter' : undefined);
+  const degradedReason = result.fallback_reason ?? (safetySubstituted ? 'safety-filter' : undefined);
   return {
     roast: result.data.roast,
     severity,

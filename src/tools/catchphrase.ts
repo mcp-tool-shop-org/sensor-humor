@@ -7,8 +7,8 @@ import { z } from 'zod';
 import { getSession } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
-import { generateComedy } from '../ollama.js';
-import type { CatchphraseCallbackResult, CatchphraseGenerateResult, MoodStyle } from '../types.js';
+import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
+import type { CatchphraseCallbackResult, CatchphraseGenerateResult, Degradable, MoodStyle } from '../types.js';
 import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak } from '../validators.js';
 
 /** Escape regex special characters in a string. */
@@ -116,8 +116,9 @@ Respond with JSON only.`;
   // pushBit), so a slur/simile can never be persisted and replayed by callback or future
   // prompts. A gated phrase collapses to a static input-free catchphrase.
   const gate = safeCatchphrase(session.mood, result.data.phrase);
+  if (gate.gated) recordSafetyFilterFire();
   const phrase = gate.phrase;
-  const degraded = gate.gated
+  const degraded: Degradable = gate.gated
     ? { degraded: true, degraded_reason: 'safety-filter' }
     : result.fallback_reason
       ? { degraded: true, degraded_reason: result.fallback_reason }
@@ -157,10 +158,17 @@ export function catchphraseCallback(): CatchphraseCallbackResult | null {
   const newCount = session.useCatchphrase(bestPhrase);
   // Terminal safety gate: a persisted/legacy phrase could be dirty (slur/simile). Re-check and
   // substitute an input-free static catchphrase before returning, so callback never replays a
-  // banned token. pushBit uses the gated phrase so the recent-bits ring stays clean too.
-  const safe = safeCatchphrase(session.mood, bestPhrase).phrase;
-  session.pushBit(safe, 'catchphrase');
+  // banned token. pushBit uses the gated phrase so the recent-bits ring stays clean too. When the
+  // gate fires, signal degraded:'safety-filter' so the substitution is machine-visible — a
+  // substituted callback must never read as a genuine recall (Q4 / BK-B-01). (B1)
+  const gate = safeCatchphrase(session.mood, bestPhrase);
+  if (gate.gated) recordSafetyFilterFire();
+  session.pushBit(gate.phrase, 'catchphrase');
   session.tick();
 
-  return { phrase: safe, use_count: newCount };
+  return {
+    phrase: gate.phrase,
+    use_count: newCount,
+    ...(gate.gated ? { degraded: true, degraded_reason: 'safety-filter' as const } : {}),
+  };
 }

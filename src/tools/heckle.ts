@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { getSession } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
-import { generateComedy } from '../ollama.js';
+import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
 import type { HeckleResult, MoodStyle } from '../types.js';
 import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, sanitizeForPrompt } from '../validators.js';
 
@@ -125,6 +125,10 @@ export async function heckle(target: string): Promise<HeckleResult> {
     fallback,
   );
 
+  // Track ANY safety substitution (intermediate fallback OR terminal gate) so the degraded signal
+  // fires whenever a safe line replaced the model output, not only on the terminal gate.
+  let safetySubstituted = false;
+
   // Simile/comparison leak check: retry once with negative prompt
   if (hasSimileLeak(result.data.heckle)) {
     const simileRetryPrompt = `${userPrompt}${SIMILE_RETRY_SUFFIX}`;
@@ -140,6 +144,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
     );
     if (hasSimileLeak(result.data.heckle)) {
       result.data.heckle = heckleFallback(mood, target);
+      safetySubstituted = true;
       if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
         console.error('[sensor-humor] Heckle: simile leak persisted after retry, using safe fallback');
       }
@@ -162,6 +167,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
     // Safe fallback if harsh filter still triggers after retry
     if (hasHarshLeak(result.data.heckle)) {
       result.data.heckle = heckleFallback(mood, target);
+      safetySubstituted = true;
       if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
         console.error('[sensor-humor] Heckle: harsh filter persisted after retry, using safe fallback');
       }
@@ -170,16 +176,16 @@ export async function heckle(target: string): Promise<HeckleResult> {
 
   // Terminal safety gate: harsh + simile are the last word, so a late retry cannot
   // re-introduce a banned pattern an earlier filter already cleared.
-  let gateFired = false;
   if (hasHarshLeak(result.data.heckle) || hasSimileLeak(result.data.heckle)) {
     result.data.heckle = heckleFallback(mood, target);
-    gateFired = true;
+    safetySubstituted = true;
   }
+  if (safetySubstituted) recordSafetyFilterFire();
 
   // Update session
   session.pushBit(result.data.heckle, 'heckle');
 
-  const degradedReason = result.fallback_reason ?? (gateFired ? 'safety-filter' : undefined);
+  const degradedReason = result.fallback_reason ?? (safetySubstituted ? 'safety-filter' : undefined);
   return {
     heckle: result.data.heckle,
     mood,

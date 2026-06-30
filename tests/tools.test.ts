@@ -3,13 +3,16 @@ import { resetSession, getSession } from '../src/session.js';
 import { MOOD_STYLES, MOOD_DESCRIPTIONS, type MoodStyle } from '../src/types.js';
 import { HARSH_FILTER, SIMILE_PATTERN } from '../src/validators.js';
 
-// Mock the Ollama module so tests don't need a live server
+// Mock the Ollama module so tests don't need a live server. recordSafetyFilterFire is a no-op
+// counter the tools call when a terminal gate fires — stub it so the tool code path runs.
 vi.mock('../src/ollama.js', () => ({
   generateComedy: vi.fn(),
+  recordSafetyFilterFire: vi.fn(),
 }));
 
-import { generateComedy } from '../src/ollama.js';
+import { generateComedy, recordSafetyFilterFire } from '../src/ollama.js';
 const mockGenerate = vi.mocked(generateComedy);
+const mockRecordSafetyFire = vi.mocked(recordSafetyFilterFire);
 
 // Import tools after mock is set up
 import { moodSet, moodGet } from '../src/tools/mood.js';
@@ -1182,5 +1185,79 @@ describe('degraded signal', () => {
     const result = await catchphraseGenerate('anything');
     expect(result.degraded).toBe(true);
     expect(result.degraded_reason).toBe('connection');
+  });
+});
+
+// Stage C — the degradation contract (study-swarm Q4): every degraded output must be
+// machine-signalled with a closed-enum reason, and NO safety substitution may read as genuine.
+describe('Stage C degradation contract', () => {
+  // The closed DegradedReason set (mirrors types.ts DegradedReason). A reason outside this set
+  // would be an un-branchable contract violation for a consuming agent.
+  const KNOWN_DEGRADED_REASONS = new Set([
+    'safety-filter', 'connection', 'timeout', 'model-not-found', 'auth',
+    'rate-limit', 'server', 'http', 'json-parse', 'validation', 'exhausted', 'unknown',
+  ]);
+
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+    mockRecordSafetyFire.mockClear();
+  });
+
+  it('catchphraseCallback flags degraded when its safety gate substitutes a stored dirty phrase (B1)', () => {
+    const session = getSession();
+    // Store a dirty phrase directly (bypassing the on-load content gate) so the callback gate
+    // is the thing under test — it must substitute AND signal, not silently swap.
+    session.useCatchphrase('you absolute retard');
+    const result = catchphraseCallback();
+    expect(result).not.toBeNull();
+    expect(HARSH_FILTER.test(result!.phrase)).toBe(false);
+    expect(result!.phrase).not.toMatch(/retard/i);
+    expect(result!.degraded).toBe(true);
+    expect(result!.degraded_reason).toBe('safety-filter');
+    expect(mockRecordSafetyFire).toHaveBeenCalled();
+  });
+
+  it('catchphraseCallback carries NO degraded flag for a clean recalled phrase', () => {
+    const session = getSession();
+    session.useCatchphrase('Ship it and pray.');
+    const result = catchphraseCallback();
+    expect(result!.phrase).toBe('Ship it and pray.');
+    expect(result!.degraded).toBeUndefined();
+  });
+
+  it('comic_timing terminal-gates a persistent meta-leak and flags degraded safety-filter (B2)', async () => {
+    // Model leaks prompt internals on every attempt; the meta-leak retry does not clear it, so the
+    // terminal gate must substitute + flag rather than return the leak verbatim and unflagged.
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'well, the rules say no emoji here', technique_used: 'understatement' },
+    });
+    const result = await comicTiming('ship the build');
+    expect(result.rewrite).not.toMatch(/the rules say/i);
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('safety-filter');
+    expect(mockRecordSafetyFire).toHaveBeenCalled();
+  });
+
+  it('roast flags degraded when an INTERMEDIATE safety fallback substitutes, not only the terminal gate', async () => {
+    // First call leaks a simile; the retry STILL leaks -> the intermediate fallback substitutes and
+    // cleans the output, so the terminal gate never fires. The degraded signal must still be set.
+    mockGenerate
+      .mockResolvedValueOnce({ data: { roast: 'broken like a charm', severity: 3 } })
+      .mockResolvedValueOnce({ data: { roast: 'still broken like a dream', severity: 3 } });
+    const result = await roast('the code');
+    expect(SIMILE_PATTERN.test(result.roast)).toBe(false);
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('safety-filter');
+  });
+
+  it('every degraded output carries a reason from the closed DegradedReason set', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'x', technique_used: 'understatement' },
+      fallback_reason: 'rate-limit',
+    });
+    const result = await comicTiming('anything');
+    expect(result.degraded).toBe(true);
+    expect(KNOWN_DEGRADED_REASONS.has(result.degraded_reason as string)).toBe(true);
   });
 });

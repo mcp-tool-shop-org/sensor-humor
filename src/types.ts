@@ -77,6 +77,27 @@ export interface MoodGetResult {
 }
 
 /**
+ * Closed, machine-branchable set of degradation reasons. 'safety-filter' is set by the tool-layer
+ * terminal/safety gates (any slur/simile/meta-leak substitution); the rest are the classified
+ * Ollama/backend failure codes from classifyError (kept in sync — classifyError returns this type)
+ * plus 'exhausted' (retries exhausted with no classified cause). Q4 grounding: a consuming LLM
+ * agent must be able to branch on the reason exhaustively, so it is a closed union, not a string.
+ */
+export type DegradedReason =
+  | 'safety-filter'
+  | 'connection'
+  | 'timeout'
+  | 'model-not-found'
+  | 'auth'
+  | 'rate-limit'
+  | 'server'
+  | 'http'
+  | 'json-parse'
+  | 'validation'
+  | 'exhausted'
+  | 'unknown';
+
+/**
  * Degradation signal carried on every comedy result. Present (true) only when the output is
  * NOT a genuine model generation: either the Ollama backend failed (degraded_reason is the
  * classified error code) or the safety filter had to substitute a canned line
@@ -85,7 +106,7 @@ export interface MoodGetResult {
  */
 export interface Degradable {
   degraded?: boolean;
-  degraded_reason?: string;
+  degraded_reason?: DegradedReason;
 }
 
 export interface ComicTimingResult extends Degradable {
@@ -110,7 +131,7 @@ export interface CatchphraseGenerateResult extends Degradable {
   is_fresh: boolean;
 }
 
-export interface CatchphraseCallbackResult {
+export interface CatchphraseCallbackResult extends Degradable {
   phrase: string;
   use_count: number;
 }
