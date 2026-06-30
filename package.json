@@ -1,6 +1,6 @@
 {
   "name": "@mcptoolshop/sensor-humor",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "MCP comedy sidekick — gives LLMs a sense of humor via Ollama-powered comedic personality",
   "type": "module",
   "main": "dist/index.js",
@@ -14,7 +14,7 @@
     "sensor-humor": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test": "vitest run",

@@ -1,0 +1,8 @@
+{
+  "//": "Build config for the published package. Extends tsconfig.json but excludes dev-only code",
+  "//2": "(src/scorecard/* — used by tests + `npm run scorecard` via tsx, never by the runtime server)",
+  "//3": "so it is NOT emitted into dist/ and does not ship in the npm tarball. tsconfig.json still",
+  "//4": "typechecks scorecard for the IDE and `tsc --noEmit`.",
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "dist", "tests", "src/scorecard"]
+}

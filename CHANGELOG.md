@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-06-30
+
+Dogfood swarm: a research study-swarm grounded the design, then a full health pass
+(bug/security + proactive + humanization) and a feature pass. 187 → 294 tests.
+
+### Added
+- **v1.2 Prompt Stability Lock** — a *form + safety* regression scorecard (explicitly NOT a
+  "funniness" metric). A deterministic golden set + statistics run in `npm test`; `npm run
+  scorecard` runs the live drift gate: per-mood conformance over N samples, gated on a **Wilson**
+  score interval with a **three-valued PASS / FAIL / INCONCLUSIVE** verdict (FAIL only when the
+  Wilson upper bound is below threshold) and **SPRT** early-stopping. The 6 v1 prompts are frozen
+  (pinned by test — to change one, bump to a new version)
+- **`SENSOR_HUMOR_PROMPT_VERSION=2` scaffolding** — v2 prompts load alongside v1, switchable
+  per-session; `dry.v2` ships as the exemplar, other moods fall back to v1 per-mood
+- `debug_status` now reports `safety_filter_fires` (how often the safety floor substituted a line),
+  a `prompt_fingerprint` + `active_prompt_key` (drift attribution; exposes a silent prompt-version
+  downgrade), and `unreachable_reason` (the classified cause when Ollama is down)
+
+### Fixed
+- **Safety (HIGH)** — `catchphrase_generate`/`catchphrase_callback` now run the terminal harsh/simile
+  safety gate; previously model-generated (and persisted/replayed) catchphrases bypassed it entirely
+- **Safety (HIGH)** — caller-input slur obfuscations are now de-obfuscated before the filter, so a
+  zero-width, homoglyph, leetspeak (`r3tard`), intra-word-separator (`re-tard`), or combining-mark
+  (`retárd`) slur in the caller's input can no longer be echoed back via a fallback
+- `roast`/`heckle` now flag `degraded` on **any** safety substitution (an intermediate fallback as
+  well as the terminal gate), and `comic_timing` includes a persistent prompt-leak in its terminal
+  gate (substituted + flagged, not returned verbatim)
+- Dirty (slur/simile) entries are dropped from a tampered/legacy persisted session on load
+- Ollama request timeout now aborts the underlying HTTP request (no leaked socket on a hung backend);
+  a 429/5xx retries with a short backoff instead of instantly re-hitting the limit
+- Corrupt persisted gag no longer crashes `comic_timing`; session writes are atomic (temp + rename)
+
+### Changed
+- **`degraded_reason` is now a closed, documented enum** a consuming agent can branch on
+  exhaustively (`safety-filter` | `connection` | `timeout` | `model-not-found` | `auth` |
+  `rate-limit` | `server` | `http` | `json-parse` | `validation` | `exhausted` | `unknown`);
+  `catchphrase_callback` carries the degraded signal like the other tools
+- Threat-model docs reframed honestly: the regex filter is a deterministic **floor** (now defeats the
+  common obfuscations) with a documented **ceiling** — it is not a learned moderation classifier and
+  does not cover out-of-list variants, ASCII-art, full Unicode-confusables, or semantic/jailbreak harm
+- Running gags + catchphrases are now bounded (LRU); persisted-snapshot schema is version-guarded;
+  model/host/prompt-version env vars are validated
+- 187 → 294 tests
+
 ## [1.1.1] - 2026-06-20
 
 ### Fixed

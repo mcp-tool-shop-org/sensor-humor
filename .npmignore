@@ -14,13 +14,10 @@ tsconfig.json
 .gitignore
 .polyglot-cache.json
 
-# Docs (README and LICENSE included by default)
+# Docs
 ROADMAP.md
-CHANGELOG.md
-*.es.md
-*.fr.md
-*.hi.md
-*.it.md
-*.ja.md
-*.pt-BR.md
-*.zh.md
+
+# NOTE: package.json "files" (dist + CHANGELOG + SECURITY) is the authoritative allowlist.
+# npm ALWAYS force-includes the root README and any root README.<lang>.md translations regardless
+# of this file or "files" — they cannot be excluded here, so the language READMEs do ship (small,
+# GitHub-facing; accepted). Dev-only src/scorecard is kept out of dist via tsconfig.build.json.

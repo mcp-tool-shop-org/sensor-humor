@@ -1,6 +1,6 @@
 ---
 title: Tool Reference
-description: Complete API reference for all 8 sensor-humor tools
+description: Complete API reference for all 9 sensor-humor tools
 sidebar:
   order: 3
 ---
@@ -130,7 +130,7 @@ Dump the current session state, mood config, and voice backend. Useful for inspe
 
 **Input:** none
 
-**Output:**
+**Output** (does a live, bounded backend probe — never throws):
 ```json
 {
   "mood": "dry",
@@ -140,12 +140,48 @@ Dump the current session state, mood config, and voice backend. Useful for inspe
   "recent_bits_count": 3,
   "running_gags_count": 1,
   "catchphrase_count": 1,
+  "buffer_stats": { "recent_bits": 3, "max": 20, "running_gags": 1, "catchphrases": 1 },
   "catchphrases": { "Ship it and pray.": 2 },
   "voice_backend": "default (kokoro)",
   "model": "qwen2.5:7b",
+  "ollama_host": "http://127.0.0.1:11434",
+  "ollama_api_key_set": false,
+  "timeout_ms": 30000,
+  "prompt_version": "1",
+  "active_prompt_key": "dry.v1",
+  "prompt_fingerprint": "3fba259a39b6",
+  "ollama_reachable": true,
+  "model_available": true,
+  "generation": { "total_calls": 12, "fallback_calls": 0, "safety_filter_fires": 0, "last_latency_ms": 380 },
   "debug": false
 }
 ```
+
+Notable fields: `generation.safety_filter_fires` counts how often the safety floor substituted a line (a distinct signal from backend `fallback_calls`); `prompt_fingerprint` + `active_prompt_key` bind the *active* prompt text + model so output drift is attributable (and a silent prompt-version downgrade is visible — `active_prompt_key` is the resolved version, not the requested one); when `ollama_reachable` is `false`, an `unreachable_reason` field gives the classified cause (`connection` / `auth` / `timeout`).
+
+## session_reset
+
+Reset all session state — mood returns to `dry`, gags/bits/catchphrases cleared, turn counter zeroed.
+
+**Input:** none
+
+**Output:**
+```json
+{ "reset": true, "mood": "dry", "turn_counter": 0 }
+```
+
+## Degraded output
+
+When a tool can't return a genuine model generation it still returns a usable in-voice line, plus a machine-readable signal so a consuming agent never mistakes a fallback for a real one:
+
+- `degraded: true`
+- `degraded_reason` — a **closed enum** a consumer can branch on exhaustively: `safety-filter` (a slur/simile/meta-leak was substituted), `connection`, `timeout`, `model-not-found`, `auth`, `rate-limit`, `server`, `http`, `json-parse`, `validation`, `exhausted`, `unknown`.
+
+A genuine generation carries **no** `degraded` flag — its absence is the positive signal. All comedy tools carry this, including `catchphrase_callback` (a safety-substituted recall is flagged, never passed off as genuine).
+
+## Prompt stability (v1.2)
+
+The v1 mood prompts are frozen and pinned by tests — to change one you bump to a new version (`SENSOR_HUMOR_PROMPT_VERSION=2` loads v2 prompts alongside v1, falling back to v1 per-mood). A regression scorecard guards drift: a deterministic **form + safety** golden set runs in `npm test`, and `npm run scorecard` runs the live statistical gate (per-mood conformance over N samples → a Wilson interval + three-valued PASS / FAIL / INCONCLUSIVE verdict + SPRT early-stopping). It measures structural conformance and safety, **not** "funniness."
 
 ## Environment Variables
 
@@ -155,7 +191,7 @@ Dump the current session state, mood config, and voice backend. Useful for inspe
 | `SENSOR_HUMOR_MODEL` | `qwen2.5:7b` | Ollama model to use for comedy generation |
 | `SENSOR_HUMOR_TIMEOUT_MS` | `30000` | Per-call Ollama timeout in ms (invalid values fall back to the default) |
 | `SENSOR_HUMOR_TEMPERATURE` | `0.55` | Generation temperature, clamped 0.0–2.0 (invalid values fall back to the default) |
-| `SENSOR_HUMOR_PROMPT_VERSION` | `1` | Prompt set version. Only `v1` sets ship today; any other value falls back to v1 |
+| `SENSOR_HUMOR_PROMPT_VERSION` | `1` | Prompt set version. `dry.v2` ships as the exemplar; set `2` to load v2 prompts where they exist (other moods fall back to v1 per-mood). Malformed values fall back to v1 |
 | `SENSOR_HUMOR_PERSIST` | `false` | Persist session to `~/.sensor-humor/session.json` so callbacks survive a restart (24h expiry) |
 | `SENSOR_HUMOR_SESSION_DIR` | `~/.sensor-humor` | Override the directory for the persisted session file |
 | `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama API endpoint (may point to a remote/cloud Ollama) |
@@ -171,4 +207,4 @@ All tools share a single in-memory session per server instance:
 - **catchphrases** — phrase-to-count map
 - **turn_counter** — incremented on every tool call
 
-The session resets when the server stops. No persistence across restarts.
+The session is in-memory by default and resets when the server stops. Set `SENSOR_HUMOR_PERSIST=true` to persist it to `~/.sensor-humor/session.json` (24h expiry) so callbacks survive a restart.
