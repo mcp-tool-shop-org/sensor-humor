@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { loadMoodPrompt, getMoodSystemPrompt, getMoodVoiceNotes } from '../src/prompts/loader.js';
+import { loadMoodPrompt, getMoodSystemPrompt, getMoodVoiceNotes, getActivePromptKey } from '../src/prompts/loader.js';
 import { MOOD_STYLES, type MoodStyle } from '../src/types.js';
 
 describe('Prompt Loader', () => {
@@ -34,6 +34,33 @@ describe('Prompt Loader', () => {
       delete process.env.SENSOR_HUMOR_PROMPT_VERSION;
       const module = loadMoodPrompt('roast');
       expect(module.SYSTEM_PROMPT).toContain('affectionate');
+    });
+  });
+
+  // v1.2 prompt-versioning scaffolding: SENSOR_HUMOR_PROMPT_VERSION=2 must load a v2 prompt where
+  // one exists (dry.v2) AND fall back to v1 per-mood where it does not (roast has no v2). This is
+  // the "v2 prompts load alongside v1, switchable per-session" gate.
+  describe('prompt versioning (v2 scaffolding)', () => {
+    it('loads v2 for a mood that has one when version=2', () => {
+      process.env.SENSOR_HUMOR_PROMPT_VERSION = '2';
+      const v2 = loadMoodPrompt('dry').SYSTEM_PROMPT;
+      expect(v2).toContain('Pick exactly ONE output shape'); // v2-distinctive marker
+      expect(v2).not.toContain('Prioritize structural humor'); // a v1-only phrase
+      expect(getActivePromptKey('dry')).toBe('dry.v2');
+    });
+
+    it('falls back to v1 per-mood for moods with no v2 when version=2', () => {
+      process.env.SENSOR_HUMOR_PROMPT_VERSION = '2';
+      expect(loadMoodPrompt('roast').SYSTEM_PROMPT).toContain('affectionate');
+      expect(getActivePromptKey('roast')).toBe('roast.v1');
+    });
+
+    it('getActivePromptKey reflects the resolved (not requested) version', () => {
+      delete process.env.SENSOR_HUMOR_PROMPT_VERSION;
+      expect(getActivePromptKey('dry')).toBe('dry.v1');
+      process.env.SENSOR_HUMOR_PROMPT_VERSION = '999';
+      // requested v999 silently downgrades to v1 — the active key exposes that
+      expect(getActivePromptKey('dry')).toBe('dry.v1');
     });
   });
 

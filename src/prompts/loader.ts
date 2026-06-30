@@ -20,6 +20,9 @@ import * as chaotic_v1 from './moods/chaotic.v1.prompt.js';
 import * as cheeky_v1 from './moods/cheeky.v1.prompt.js';
 import * as cynic_v1 from './moods/cynic.v1.prompt.js';
 import * as zoomer_v1 from './moods/zoomer.v1.prompt.js';
+// v2 exemplar — proves SENSOR_HUMOR_PROMPT_VERSION=2 loads alongside v1 (moods without a v2 fall
+// back to v1 per the resolution below). Add future v2 prompts here the same way.
+import * as dry_v2 from './moods/dry.v2.prompt.js';
 
 const PROMPT_MAP: Record<string, MoodPromptModule> = {
   'dry.v1': dry_v1,
@@ -28,6 +31,7 @@ const PROMPT_MAP: Record<string, MoodPromptModule> = {
   'cheeky.v1': cheeky_v1,
   'cynic.v1': cynic_v1,
   'zoomer.v1': zoomer_v1,
+  'dry.v2': dry_v2,
 };
 
 // Fail fast at startup if a mood is missing its v1 prompt, rather than throwing mid-call the
