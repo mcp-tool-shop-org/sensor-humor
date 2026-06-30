@@ -311,6 +311,33 @@ describe('Session persistence (serialize / snapshot)', () => {
     expect(restored.findCallbackCandidates('another deadbeef crash')).toHaveLength(1);
   });
 
+  // Content gate (defense-in-depth, from the adversarial safety verify): a tampered or legacy
+  // persist file must not seed a dirty (slur/simile) catchphrase, gag, or bit into the live
+  // session — those are dropped on LOAD so they never reach a prompt or the user on replay.
+  it('drops dirty (slur/simile) entries from a tampered snapshot on load', () => {
+    const SLUR = String.fromCharCode(0x72, 0x65, 0x74, 0x61, 0x72, 0x64); // "retard", built from codes
+    const restored = Session.fromSnapshot(
+      makeSnapshot({
+        running_gags: [
+          { setup: 'clean gag', tag: 'clean', used: 1, last_turn: 1 },
+          { setup: `a ${SLUR} setup`, tag: 'x', used: 1, last_turn: 1 },
+        ],
+        recent_bits: [
+          { text: 'clean bit', turn: 1, technique: 'roast' },
+          { text: `bit with ${SLUR}`, turn: 2, technique: 'roast' },
+          { text: 'this is like a mess', turn: 3, technique: 'roast' },
+        ],
+        catchphrases: [['Ship it and pray.', 2], [`say ${SLUR}`, 5]],
+      })
+    );
+    expect(restored.running_gags).toHaveLength(1);
+    expect(restored.running_gags[0].setup).toBe('clean gag');
+    // slur bit AND simile bit dropped, only the clean bit survives
+    expect(restored.recent_bits.map((b) => b.text)).toEqual(['clean bit']);
+    expect(restored.catchphrases.has('Ship it and pray.')).toBe(true);
+    expect([...restored.catchphrases.keys()].some((k) => k.includes(SLUR))).toBe(false);
+  });
+
   it('snapshotIsFresh: fresh within 24h, stale beyond, false for null', () => {
     const now = 1_000_000_000_000;
     expect(snapshotIsFresh(makeSnapshot({ saved_at: now - 1000 }), now)).toBe(true);

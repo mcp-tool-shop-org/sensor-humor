@@ -107,6 +107,35 @@ describe('validators', () => {
       expect(hasHarshLeak(CYRILLIC_SLUR)).toBe(true);
     });
 
+    // The three most COMMON real-world obfuscations (caught by the adversarial verifier):
+    // leetspeak, intra-word separators, and combining diacritics. Built from char codes so the
+    // slur is never spelled plainly. Bare HARSH_FILTER misses all of these; hasHarshLeak catches.
+    const LEET = `${RET[0]}3${RET[2]}${ARD}`;                 // r3tard
+    const SEP_DASH = `${RET.slice(0, 2)}-${RET[2]}${ARD}`;    // re-tard
+    const SEP_DOTS = `${RET}${ARD}`.split('').join('.');      // r.e.t.a.r.d
+    const COMBINING = `${RET}a${String.fromCharCode(0x0301)}${ARD.slice(1)}`; // reta+acute+rd
+
+    it('catches a leetspeak slur (digit substitution)', () => {
+      expect(HARSH_FILTER.test(LEET)).toBe(false);
+      expect(hasHarshLeak(LEET)).toBe(true);
+    });
+
+    it('catches a separator-laced slur (dash and dots)', () => {
+      expect(HARSH_FILTER.test(SEP_DASH)).toBe(false);
+      expect(hasHarshLeak(SEP_DASH)).toBe(true);
+      expect(hasHarshLeak(SEP_DOTS)).toBe(true);
+    });
+
+    it('catches a combining-diacritic slur', () => {
+      expect(HARSH_FILTER.test(COMBINING)).toBe(false);
+      expect(hasHarshLeak(COMBINING)).toBe(true);
+    });
+
+    it('does not false-positive on legitimate text with digits/separators', () => {
+      expect(hasHarshLeak('refactor this 800-line god function v3.2')).toBe(false);
+      expect(hasHarshLeak('i18n config for the s3 bucket')).toBe(false);
+    });
+
     it('passes clean text', () => {
       expect(hasHarshLeak('This code is terrible but fixable')).toBe(false);
     });
@@ -164,6 +193,17 @@ describe('validators', () => {
 
     it('collapses a Cyrillic-homoglyph slur to the static input-free line', () => {
       const out = voicedSafeFallback('roast', CYRILLIC_SLUR);
+      expect(out).toBe(STATIC_SAFE_FALLBACK.roast);
+    });
+
+    it('collapses a leetspeak slur in caller input to the static line', () => {
+      // the verifier's exact exploit class: leet slur echoed via the Ollama-down fallback
+      const out = voicedSafeFallback('roast', `this ${RET[0]}3${RET[2]}${ARD} logic`);
+      expect(out).toBe(STATIC_SAFE_FALLBACK.roast);
+    });
+
+    it('collapses a separator-laced slur in caller input to the static line', () => {
+      const out = voicedSafeFallback('roast', `this ${RET.slice(0, 2)}-${RET[2]}${ARD} logic`);
       expect(out).toBe(STATIC_SAFE_FALLBACK.roast);
     });
 

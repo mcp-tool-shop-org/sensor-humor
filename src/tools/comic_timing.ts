@@ -94,7 +94,7 @@ export async function comicTiming(
   const techniqueGuide = buildTechniqueGuidance(technique, hasCallbacks);
   const callbackContext =
     callbackCandidates.length > 0
-      ? `\nCALLBACK MATERIAL AVAILABLE:\n${callbackCandidates.map((g) => `- "${g.setup}" (tag: ${g.tag})`).join('\n')}`
+      ? `\nCALLBACK MATERIAL AVAILABLE:\n${callbackCandidates.map((g) => `- "${sanitizeForPrompt(g.setup)}" (tag: ${sanitizeForPrompt(g.tag)})`).join('\n')}`
       : '';
 
   const userPrompt = `Rewrite the following text with comedic delivery.

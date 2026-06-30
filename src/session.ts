@@ -14,7 +14,7 @@ import {
   type RunningGag,
   type SensorHumorSession,
 } from './types.js';
-import { sanitizeForPrompt } from './validators.js';
+import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak } from './validators.js';
 
 const MAX_RECENT_BITS = 20;
 const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000; // stale gags aren't funny
@@ -196,15 +196,31 @@ export class Session implements SensorHumorSession {
   /** Rebuild a Session from a snapshot, defensively (the file may be corrupt or tampered). */
   static fromSnapshot(s: SessionSnapshot): Session {
     const sess = new Session();
+    // Defense-in-depth: a tampered or legacy persist file could carry a slur/simile in a stored
+    // gag, bit, or catchphrase. Drop dirty content on LOAD so it never enters the live session,
+    // reaches a prompt (stateSummary), or is replayed to the user (callback). This complements
+    // the terminal output gates — fail-closed at the door.
+    const isDirty = (t: unknown): boolean =>
+      typeof t === 'string' && (hasHarshLeak(t) || hasSimileLeak(t));
     sess.mood = (MOOD_STYLES as readonly string[]).includes(s.mood) ? s.mood : DEFAULT_MOOD;
     sess.running_gags = Array.isArray(s.running_gags)
       ? s.running_gags.filter(
           (g): g is RunningGag =>
-            !!g && typeof (g as RunningGag).setup === 'string' && typeof (g as RunningGag).tag === 'string'
+            !!g &&
+            typeof (g as RunningGag).setup === 'string' &&
+            typeof (g as RunningGag).tag === 'string' &&
+            !isDirty((g as RunningGag).setup) &&
+            !isDirty((g as RunningGag).tag)
         )
       : [];
-    sess.recent_bits = Array.isArray(s.recent_bits) ? s.recent_bits.slice(-MAX_RECENT_BITS) : [];
-    sess.catchphrases = new Map(Array.isArray(s.catchphrases) ? s.catchphrases : []);
+    sess.recent_bits = Array.isArray(s.recent_bits)
+      ? s.recent_bits.slice(-MAX_RECENT_BITS).filter((b) => !isDirty((b as RecentBit)?.text))
+      : [];
+    sess.catchphrases = new Map(
+      (Array.isArray(s.catchphrases) ? s.catchphrases : []).filter(
+        (e): e is [string, number] => Array.isArray(e) && typeof e[0] === 'string' && !isDirty(e[0])
+      )
+    );
     sess.turn_counter = typeof s.turn_counter === 'number' && s.turn_counter >= 0 ? s.turn_counter : 0;
     return sess;
   }

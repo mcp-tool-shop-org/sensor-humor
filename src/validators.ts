@@ -31,7 +31,7 @@ export function hasSimileLeak(text: string): boolean {
  * or fallback candidate), not just the ones that flow through sanitizeForPrompt.
  */
 export function hasHarshLeak(text: string): boolean {
-  return HARSH_FILTER.test(normalizeConfusables(text));
+  return HARSH_FILTER.test(normalizeForDetection(text));
 }
 
 /**
@@ -83,6 +83,36 @@ export function normalizeConfusables(input: string): string {
     .normalize('NFKC')
     .replace(ZERO_WIDTH_AND_FORMAT, '')
     .replace(CONFUSABLE_PATTERN, (ch) => CONFUSABLE_MAP[ch] ?? ch);
+}
+
+/** Leetspeak digit/symbol -> letter folds for the most common slur evasions (detection-only). */
+const LEET_MAP: Record<string, string> = {
+  '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '@': 'a', '$': 's', '!': 'i',
+};
+const LEET_PATTERN = /[013457@$!]/g;
+
+/**
+ * Aggressive normalization for the HARSH DETECTION path ONLY (hasHarshLeak). On top of
+ * normalizeConfusables it folds the three most common real-world slur obfuscations so the
+ * \b term-list still catches them:
+ *   - combining diacritics (NFKD + strip U+0300-U+036F): "retárd" / accented look-alikes -> ASCII
+ *   - leetspeak digit/symbol substitution: r3tard / b1tch / f@ggot -> retard / bitch / faggot
+ *   - intra-word separators (. - _): "re-tard" / "r.e.t.a.r.d" -> "retard"
+ * DETECTION-ONLY: deliberately NOT used by sanitizeForPrompt, because aggressively folding
+ * leet/separators would corrupt legitimate DISPLAYED text ("800-line", "v3", "i18n"). When this
+ * check fires, the caller returns an input-free static safe line, so the obfuscated source text
+ * is never what reaches the user. False positives only cost a slightly-less-funny safe line;
+ * a missed slur reaches the user — so detection is deliberately biased toward catching.
+ * Floor, not ceiling: spaced-out letters ("r e t a r d") and out-of-list slur variants remain a
+ * documented limitation (see SECURITY.md).
+ */
+export function normalizeForDetection(input: string): string {
+  return normalizeConfusables(input)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')           // strip combining diacritical marks
+    .toLowerCase()
+    .replace(LEET_PATTERN, (ch) => LEET_MAP[ch] ?? ch)   // fold leetspeak
+    .replace(/[._-]/g, '');                              // remove intra-word separators
 }
 
 /**
