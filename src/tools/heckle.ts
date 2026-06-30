@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
 import type { HeckleResult, MoodStyle } from '../types.js';
-import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER, sanitizeForPrompt } from '../validators.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, sanitizeForPrompt } from '../validators.js';
 
 const HeckleSchema = z.object({
   heckle: z.string().max(120),
@@ -54,7 +54,7 @@ function heckleFallback(mood: MoodStyle, target: string): string {
     case 'zoomer': candidate = `${t}, cooked fr.`; break;
     default: candidate = `${t}. That's a choice.`;
   }
-  if (HARSH_FILTER.test(candidate) || hasSimileLeak(candidate)) {
+  if (hasHarshLeak(candidate) || hasSimileLeak(candidate)) {
     return HECKLE_STATIC_FALLBACK[mood];
   }
   return candidate;
@@ -147,7 +147,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
   }
 
   // Harshness filter: reject slurs/extreme insults and retry once
-  if (HARSH_FILTER.test(result.data.heckle)) {
+  if (hasHarshLeak(result.data.heckle)) {
     const cleanPrompt = `${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel.`;
     result = await generateComedy<z.infer<typeof HeckleSchema>>(
       {
@@ -160,7 +160,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
       fallback,
     );
     // Safe fallback if harsh filter still triggers after retry
-    if (HARSH_FILTER.test(result.data.heckle)) {
+    if (hasHarshLeak(result.data.heckle)) {
       result.data.heckle = heckleFallback(mood, target);
       if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
         console.error('[sensor-humor] Heckle: harsh filter persisted after retry, using safe fallback');
@@ -171,7 +171,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
   // Terminal safety gate: harsh + simile are the last word, so a late retry cannot
   // re-introduce a banned pattern an earlier filter already cleared.
   let gateFired = false;
-  if (HARSH_FILTER.test(result.data.heckle) || hasSimileLeak(result.data.heckle)) {
+  if (hasHarshLeak(result.data.heckle) || hasSimileLeak(result.data.heckle)) {
     result.data.heckle = heckleFallback(mood, target);
     gateFired = true;
   }

@@ -1,6 +1,6 @@
 # sensor-humor Roadmap
 
-**Current:** v1.1.0 — shipped 2026-06-20
+**Current:** v1.1.1 — shipped 2026-06-20
 **Quality baseline:** 6 moods at 70%+, 187 tests, terminal safety gate, degradation signal (`degraded`), persistent session, Ollama Cloud auth, simile post-validation, mood-specific fallbacks, Piper prosody, live sessions addictive with voice on.
 
 Everything below must meaningfully move quality, determinism, debuggability, developer time, or end-user edge. Nothing else gets in.
@@ -22,15 +22,19 @@ The v1.0.0 publish shipped 1.6MB because voice-demos/, scripts/, debug.log, and 
 
 ## v1.2 — Prompt Stability Lock (2-3 days)
 
-The prompt war taught us that small wording changes cause 20%+ swings. Lock what works.
+The prompt war taught us that small wording changes cause 20%+ swings. Lock what works — and measure it with statistics that don't cry wolf.
+
+**Honest scope (what the gate measures):** *structural form + safety*, NOT "funniness." It checks that output matches the mood skeleton, avoids similes, passes the safety filters, and is non-degraded — a **form-and-safety regression gate**, not a comedy-quality metric. Automated humor scoring is unreliable: the best LLM-vs-human funniness correlation is only ρ≈0.2, and pattern conformance ≠ originality. (Grounded in a research study-swarm run during the 2026-06-30 dogfood swarm.)
 
 - [ ] Snapshot all 6 mood prompts as v1 frozen (no edits without scorecard proof)
-- [ ] Add prompt fingerprint to debug_status output (hash of active prompt text)
-- [ ] Add `SENSOR_HUMOR_PROMPT_VERSION=2` scaffolding — v2 prompts load alongside v1, switchable per-session
-- [ ] Regression scorecard script: 10 calls per mood, automated pass/fail against pattern rules, runs in CI
-- [ ] If any mood drifts below 65% on regression, CI fails
+- [ ] Add a prompt fingerprint to `debug_status` (hash of active prompt text + model id) for drift attribution
+- [ ] `SENSOR_HUMOR_PROMPT_VERSION=2` scaffolding — v2 prompts load alongside v1, switchable per-session
+- [ ] **Per-PR gate (fast, deterministic):** a small golden set (10–20 fixed inputs) asserting skeleton rules + safety-filter behavior. Exact-match ONLY on the CPU-side regex/base64 layer — never on stochastic humor text (temp=0 is not deterministic on GPU).
+- [ ] **Nightly drift gate (statistical, NOT per-PR):** mood hit-rate over N≈150–200 calls/mood, gated on a **Wilson** score interval with a **three-valued PASS / FAIL / INCONCLUSIVE** verdict (FAIL only when the Wilson *upper* bound < 0.65; INCONCLUSIVE collects more rather than blocking a merge). Use **SPRT** early-stopping to cut the average sample count ~78%.
 
-**Gate:** `npm test` includes regression scorecard against frozen prompt snapshots.
+**Why not the old "N=10, fail below 65%":** at N=10 a healthy 75% mood dips below 65% ~22% of the time by chance (~73% false-alarm across 6 moods) — a flaky gate the team learns to mute, so a real regression later ships unnoticed. The fix is to split a fast deterministic per-PR gate from a sound statistical nightly drift gate.
+
+**Gate:** per-PR golden set in `npm test`; nightly statistical drift job with a Wilson/SPRT three-valued verdict.
 
 ---
 

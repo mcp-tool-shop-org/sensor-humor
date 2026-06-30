@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
 import { COMIC_TECHNIQUES, type ComicTechnique, type ComicTimingResult } from '../types.js';
-import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER, sanitizeForPrompt, voicedSafeFallback } from '../validators.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, sanitizeForPrompt, voicedSafeFallback } from '../validators.js';
 import { ROAST_LABEL_PATTERN } from './roast.js';
 
 const ComicTimingSchema = z.object({
@@ -141,7 +141,7 @@ Respond with JSON only.`;
   }
 
   // Harshness filter: reject slurs/extreme insults and retry once
-  if (HARSH_FILTER.test(result.data.rewrite)) {
+  if (hasHarshLeak(result.data.rewrite)) {
     result = await gen(`${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel. Pure comedy only.`);
   }
 
@@ -155,7 +155,7 @@ Respond with JSON only.`;
   // never sneak a slur or comparison past the filters and reach the user. The harsh filter
   // is the final guarantee the README makes — this enforces it unconditionally.
   let gateFired = false;
-  if (HARSH_FILTER.test(result.data.rewrite) || hasSimileLeak(result.data.rewrite)) {
+  if (hasHarshLeak(result.data.rewrite) || hasSimileLeak(result.data.rewrite)) {
     result.data.rewrite = voicedSafeFallback(session.mood, text);
     result.data.technique_used = 'understatement';
     gateFired = true;

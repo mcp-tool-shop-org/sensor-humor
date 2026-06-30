@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
 import type { RoastContext, RoastResult, MoodStyle } from '../types.js';
-import { hasSimileLeak, SIMILE_RETRY_SUFFIX, HARSH_FILTER, sanitizeForPrompt, voicedSafeFallback } from '../validators.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, sanitizeForPrompt, voicedSafeFallback } from '../validators.js';
 
 const RoastSchema = z.object({
   roast: z.string().max(200),
@@ -127,7 +127,7 @@ export async function roast(
   }
 
   // Harshness filter: reject slurs/extreme insults and retry once
-  if (HARSH_FILTER.test(result.data.roast)) {
+  if (hasHarshLeak(result.data.roast)) {
     const cleanPrompt = `${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel.`;
     result = await generateComedy<z.infer<typeof RoastSchema>>(
       {
@@ -140,7 +140,7 @@ export async function roast(
       fallback,
     );
     // Safe fallback if harsh filter still triggers after retry
-    if (HARSH_FILTER.test(result.data.roast)) {
+    if (hasHarshLeak(result.data.roast)) {
       result.data.roast = voicedSafeFallback(mood, target);
       if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
         console.error('[sensor-humor] Roast: harsh filter persisted after retry, using safe fallback');
@@ -152,7 +152,7 @@ export async function roast(
   // cannot re-introduce a banned pattern an earlier filter already cleared.
   let gateFired = false;
   if (
-    HARSH_FILTER.test(result.data.roast) ||
+    hasHarshLeak(result.data.roast) ||
     hasSimileLeak(result.data.roast) ||
     COMPARISON_LEAK.test(result.data.roast)
   ) {

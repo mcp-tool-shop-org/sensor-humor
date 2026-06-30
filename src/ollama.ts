@@ -88,17 +88,40 @@ export function hasApiKey(): boolean {
 
 let _client: Ollama | null = null;
 
+/**
+ * Build the Ollama client config (host + optional cloud auth header), optionally
+ * threading a per-call AbortSignal into a custom fetch. The ollama client does NOT
+ * forward a signal to the underlying fetch on non-streamed requests, so to make a
+ * call genuinely abortable (not merely raced) we wrap fetch and merge the signal
+ * into every request init. The key is never logged, persisted, or echoed. (A-BK-002)
+ */
+function buildClientConfig(signal?: AbortSignal): ConstructorParameters<typeof Ollama>[0] {
+  const apiKey = process.env.OLLAMA_API_KEY;
+  return {
+    host: getOllamaHost(),
+    ...(apiKey ? { headers: { Authorization: `Bearer ${apiKey}` } } : {}),
+    ...(signal
+      ? {
+          fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
+            fetch(input, { ...init, signal })) as typeof fetch,
+        }
+      : {}),
+  };
+}
+
 function getClient(): Ollama {
   if (!_client) {
-    const apiKey = process.env.OLLAMA_API_KEY;
-    // When OLLAMA_API_KEY is set (e.g. Ollama Cloud at https://ollama.com), send it as a
-    // Bearer header to OLLAMA_HOST. The key is never logged, persisted, or echoed.
-    _client = new Ollama({
-      host: getOllamaHost(),
-      ...(apiKey ? { headers: { Authorization: `Bearer ${apiKey}` } } : {}),
-    });
+    _client = new Ollama(buildClientConfig());
   }
   return _client;
+}
+
+/**
+ * A client bound to a single call's AbortController. Used when a timeout must be able
+ * to cancel the underlying socket, not just stop awaiting it. (A-BK-002)
+ */
+function getAbortableClient(signal: AbortSignal): Ollama {
+  return new Ollama(buildClientConfig(signal));
 }
 
 /** Lightweight in-process generation stats, surfaced by the debug_status tool. */
@@ -122,7 +145,10 @@ export async function probeOllama(
 ): Promise<{ reachable: boolean; model_available: boolean; model: string; reason?: string }> {
   const model = getModel();
   try {
-    const client = getClient();
+    // Per-call AbortController so the timeout branch cancels the underlying list()
+    // request instead of leaking the socket on a hung backend. (A-BK-002)
+    const controller = new AbortController();
+    const client = getAbortableClient(controller.signal);
     let handle: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       handle = setTimeout(() => reject(new Error(`Ollama timeout after ${timeoutMs}ms`)), timeoutMs);
@@ -133,6 +159,8 @@ export async function probeOllama(
       res = await Promise.race([client.list(), timeout]);
     } finally {
       clearTimeout(handle);
+      // Cancel the underlying request whether the timeout won or list() threw.
+      controller.abort();
     }
     const names = (res.models ?? []).map((m) => (m as { name?: string; model?: string }).name ?? (m as { model?: string }).model ?? '');
     const model_available = names.some(
@@ -175,7 +203,6 @@ export async function generateComedy<T>(
   const model = getModel();
   const temperature = getTemperature();
   const debug = isDebug();
-  const client = getClient();
   _stats.total_calls++;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -188,6 +215,12 @@ export async function generateComedy<T>(
       console.error(`[sensor-humor] User prompt:\n${userPrompt}`);
     }
 
+    // Per-attempt AbortController so a winning timeout cancels the underlying socket
+    // instead of leaking it on a hung backend. The signal is threaded both onto the
+    // request and into the client's fetch (the ollama client does not forward a signal
+    // to fetch on non-streamed calls). (A-BK-002)
+    const controller = new AbortController();
+    const client = getAbortableClient(controller.signal);
     try {
       const timeoutMs = getTimeoutMs();
       const chatPromise = client.chat({
@@ -197,6 +230,7 @@ export async function generateComedy<T>(
           { role: 'user', content: userPrompt },
         ],
         format: jsonSchema,
+        signal: controller.signal,
         options: {
           temperature,
           top_p: DEFAULT_TOP_P,
@@ -205,7 +239,7 @@ export async function generateComedy<T>(
           mirostat_tau: DEFAULT_MIROSTAT_TAU,
           num_predict: numPredict ?? MAX_PREDICT,
         },
-      });
+      } as Parameters<typeof client.chat>[0]);
       // The timeout timer is cleared in the finally below so a winning chat
       // never leaves a dangling timer holding the event loop open (BK-03).
       let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
@@ -221,6 +255,9 @@ export async function generateComedy<T>(
         response = await Promise.race([chatPromise, timeoutPromise]);
       } finally {
         clearTimeout(timeoutHandle);
+        // Cancel the underlying request whether the timeout won or chat() rejected,
+        // so a hung backend never leaks the socket past this call.
+        controller.abort();
       }
 
       const raw = response.message.content;

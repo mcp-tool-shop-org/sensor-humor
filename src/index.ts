@@ -91,10 +91,14 @@ server.tool(
   'Get the current comedic mood and session stats.',
   {},
   async () => {
-    const result = moodGet();
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-    };
+    try {
+      const result = moodGet();
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (err) {
+      return toolError(err);
+    }
   },
 );
 
@@ -190,15 +194,19 @@ server.tool(
   'Recall the most-used catchphrase from this session. Returns null if no catchphrases exist yet.',
   {},
   async () => {
-    const result = catchphraseCallback();
-    if (result === null) {
+    try {
+      const result = catchphraseCallback();
+      if (result === null) {
+        return {
+          content: [{ type: 'text', text: 'null' }],
+        };
+      }
       return {
-        content: [{ type: 'text', text: 'null' }],
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
+    } catch (err) {
+      return toolError(err);
     }
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-    };
   },
 );
 
@@ -208,34 +216,38 @@ server.tool(
   'Dump current session state, mood config, and voice backend. Useful for debugging without env vars.',
   {},
   async () => {
-    const session = getSession();
-    // Best-effort live probe so the operator gets a one-call answer to "is the backend healthy
-    // and correctly configured?" — bounded timeout, never throws.
-    const probe = await probeOllama(2000);
-    const status = {
-      mood: session.mood,
-      mood_description: MOOD_DESCRIPTIONS[session.mood],
-      voice_notes: getMoodVoiceNotes(session.mood),
-      turn_counter: session.turn_counter,
-      recent_bits_count: session.recent_bits.length,
-      running_gags_count: session.running_gags.length,
-      catchphrase_count: session.catchphrases.size,
-      buffer_stats: session.bufferStats(),
-      catchphrases: Object.fromEntries(session.catchphrases),
-      voice_backend: process.env.VOICE_SOUNDBOARD_ENGINE || 'default (kokoro)',
-      model: getModel(),
-      ollama_host: getOllamaHost(),
-      ollama_api_key_set: hasApiKey(),
-      timeout_ms: getTimeoutMs(),
-      prompt_version: getPromptVersion(),
-      ollama_reachable: probe.reachable,
-      model_available: probe.model_available,
-      generation: getOllamaStats(),
-      debug: isDebug(),
-    };
-    return {
-      content: [{ type: 'text', text: JSON.stringify(status, null, 2) }],
-    };
+    try {
+      const session = getSession();
+      // Best-effort live probe so the operator gets a one-call answer to "is the backend healthy
+      // and correctly configured?" — bounded timeout, never throws.
+      const probe = await probeOllama(2000);
+      const status = {
+        mood: session.mood,
+        mood_description: MOOD_DESCRIPTIONS[session.mood],
+        voice_notes: getMoodVoiceNotes(session.mood),
+        turn_counter: session.turn_counter,
+        recent_bits_count: session.recent_bits.length,
+        running_gags_count: session.running_gags.length,
+        catchphrase_count: session.catchphrases.size,
+        buffer_stats: session.bufferStats(),
+        catchphrases: Object.fromEntries(session.catchphrases),
+        voice_backend: process.env.VOICE_SOUNDBOARD_ENGINE || 'default (kokoro)',
+        model: getModel(),
+        ollama_host: getOllamaHost(),
+        ollama_api_key_set: hasApiKey(),
+        timeout_ms: getTimeoutMs(),
+        prompt_version: getPromptVersion(),
+        ollama_reachable: probe.reachable,
+        model_available: probe.model_available,
+        generation: getOllamaStats(),
+        debug: isDebug(),
+      };
+      return {
+        content: [{ type: 'text', text: JSON.stringify(status, null, 2) }],
+      };
+    } catch (err) {
+      return toolError(err);
+    }
   },
 );
 
@@ -245,10 +257,14 @@ server.tool(
   'Reset all session state: mood returns to dry, gags/bits/catchphrases cleared, turn counter reset. Use when starting a new topic or comedy session.',
   {},
   async () => {
-    const session = resetSession();
-    return {
-      content: [{ type: 'text', text: JSON.stringify({ reset: true, mood: session.mood, turn_counter: session.turn_counter }, null, 2) }],
-    };
+    try {
+      const session = resetSession();
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ reset: true, mood: session.mood, turn_counter: session.turn_counter }, null, 2) }],
+      };
+    } catch (err) {
+      return toolError(err);
+    }
   },
 );
 

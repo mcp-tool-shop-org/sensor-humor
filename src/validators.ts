@@ -21,15 +21,76 @@ if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
 
 /** Check if output contains simile/comparison leak. */
 export function hasSimileLeak(text: string): boolean {
-  return SIMILE_PATTERN.test(text);
+  return SIMILE_PATTERN.test(normalizeConfusables(text));
+}
+
+/**
+ * Check if text contains a harsh/slur term, AFTER de-obfuscation. Mirrors hasSimileLeak so the
+ * two safety checks are symmetric: every harsh check normalizes first, so a zero-width-laced or
+ * homoglyph-spelled slur cannot defeat HARSH_FILTER's \b boundary at ANY call site (model output
+ * or fallback candidate), not just the ones that flow through sanitizeForPrompt.
+ */
+export function hasHarshLeak(text: string): boolean {
+  return HARSH_FILTER.test(normalizeConfusables(text));
+}
+
+/**
+ * Zero-width, format, and bidi control characters used to break up a slur so HARSH_FILTER's
+ * \b boundary no longer holds (e.g. "reta\u200brd"). Stripping these BEFORE filtering closes
+ * the boundary-evasion path. Includes variation selectors (U+FE00-FE0F).
+ */
+const ZERO_WIDTH_AND_FORMAT = new RegExp(
+  '[' +
+    '\\u200B-\\u200D' + // zero-width space / non-joiner / joiner
+    '\\u200E\\u200F' +  // LRM / RLM
+    '\\u202A-\\u202E' + // bidi embedding/override
+    '\\u2060' +         // word joiner
+    '\\u2066-\\u2069' + // bidi isolates
+    '\\uFEFF' +         // BOM / zero-width no-break space
+    '\\uFE00-\\uFE0F' + // variation selectors
+    ']',
+  'g',
+);
+
+/**
+ * Targeted confusables fold: the common Latin-look-alike homoglyphs used to spell slurs in a
+ * way that survives NFKC (Cyrillic / Greek letters NFKC-normalize to themselves, not to ASCII).
+ * Folding them to ASCII lets HARSH_FILTER's \b actually hold.
+ *
+ * NOTE (study-swarm): this RAISES the deterministic floor; it is NOT full confusable coverage \u2014
+ * the full Unicode confusables table is a known ceiling. The regex stays the deterministic
+ * floor; we deliberately do NOT add an LLM classifier (proven more bypassable).
+ */
+const CONFUSABLE_MAP: Record<string, string> = {
+  // Cyrillic -> Latin
+  '\u0430': 'a', '\u0435': 'e', '\u043e': 'o', '\u0440': 'p', '\u0441': 'c',
+  '\u0445': 'x', '\u0443': 'y', '\u043a': 'k', '\u0442': 't',
+  // Greek -> Latin
+  '\u03bf': 'o', '\u03b1': 'a', '\u03bd': 'v',
+};
+const CONFUSABLE_PATTERN = new RegExp(`[${Object.keys(CONFUSABLE_MAP).join('')}]`, 'g');
+
+/**
+ * Normalize obfuscation before any HARSH_FILTER / simile test or fallback interpolation:
+ *   1. NFKC (folds fullwidth ASCII, ligatures, compatibility forms down to plain ASCII)
+ *   2. strip zero-width / format / bidi / variation-selector chars
+ *   3. fold the targeted Latin-look-alike confusables to ASCII
+ * Raises the deterministic floor so a zero-width-laced or homoglyph-spelled slur cannot defeat
+ * HARSH_FILTER's word boundary. Full confusable coverage remains a known ceiling (study-swarm).
+ */
+export function normalizeConfusables(input: string): string {
+  return input
+    .normalize('NFKC')
+    .replace(ZERO_WIDTH_AND_FORMAT, '')
+    .replace(CONFUSABLE_PATTERN, (ch) => CONFUSABLE_MAP[ch] ?? ch);
 }
 
 /**
  * Sanitize user input before interpolating into Ollama prompts.
- * Strips newlines, control chars, and common injection patterns.
+ * Strips newlines, control chars, obfuscation (zero-width/confusables), and injection patterns.
  */
 export function sanitizeForPrompt(input: string): string {
-  return input
+  return normalizeConfusables(input)            // NFKC + strip zero-width + fold confusables
     .replace(/[\r\n\u2028\u2029]+/g, ' ')  // collapse newlines + Unicode line/para separators
     .replace(/[\x00-\x1f\x7f]/g, '')       // strip control characters (incl. DEL)
     .replace(/\s{2,}/g, ' ')               // collapse multiple spaces
@@ -47,7 +108,7 @@ export const SIMILE_RETRY_SUFFIX =
  * simile. We collapse to one of these instead so the fallback can never reach the user dirty.
  */
 // Record<MoodStyle, string> so adding a mood fails the build until it has a static fallback.
-const STATIC_SAFE_FALLBACK: Record<MoodStyle, string> = {
+export const STATIC_SAFE_FALLBACK: Record<MoodStyle, string> = {
   roast: 'Verdict: not even worth the words.',
   cynic: 'Of course. Predictable.',
   cheeky: 'Oh honey. Bless.',
@@ -73,7 +134,7 @@ export function voicedSafeFallback(mood: MoodStyle, text: string): string {
     case 'zoomer': candidate = `${t}, absolute state, no cap.`; break;
     default: candidate = `${t}. No further comment.`;
   }
-  if (HARSH_FILTER.test(candidate) || SIMILE_PATTERN.test(candidate)) {
+  if (hasHarshLeak(candidate) || hasSimileLeak(candidate)) {
     return STATIC_SAFE_FALLBACK[mood];
   }
   return candidate;

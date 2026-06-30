@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { resetSession, getSession } from '../src/session.js';
 import { MOOD_STYLES, MOOD_DESCRIPTIONS, type MoodStyle } from '../src/types.js';
+import { HARSH_FILTER, SIMILE_PATTERN } from '../src/validators.js';
 
 // Mock the Ollama module so tests don't need a live server
 vi.mock('../src/ollama.js', () => ({
@@ -419,6 +420,36 @@ describe('catchphrase tools', () => {
       expect(getSession().recent_bits[0].technique).toBe('catchphrase');
     });
 
+    it('gates a slur from generateComedy: substitutes safe phrase, does NOT store it (A-TS-001)', async () => {
+      mockGenerate.mockResolvedValue({
+        data: { phrase: 'you absolute retard' },
+      });
+
+      const result = await catchphraseGenerate('bad code');
+      // Output must pass BOTH safety filters
+      expect(HARSH_FILTER.test(result.phrase)).toBe(false);
+      expect(SIMILE_PATTERN.test(result.phrase)).toBe(false);
+      expect(result.phrase).not.toMatch(/retard/i);
+      // Degraded signal set
+      expect(result.degraded).toBe(true);
+      expect(result.degraded_reason).toBe('safety-filter');
+      // The dirty phrase must NOT have been stored
+      expect(getSession().catchphrases.has('you absolute retard')).toBe(false);
+    });
+
+    it('gates a simile from generateComedy: substitutes safe phrase, does NOT store it (A-TS-001)', async () => {
+      mockGenerate.mockResolvedValue({
+        data: { phrase: 'broken like a charm' },
+      });
+
+      const result = await catchphraseGenerate('flaky build');
+      expect(SIMILE_PATTERN.test(result.phrase)).toBe(false);
+      expect(HARSH_FILTER.test(result.phrase)).toBe(false);
+      expect(result.phrase).not.toMatch(/like a/i);
+      expect(result.degraded_reason).toBe('safety-filter');
+      expect(getSession().catchphrases.has('broken like a charm')).toBe(false);
+    });
+
     it('returns existing catchphrase when context matches (reuse path)', async () => {
       const session = getSession();
       // Pre-seed a catchphrase with a clean first word >= 3 chars
@@ -586,6 +617,19 @@ describe('catchphrase tools', () => {
       catchphraseCallback();
       expect(session.recent_bits[0].technique).toBe('catchphrase');
     });
+
+    it('gates a persisted/legacy dirty phrase before returning it (A-TS-001)', () => {
+      const session = getSession();
+      // A dirty phrase that slipped into the store (legacy / direct seed) must not be
+      // replayed back to the caller by callback.
+      session.useCatchphrase('you absolute retard');
+
+      const result = catchphraseCallback();
+      expect(result).not.toBeNull();
+      expect(HARSH_FILTER.test(result!.phrase)).toBe(false);
+      expect(SIMILE_PATTERN.test(result!.phrase)).toBe(false);
+      expect(result!.phrase).not.toMatch(/retard/i);
+    });
   });
 });
 
@@ -646,6 +690,23 @@ describe('harsh filter retry', () => {
     expect(mockGenerate).toHaveBeenCalledTimes(2);
     expect(result.heckle).not.toMatch(/retard|bitch/i);
     expect(result.heckle).toContain('bad code');
+  });
+
+  it('heckle TERMINAL gate catches a simile re-introduced by the harsh-filter retry (A-TST-002)', async () => {
+    // 1st gen: harsh slur (no simile) -> passes simile check, fails harsh -> harsh retry fires.
+    // 2nd gen (harsh retry): clean of slurs BUT carries a simile. The simile check already ran
+    // (and passed) BEFORE the harsh retry, and the harsh block only re-checks HARSH_FILTER —
+    // so ONLY the terminal gate can catch this simile. Deleting the terminal gate -> GREEN->RED.
+    mockGenerate
+      .mockResolvedValueOnce({ data: { heckle: 'you absolute retard.' } })
+      .mockResolvedValueOnce({ data: { heckle: 'broken like a charm.' } });
+
+    const result = await heckle('flaky build');
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+    expect(result.heckle).not.toMatch(/like a/i);
+    expect(result.heckle).not.toMatch(/retard/i);
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('safety-filter');
   });
 
   it('comic_timing falls back safely on double harsh violation', async () => {

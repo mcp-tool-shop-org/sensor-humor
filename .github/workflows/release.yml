@@ -1,5 +1,9 @@
 name: Release
 
+# Intentional deviation from the studio's "release: published only" rule: this job
+# AUTHORS the GitHub Release itself (gh release create, below), so it must fire on the
+# tag push — release:published would invert the ordering. The publish-on-an-accidental-tag
+# risk is closed by the "Verify tag matches package.json version" guard before any publish.
 on:
   push:
     tags: ['v*']

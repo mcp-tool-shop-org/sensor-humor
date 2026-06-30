@@ -8,12 +8,39 @@ import { getSession } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy } from '../ollama.js';
-import type { CatchphraseCallbackResult, CatchphraseGenerateResult } from '../types.js';
-import { sanitizeForPrompt } from '../validators.js';
+import type { CatchphraseCallbackResult, CatchphraseGenerateResult, MoodStyle } from '../types.js';
+import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak } from '../validators.js';
 
 /** Escape regex special characters in a string. */
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Fully static, input-free safe catchphrases — used when a generated/persisted phrase trips the
+ * terminal safety gate (slur or simile). Mirrors STATIC_SAFE_FALLBACK in validators.ts so a
+ * dirty phrase is never stored or replayed.
+ */
+// Record<MoodStyle, string> so adding a mood fails the build until it has a static catchphrase.
+const STATIC_SAFE_CATCHPHRASE: Record<MoodStyle, string> = {
+  roast: 'Ship it and pray.',
+  cynic: 'Of course it broke.',
+  cheeky: 'Bless its little heart.',
+  chaotic: 'The build weeps again.',
+  zoomer: 'cooked, no cap.',
+  dry: 'Noted. Moving on.',
+};
+
+/**
+ * Terminal safety gate for catchphrases: a phrase must never reach the user (or get stored for
+ * replay via callback / future prompts) if it carries a slur or simile. Substitutes an
+ * input-free static catchphrase if it does. Returns the safe phrase and whether the gate fired.
+ */
+function safeCatchphrase(mood: MoodStyle, phrase: string): { phrase: string; gated: boolean } {
+  if (hasHarshLeak(phrase) || hasSimileLeak(phrase)) {
+    return { phrase: STATIC_SAFE_CATCHPHRASE[mood], gated: true };
+  }
+  return { phrase, gated: false };
 }
 
 const CatchphraseSchema = z.object({
@@ -46,6 +73,9 @@ export async function catchphraseGenerate(
   if (context && session.catchphrases.size > 0) {
     const lower = context.toLowerCase();
     for (const [phrase] of session.catchphrases) {
+      // Never reuse a dirty stored phrase (legacy/persisted slur/simile): skip it so we fall
+      // through to a fresh, gated generation instead of replaying a banned token.
+      if (hasHarshLeak(phrase) || hasSimileLeak(phrase)) continue;
       const firstWord = phrase.toLowerCase().split(' ')[0];
       if (firstWord.length >= 3 && new RegExp(`\\b${escapeRegex(firstWord)}\\b`).test(lower)) {
         session.useCatchphrase(phrase);
@@ -82,10 +112,16 @@ Respond with JSON only.`;
     fallback,
   );
 
-  const phrase = result.data.phrase;
-  const degraded = result.fallback_reason
-    ? { degraded: true, degraded_reason: result.fallback_reason }
-    : {};
+  // Terminal safety gate: re-check the generated phrase BEFORE it is stored (useCatchphrase /
+  // pushBit), so a slur/simile can never be persisted and replayed by callback or future
+  // prompts. A gated phrase collapses to a static input-free catchphrase.
+  const gate = safeCatchphrase(session.mood, result.data.phrase);
+  const phrase = gate.phrase;
+  const degraded = gate.gated
+    ? { degraded: true, degraded_reason: 'safety-filter' }
+    : result.fallback_reason
+      ? { degraded: true, degraded_reason: result.fallback_reason }
+      : {};
   // If Ollama returned a phrase we already have, treat as reuse not fresh
   if (session.catchphrases.has(phrase)) {
     session.useCatchphrase(phrase);
@@ -119,8 +155,12 @@ export function catchphraseCallback(): CatchphraseCallbackResult | null {
 
   // Increment usage
   const newCount = session.useCatchphrase(bestPhrase);
-  session.pushBit(bestPhrase, 'catchphrase');
+  // Terminal safety gate: a persisted/legacy phrase could be dirty (slur/simile). Re-check and
+  // substitute an input-free static catchphrase before returning, so callback never replays a
+  // banned token. pushBit uses the gated phrase so the recent-bits ring stays clean too.
+  const safe = safeCatchphrase(session.mood, bestPhrase).phrase;
+  session.pushBit(safe, 'catchphrase');
   session.tick();
 
-  return { phrase: bestPhrase, use_count: newCount };
+  return { phrase: safe, use_count: newCount };
 }

@@ -155,7 +155,7 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 
 - Comedy quality comes from skeleton-based prompt engineering, not one model knob — each mood forces a predictable shape. Measure hit rate on your own model/hardware with `scripts/ab-scorecard.ts` (template in SCORECARD.md)
 - Simile/comparison filter: post-validation regex + retry, then a mood-voiced safe fallback if a leak persists
-- Harsh-language filter runs as a terminal gate, so slurs can't reach the user even when a late retry re-introduces one
+- Harsh-language filter: a deterministic term-list regex runs as a *terminal gate* on **every** comedy tool (including catchphrases), re-checked after every retry and applied before any fallback is interpolated. Input is Unicode-normalized (NFKC) with zero-width/bidi characters stripped and common homoglyphs folded to ASCII first, so the usual obfuscations (zero-width insertion, Cyrillic/Greek look-alikes, fullwidth) can't slip a slur past the word boundary. This is a deterministic **floor**, not a guardrail — see Security & Trust for the honest ceiling
 - Deterministic: JSON schema enforcement, retry on bad output, mood inheritance enforced across all tools
 - Voice: Piper gives prosody separation (length/noise/volume per mood); Kokoro fallback is speed-only
 - Dev-tool sidekick only. Humor is subjective; disable any mood via env or tune prompts if needed
@@ -167,8 +167,9 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 - **Secrets** — none by default. If you point `OLLAMA_HOST` at a remote/cloud Ollama, set `OLLAMA_API_KEY`; it is read from the environment and sent only as a `Bearer` header to that host — never logged, persisted, or echoed (`debug_status` reports only *whether* a key is set, never its value)
 - **No telemetry** — nothing is collected or sent
 - **Session state is in-memory by default** — dies when the server process stops; opt into disk persistence with `SENSOR_HUMOR_PERSIST`
-- **Input sanitization** — all user-provided text is sanitized before prompt injection (newlines stripped, length capped, control chars removed)
-- **Output filtering** — harsh language filter (base64-encoded term list) with retry + a terminal safe-fallback gate prevents slurs from reaching the user, even on a late retry or from slur-bearing input
+- **Input sanitization** — all user-provided text is normalized and sanitized before prompt injection: Unicode NFKC fold, zero-width/bidi/format chars stripped, common homoglyphs folded to ASCII, newlines stripped, control chars removed, length capped
+- **Output filtering (deterministic floor + honest ceiling)** — a base64-stored term-list regex runs as a terminal safety gate on every comedy tool (re-checked after each retry, applied before any fallback), and a caller-input fallback collapses to a static, input-free line rather than echo a banned token. Because input is normalized first, the common obfuscations (zero-width, homoglyphs, fullwidth) are defeated. **What it does NOT do:** it is a deterministic term-list filter, not a learned classifier — it does not defend against novel/coded slurs, ASCII-art / spatial obfuscation, full Unicode-confusable coverage, or semantic/jailbreak-class attacks. Treat it as a best-effort floor for a local dev-humor tool, not a moderation guarantee for untrusted public input
+- **Tool error shape** — runtime/tool errors return the studio Structured Error Shape (`{code, message, hint, retryable}`); note that *input-schema* validation errors (e.g. an invalid `mood`) are caught by the MCP SDK before the handler runs and surface as the SDK's standard `InvalidParams` error, not this shape
 
 ## Architecture
 

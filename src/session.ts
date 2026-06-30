@@ -3,7 +3,7 @@
  * In-memory only — session dies when server stops.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -125,7 +125,7 @@ export class Session implements SensorHumorSession {
   findCallbackCandidates(text: string): RunningGag[] {
     const lower = text.toLowerCase();
     return this.running_gags.filter((g) => {
-      const tag = g.tag.toLowerCase();
+      const tag = String(g.tag).toLowerCase();
       if (tag.length < 3) return lower.includes(tag); // short tags: keep substring match
       const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       return new RegExp(`\\b${escaped}\\b`).test(lower);
@@ -136,7 +136,7 @@ export class Session implements SensorHumorSession {
   recentBitsSummary(): string {
     if (this.recent_bits.length === 0) return 'No bits yet this session.';
     const lines = this.recent_bits.slice(-5).map(
-      (b, i) => `${i + 1}. [turn ${b.turn}, ${b.technique}] ${sanitizeForPrompt(b.text)}`
+      (b, i) => `${i + 1}. [turn ${b.turn}, ${sanitizeForPrompt(b.technique)}] ${sanitizeForPrompt(b.text)}`
     );
     return `Recent bits:\n${lines.join('\n')}`;
   }
@@ -145,7 +145,7 @@ export class Session implements SensorHumorSession {
   gagsSummary(): string {
     if (this.running_gags.length === 0) return 'No running gags yet.';
     const lines = this.running_gags.map(
-      (g) => `- "${sanitizeForPrompt(g.setup)}" (tag: ${g.tag}, used ${g.used}x, last turn ${g.last_turn})`
+      (g) => `- "${sanitizeForPrompt(g.setup)}" (tag: ${sanitizeForPrompt(g.tag)}, used ${g.used}x, last turn ${g.last_turn})`
     );
     return `Running gags:\n${lines.join('\n')}`;
   }
@@ -197,7 +197,12 @@ export class Session implements SensorHumorSession {
   static fromSnapshot(s: SessionSnapshot): Session {
     const sess = new Session();
     sess.mood = (MOOD_STYLES as readonly string[]).includes(s.mood) ? s.mood : DEFAULT_MOOD;
-    sess.running_gags = Array.isArray(s.running_gags) ? s.running_gags : [];
+    sess.running_gags = Array.isArray(s.running_gags)
+      ? s.running_gags.filter(
+          (g): g is RunningGag =>
+            !!g && typeof (g as RunningGag).setup === 'string' && typeof (g as RunningGag).tag === 'string'
+        )
+      : [];
     sess.recent_bits = Array.isArray(s.recent_bits) ? s.recent_bits.slice(-MAX_RECENT_BITS) : [];
     sess.catchphrases = new Map(Array.isArray(s.catchphrases) ? s.catchphrases : []);
     sess.turn_counter = typeof s.turn_counter === 'number' && s.turn_counter >= 0 ? s.turn_counter : 0;
@@ -213,7 +218,11 @@ export class Session implements SensorHumorSession {
     try {
       const file = sessionFilePath();
       mkdirSync(join(file, '..'), { recursive: true });
-      writeFileSync(file, JSON.stringify(this.serialize()), 'utf-8');
+      // Atomic write: write to a temp file then rename into place, so an interrupted
+      // write cannot clobber a good prior session.json.
+      const tmp = `${file}.tmp`;
+      writeFileSync(tmp, JSON.stringify(this.serialize()), 'utf-8');
+      renameSync(tmp, file);
     } catch (err) {
       if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
         console.error('[sensor-humor] Failed to persist session:', (err as Error).message);

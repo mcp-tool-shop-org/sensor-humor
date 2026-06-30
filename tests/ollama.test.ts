@@ -166,6 +166,35 @@ describe('generateComedy', () => {
     delete process.env.SENSOR_HUMOR_TIMEOUT_MS;
   }, 10000);
 
+  it('aborts the underlying request when the timeout wins, not merely racing it (A-BK-002)', async () => {
+    // A hung backend must not leak the socket: when the timeout beats the chat, the
+    // per-call AbortController has to fire so the request is cancelled, not just dropped.
+    process.env.SENSOR_HUMOR_TIMEOUT_MS = '10';
+
+    const seenSignals: AbortSignal[] = [];
+    // Capture the signal passed on the chat request and hang forever (simulating a stuck
+    // backend). If abort wiring is present the captured signal becomes aborted.
+    mockChat.mockImplementation((req: { signal?: AbortSignal }) => {
+      if (req?.signal) seenSignals.push(req.signal);
+      return new Promise(() => {
+        /* never resolves — the backend is hung */
+      });
+    });
+
+    const result = await generateComedy<TestResult>(makeOptions(), fallback);
+
+    // Fallback is still returned (timer-cleanup + fallback behavior preserved).
+    expect(result.data.text).toBe('fallback');
+    expect(result.fallback_reason).toBeDefined();
+
+    // A signal must have been threaded onto the chat call...
+    expect(seenSignals.length).toBeGreaterThan(0);
+    // ...and abort() must have fired on every attempt's signal when its timeout won.
+    expect(seenSignals.every((s) => s.aborted)).toBe(true);
+
+    delete process.env.SENSOR_HUMOR_TIMEOUT_MS;
+  }, 10000);
+
   it('hasApiKey reflects OLLAMA_API_KEY presence (for cloud auth)', () => {
     delete process.env.OLLAMA_API_KEY;
     expect(hasApiKey()).toBe(false);

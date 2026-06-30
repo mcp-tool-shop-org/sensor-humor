@@ -1,5 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { hasSimileLeak, SIMILE_PATTERN, HARSH_FILTER, sanitizeForPrompt } from '../src/validators.js';
+import {
+  hasSimileLeak,
+  hasHarshLeak,
+  SIMILE_PATTERN,
+  HARSH_FILTER,
+  sanitizeForPrompt,
+  voicedSafeFallback,
+  STATIC_SAFE_FALLBACK,
+} from '../src/validators.js';
+
+// Built from char codes so the obfuscation bytes are unambiguous in source.
+// "retard" base term reconstructed only via normalization paths, never spelled here.
+const RET = String.fromCharCode(0x72, 0x65, 0x74); // "ret"
+const ARD = String.fromCharCode(0x61, 0x72, 0x64); // "ard"
+// Zero-width-space (U+200B) laced into the slur: defeats a naive \b...\b boundary
+// unless normalization strips the zero-width char before HARSH_FILTER runs.
+const ZWSP_SLUR = `you ${RET}a${String.fromCharCode(0x200b)}${String.fromCharCode(0x72, 0x64)} of a function`;
+// Cyrillic-homoglyph slur: е(U+0435) т(U+0442) а(U+0430) look like e,t,a but \b never
+// matches unless confusables are folded down to ASCII first.
+const CYRILLIC_SLUR = `you ${String.fromCharCode(0x72, 0x435, 0x442, 0x430, 0x72, 0x64)} of a function`;
 
 describe('validators', () => {
   describe('hasSimileLeak', () => {
@@ -75,6 +94,24 @@ describe('validators', () => {
     });
   });
 
+  describe('hasHarshLeak (normalized harsh check — A-TS-002 symmetry)', () => {
+    // The bare regex MISSES obfuscated slurs; the normalized check is what every gate site now
+    // uses, so harsh detection is symmetric with hasSimileLeak at all 12 call sites.
+    it('catches a zero-width-laced slur the bare HARSH_FILTER regex misses', () => {
+      expect(HARSH_FILTER.test(ZWSP_SLUR)).toBe(false);
+      expect(hasHarshLeak(ZWSP_SLUR)).toBe(true);
+    });
+
+    it('catches a Cyrillic-homoglyph slur the bare HARSH_FILTER regex misses', () => {
+      expect(HARSH_FILTER.test(CYRILLIC_SLUR)).toBe(false);
+      expect(hasHarshLeak(CYRILLIC_SLUR)).toBe(true);
+    });
+
+    it('passes clean text', () => {
+      expect(hasHarshLeak('This code is terrible but fixable')).toBe(false);
+    });
+  });
+
   describe('sanitizeForPrompt', () => {
     it('strips newlines', () => {
       expect(sanitizeForPrompt('hello\nworld\r\nfoo')).toBe('hello world foo');
@@ -99,6 +136,41 @@ describe('validators', () => {
 
     it('handles empty string', () => {
       expect(sanitizeForPrompt('')).toBe('');
+    });
+
+    it('strips zero-width and bidi obfuscation chars (A-TS-002)', () => {
+      // zero-width space, ZWNJ, ZWJ, word-joiner, BOM all removed
+      const obf = `a${String.fromCharCode(0x200b)}b${String.fromCharCode(0x200c)}c${String.fromCharCode(0x2060)}d${String.fromCharCode(0xfeff)}`;
+      expect(sanitizeForPrompt(obf)).toBe('abcd');
+    });
+
+    it('NFKC-normalizes fullwidth ASCII and folds confusables (A-TS-002)', () => {
+      // fullwidth "ABC" -> "ABC"; Cyrillic homoglyphs -> ASCII
+      const full = String.fromCharCode(0xff21, 0xff22, 0xff23); // ＡＢＣ
+      expect(sanitizeForPrompt(full)).toBe('ABC');
+      const cyr = String.fromCharCode(0x430, 0x435, 0x43e); // а е о
+      expect(sanitizeForPrompt(cyr)).toBe('aeo');
+    });
+  });
+
+  // A-TS-002: a zero-width-laced or homoglyph-spelled slur in the CALLER input must NOT
+  // survive into voicedSafeFallback's interpolation. The fallback must collapse to the
+  // input-free STATIC_SAFE_FALLBACK line.
+  describe('voicedSafeFallback normalization floor (A-TS-002)', () => {
+    it('collapses a zero-width-laced slur to the static input-free line', () => {
+      const out = voicedSafeFallback('roast', ZWSP_SLUR);
+      expect(out).toBe(STATIC_SAFE_FALLBACK.roast);
+    });
+
+    it('collapses a Cyrillic-homoglyph slur to the static input-free line', () => {
+      const out = voicedSafeFallback('roast', CYRILLIC_SLUR);
+      expect(out).toBe(STATIC_SAFE_FALLBACK.roast);
+    });
+
+    it('still emits an in-voice line for clean input', () => {
+      const out = voicedSafeFallback('roast', 'global state everywhere');
+      expect(out).not.toBe(STATIC_SAFE_FALLBACK.roast);
+      expect(out).toContain('global state everywhere');
     });
   });
 });
