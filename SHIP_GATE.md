@@ -44,7 +44,7 @@
 ## D. Shipping Hygiene
 
 - [x] `[all]` `verify` script exists (test + build + smoke in one command) (2026-03-31)
-- [x] `[all]` Version in manifest matches git tag (2026-06-30) — v1.2.0 tagged at release
+- [x] `[all]` Version in manifest matches git tag (2026-06-30) — v1.2.1 tagged at release
 - [x] `[all]` Dependency scanning runs in CI (ecosystem-appropriate) (2026-06-20) — ci.yml `security` job: `npm audit --omit=dev --audit-level=critical` + TruffleHog OSS
 - [ ] `[all]` SKIP: Automated dependency updates not configured — manual monthly review
 - [x] `[npm]` `npm pack --dry-run` includes: dist/, README.md, CHANGELOG.md, LICENSE (2026-03-31)

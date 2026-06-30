@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-06-30
+
+### Fixed
+- Dockerfile now copies `tsconfig.build.json` so the GHCR image builds. v1.2.0's `build` script
+  became `tsc -p tsconfig.build.json` (to keep the dev-only scorecard out of the published dist),
+  but the Docker build only copied `tsconfig.json`, so the v1.2.0 GHCR image failed. The npm
+  package, GitHub Release, and Pages site for v1.2.0 were unaffected; this patch is npm-identical
+  to 1.2.0 apart from the Docker build fix.
+
 ## [1.2.0] - 2026-06-30
 
 Dogfood swarm: a research study-swarm grounded the design, then a full health pass

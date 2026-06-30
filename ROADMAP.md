@@ -1,6 +1,6 @@
 # sensor-humor Roadmap
 
-**Current:** v1.2.0 — shipped 2026-06-30
+**Current:** v1.2.1 — shipped 2026-06-30
 **Quality baseline:** 6 moods at 70%+, 187 tests, terminal safety gate, degradation signal (`degraded`), persistent session, Ollama Cloud auth, simile post-validation, mood-specific fallbacks, Piper prosody, live sessions addictive with voice on.
 
 Everything below must meaningfully move quality, determinism, debuggability, developer time, or end-user edge. Nothing else gets in.
