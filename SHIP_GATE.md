@@ -44,7 +44,7 @@
 ## D. Shipping Hygiene
 
 - [x] `[all]` `verify` script exists (test + build + smoke in one command) (2026-03-31)
-- [x] `[all]` Version in manifest matches git tag (2026-06-30) — v1.2.1 tagged at release
+- [x] `[all]` Version in manifest matches git tag (2026-07-07) — v1.3.0 tagged at release
 - [x] `[all]` Dependency scanning runs in CI (ecosystem-appropriate) (2026-06-20) — ci.yml `security` job: `npm audit --omit=dev --audit-level=critical` + TruffleHog OSS
 - [ ] `[all]` SKIP: Automated dependency updates not configured — manual monthly review
 - [x] `[npm]` `npm pack --dry-run` includes: dist/, README.md, CHANGELOG.md, LICENSE (2026-03-31)
@@ -56,7 +56,7 @@
 ## E. Identity (soft gate — does not block ship)
 
 - [x] `[all]` Logo in README header (2026-03-31)
-- [ ] `[all]` Translations (polyglot-mcp, 8 languages)
+- [x] `[all]` Translations (polyglot-mcp, 8 languages) — regenerated via TranslateGemma 27B for v1.3.0
 - [x] `[org]` Landing page (@mcptoolshop/site-theme) (2026-03-31)
 - [x] `[all]` GitHub repo metadata: description, homepage, topics (2026-03-31)
 

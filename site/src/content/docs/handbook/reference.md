@@ -159,9 +159,39 @@ Dump the current session state, mood config, and voice backend. Useful for inspe
 
 Notable fields: `generation.safety_filter_fires` counts how often the safety floor substituted a line (a distinct signal from backend `fallback_calls`); `prompt_fingerprint` + `active_prompt_key` bind the *active* prompt text + model so output drift is attributable (and a silent prompt-version downgrade is visible — `active_prompt_key` is the resolved version, not the requested one); when `ollama_reachable` is `false`, an `unreachable_reason` field gives the classified cause (`connection` / `auth` / `timeout`).
 
+## running_gag
+
+Plant a recurring bit the sidekick can call back to later. This is the explicit seeding path for the callback mechanic — without it, `running_gags` is never populated and callbacks never fire.
+
+**Input:** `{ setup: string, tag: string }`
+
+**Output:**
+```json
+{ "tag": "deadbeef", "setup": "the deadbeef incident", "gag_count": 1, "created_turn": 4 }
+```
+
+Both `setup` and `tag` pass the terminal safety gate — a gag that trips the harsh/simile filter is refused (a stored, replayed gag must never carry a slur). A planted gag becomes a callback candidate only after `SENSOR_HUMOR_GAG_MIN_DISTANCE` turns (so the setup has time to land) and retires after `SENSOR_HUMOR_GAG_MAX_FIRES` fires — the inverted-U of humor repetition, where a running gag has a low peak. `comic_timing` with `technique: "callback"` references an eligible gag and is instructed to escalate it, never repeat it verbatim.
+
+## debug_chain
+
+Return the last N per-call traces — one call reconstructs the generation pipeline for any recent output, so you can debug "why did this roast land weird?" without grepping logs.
+
+**Input:** `{ limit?: number }` (default 10, max 10)
+
+**Output:** an array of trace entries, newest first:
+```json
+[
+  { "turn": 7, "tool": "roast", "mood": "roast", "input": "800-line function",
+    "prompt_fingerprint": "a1b2c3d4e5f6", "retries": 0, "validators_triggered": [],
+    "degraded_reason": null, "latency_ms": 812 }
+]
+```
+
+The ring holds the last 10 calls and lives in memory only (never persisted). Set `SENSOR_HUMOR_FULL_TRACE=true` to additionally capture the full prompt text, raw model output, and parsed output in each entry — heavier, and off by default so raw prompt text never lands on disk.
+
 ## session_reset
 
-Reset all session state — mood returns to `dry`, gags/bits/catchphrases cleared, turn counter zeroed.
+Reset all session state — mood returns to `dry`, gags/bits/catchphrases/traces cleared, turn counter zeroed.
 
 **Input:** none
 
@@ -194,6 +224,10 @@ The v1 mood prompts are frozen and pinned by tests — to change one you bump to
 | `SENSOR_HUMOR_PROMPT_VERSION` | `1` | Prompt set version. `dry.v2` ships as the exemplar; set `2` to load v2 prompts where they exist (other moods fall back to v1 per-mood). Malformed values fall back to v1 |
 | `SENSOR_HUMOR_PERSIST` | `false` | Persist session to `~/.sensor-humor/session.json` so callbacks survive a restart (24h expiry) |
 | `SENSOR_HUMOR_SESSION_DIR` | `~/.sensor-humor` | Override the directory for the persisted session file |
+| `SENSOR_HUMOR_MAX_RETRIES` | `1` | Ollama generation retries on bad output, clamped 0–3 (invalid values fall back to the default) |
+| `SENSOR_HUMOR_GAG_MIN_DISTANCE` | `2` | Turns before a planted `running_gag` becomes a callback candidate |
+| `SENSOR_HUMOR_GAG_MAX_FIRES` | `3` | Times a running gag can fire before it retires |
+| `SENSOR_HUMOR_FULL_TRACE` | `false` | `debug_chain` also captures full prompt/raw/parsed text (heavier) |
 | `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama API endpoint (may point to a remote/cloud Ollama) |
 | `OLLAMA_API_KEY` | _(unset)_ | Bearer token for a remote/cloud Ollama (e.g. `https://ollama.com`); sent only as an `Authorization` header, never logged |
 

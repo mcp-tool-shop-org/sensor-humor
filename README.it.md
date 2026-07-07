@@ -63,6 +63,27 @@ docker run -i --rm -e OLLAMA_HOST=http://host.docker.internal:11434 \
   ghcr.io/mcp-tool-shop-org/sensor-humor:latest
 ```
 
+### Configura il tuo client MCP
+
+Registra sensor-humor come server stdio nella configurazione MCP del tuo client. Per Claude Code / Claude Desktop (`claude_desktop_config.json`) o qualsiasi configurazione con la struttura `mcpServers`:
+
+```json
+{
+  "mcpServers": {
+    "sensor-humor": {
+      "command": "npx",
+      "args": ["-y", "@mcptoolshop/sensor-humor"],
+      "env": {
+        "SENSOR_HUMOR_MODEL": "qwen2.5:7b",
+        "OLLAMA_HOST": "http://127.0.0.1:11434"
+      }
+    }
+  }
+}
+```
+
+Il server legge la sua configurazione da questo blocco `env` (o dalla shell che lo avvia); non carica automaticamente un file `.env`. Consulta il file [`.env.example`](.env.example) per tutte le variabili supportate. Se hai installato il pacchetto a livello globale, utilizza `"command": "sensor-humor"` senza specificare alcun `args`.
+
 ## Avvio rapido
 
 1. Avvia Ollama:
@@ -109,7 +130,9 @@ Tutti gli strumenti ereditano l'umore corrente dalla sessione.
 | `heckle` | `(target)` | Breve frecciatina pungente |
 | `catchphrase_generate` | `(context?)` | Crea un elemento riutilizzabile (memorizzato nella sessione) |
 | `catchphrase_callback` | `()` | Riutilizza la frase ad effetto più utilizzata (o null) |
+| `running_gag` | `(setup, tag)` | Inserisci un elemento ricorrente che il personaggio secondario possa riprendere in seguito (con delle limitazioni). Diventa un candidato per essere utilizzato come riferimento dopo che è trascorso il tempo definito da `SENSOR_HUMOR_GAG_MIN_DISTANCE`; smette di essere utilizzato dopo che si sono verificate le volte definite da `SENSOR_HUMOR_GAG_MAX_FIRES`. |
 | `debug_status` | `()` | Stato di salute del backend in tempo reale (Ollama accessibile, modello scaricato), configurazione risolta, conteggi di fallback e stato della sessione |
+| `debug_chain` | `(limit?)` | Ultime N tracce per ogni chiamata (strumento, stato d'animo, input, impronta del prompt, tentativi, validatori attivati, latenza); una singola chiamata ricostruisce la pipeline di generazione. |
 | `session_reset` | `()` | Reimposta tutto lo stato della sessione (umore, gag, elementi, frasi ad effetto, contatore dei turni) |
 
 **Output degradato (testuale, con possibilità di ramificazione a livello di macchina):** quando uno strumento non può restituire una generazione autentica del modello, restituisce una frase predefinita con la voce appropriata più `degraded: true` e un `degraded_reason` da un **insieme chiuso** su cui un agente che lo utilizza può eseguire una ramificazione esaustiva: `safety-filter` (è stata sostituita un'imprecazione/similitudine/meta-leak), `connection`, `timeout`, `model-not-found`, `auth`, `rate-limit`, `server`, `http`, `json-parse`, `validation`, `exhausted`, `unknown`. Una generazione autentica non contiene **nessuna** flag `degraded`: la sua assenza è il segnale positivo. **Tutti** gli strumenti comici includono questo, incluso `catchphrase_callback` (un richiamo con sostituzione di sicurezza viene contrassegnato e non viene mai presentato come autentico). `roast`/`heckle` fanno eco anche all'`mood` attivo; `catchphrase_generate` restituisce `is_fresh` (`true` = appena creato, `false` = frase ad effetto esistente riutilizzata).
@@ -136,10 +159,14 @@ Ogni umore corrisponde a una voce e a una configurazione di prosodia distinte di
 SENSOR_HUMOR_DEBUG=true                # verbose prompt/response dumps
 SENSOR_HUMOR_TIMEOUT_MS=30000          # Ollama call timeout in ms (default: 30000; invalid values fall back to default)
 SENSOR_HUMOR_TEMPERATURE=0.55          # generation temperature, clamped 0.0-2.0 (default: 0.55)
-SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (only v1 ships today; other values fall back to v1)
+SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (dry.v2 is the exemplar; set 2 to load v2 where it exists, else per-mood v1 fallback)
 SENSOR_HUMOR_MODEL=qwen2.5:7b         # Ollama model (default: qwen2.5:7b)
 SENSOR_HUMOR_PERSIST=false             # persist session to ~/.sensor-humor/session.json (survives restart; 24h expiry)
 SENSOR_HUMOR_SESSION_DIR=              # override the session directory (default: ~/.sensor-humor)
+SENSOR_HUMOR_MAX_RETRIES=1             # Ollama generation retries on bad output (0-3; default: 1)
+SENSOR_HUMOR_GAG_MIN_DISTANCE=2        # turns before a planted running_gag is callback-eligible (default: 2)
+SENSOR_HUMOR_GAG_MAX_FIRES=3           # times a running gag fires before it retires (default: 3)
+SENSOR_HUMOR_FULL_TRACE=false          # debug_chain also captures full prompt/raw/parsed text (default: false)
 OLLAMA_HOST=http://127.0.0.1:11434    # Ollama API host (default: http://127.0.0.1:11434)
 OLLAMA_API_KEY=                        # Bearer token for a remote/cloud Ollama (e.g. https://ollama.com); unset for local
 

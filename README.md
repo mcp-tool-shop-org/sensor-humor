@@ -21,7 +21,7 @@ Built for developers: gentle burns on code smells, dry deadpan error messages, c
 
 - 6 moods, each tuned with a fill-in-the-blank skeleton prompt for predictable, high-quality output
 - Session state: running gags, recent bits ring buffer (max 20), catchphrase Map — optionally persisted to disk (`SENSOR_HUMOR_PERSIST`) so callbacks survive a server restart
-- 9 tools: mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status, session_reset
+- 11 tools: mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, running_gag, debug_status, debug_chain, session_reset
 - Local Ollama backend (qwen2.5:7b default, configurable via `SENSOR_HUMOR_MODEL`)
 - Voice pairing: mcp-voice-soundboard with Piper TTS (prosody knobs: length_scale, noise_scale, noise_w_scale, volume)
 - Deterministic: JSON schema enforcement, validation, retry on bad output, mood inheritance enforced
@@ -130,8 +130,10 @@ All tools inherit current mood from session.
 | `heckle` | `(target)` | Short pointed jab |
 | `catchphrase_generate` | `(context?)` | Create reusable bit (stored in session) |
 | `catchphrase_callback` | `()` | Reuse most-used catchphrase (or null) |
-| `debug_status` | `()` | Live backend health (Ollama reachable, model pulled), resolved config, fallback counts, and session state |
-| `session_reset` | `()` | Reset all session state (mood, gags, bits, catchphrases, turn counter) |
+| `running_gag` | `(setup, tag)` | Plant a recurring bit the sidekick can call back to later (safety-gated). Becomes a callback candidate after `SENSOR_HUMOR_GAG_MIN_DISTANCE` turns; retires after `SENSOR_HUMOR_GAG_MAX_FIRES` fires |
+| `debug_status` | `()` | Live backend health (Ollama reachable, model pulled), resolved config, fallback/rate counts, and session state |
+| `debug_chain` | `(limit?)` | Last N per-call traces (tool, mood, input, prompt fingerprint, retries, validators fired, latency) — one call reconstructs the generation pipeline |
+| `session_reset` | `()` | Reset all session state (mood, gags, bits, catchphrases, traces, turn counter) |
 
 **Degraded output (typed, machine-branchable):** when a tool can't return a genuine model generation it returns an in-voice canned line plus `degraded: true` and a `degraded_reason` from a **closed set** a consuming agent can branch on exhaustively: `safety-filter` (a slur/simile/meta-leak was substituted) · `connection` · `timeout` · `model-not-found` · `auth` · `rate-limit` · `server` · `http` · `json-parse` · `validation` · `exhausted` · `unknown`. A genuine generation carries **no** `degraded` flag — its absence is the positive signal. **All** comedy tools carry this, including `catchphrase_callback` (a safety-substituted recall is flagged, never passed off as a genuine one). `roast`/`heckle` also echo the active `mood`; `catchphrase_generate` returns `is_fresh` (`true` = newly minted, `false` = an existing session catchphrase reused).
 
@@ -161,6 +163,10 @@ SENSOR_HUMOR_PROMPT_VERSION=1          # prompt set version (dry.v2 is the exemp
 SENSOR_HUMOR_MODEL=qwen2.5:7b         # Ollama model (default: qwen2.5:7b)
 SENSOR_HUMOR_PERSIST=false             # persist session to ~/.sensor-humor/session.json (survives restart; 24h expiry)
 SENSOR_HUMOR_SESSION_DIR=              # override the session directory (default: ~/.sensor-humor)
+SENSOR_HUMOR_MAX_RETRIES=1             # Ollama generation retries on bad output (0-3; default: 1)
+SENSOR_HUMOR_GAG_MIN_DISTANCE=2        # turns before a planted running_gag is callback-eligible (default: 2)
+SENSOR_HUMOR_GAG_MAX_FIRES=3           # times a running gag fires before it retires (default: 3)
+SENSOR_HUMOR_FULL_TRACE=false          # debug_chain also captures full prompt/raw/parsed text (default: false)
 OLLAMA_HOST=http://127.0.0.1:11434    # Ollama API host (default: http://127.0.0.1:11434)
 OLLAMA_API_KEY=                        # Bearer token for a remote/cloud Ollama (e.g. https://ollama.com); unset for local
 

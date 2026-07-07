@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-07-07
+
+A comprehensive dogfood swarm: a full health pass (Stage A bug/security + Stage B/C proactive /
+humanization), a study-swarm-grounded feature pass, and a CRITICAL safety hardening. 294 → 425 tests.
+
+### Added
+- **`running_gag` tool** — the running-gag/callback mechanic is now usable. `running_gag(setup, tag)`
+  plants a recurring bit the sidekick can call back to later; previously the callback path had **no
+  runtime seeding** and never fired in production. It is safety-gated (a dirty gag is refused, never
+  stored/replayed). Callback eligibility is research-grounded: a **distance gate**
+  (`SENSOR_HUMOR_GAG_MIN_DISTANCE`, default 2) withholds a gag until enough turns pass, and a
+  **retirement cap** (`SENSOR_HUMOR_GAG_MAX_FIRES`, default 3) retires it after a few fires (the
+  inverted-U of humor repetition). Callbacks are instructed to escalate/vary, never repeat verbatim.
+- **`debug_chain` tool** — a bounded per-call trace ring (last 10) for forensic debugging. One
+  `debug_chain(limit?)` call reconstructs the generation pipeline for any recent output:
+  `{ turn, tool, mood, input, prompt_fingerprint, retries, validators_triggered, degraded_reason,
+  latency_ms }`. `SENSOR_HUMOR_FULL_TRACE=true` adds full prompt/raw/parsed text. In-memory only
+  (never persisted). These two tools bring the total to **11**.
+- **Observability over time** in `debug_status`: `fallback_rate` + `fallback_rate_recent` (a 20-call
+  window), `consecutive_fallbacks` + `last_success_ts` (with one loud escalation line when the backend
+  stays down), `running_gags` contents (not just a count), and LRU eviction counters.
+- Machine-readable scorecard output (`SENSOR_HUMOR_SCORECARD_JSON=<path>`) for a nightly drift job;
+  a `SENSOR_HUMOR_MAX_RETRIES` env knob (0–3).
+- Caller legibility: `mood_set` returns `previous_mood` + `changed`; `comic_timing` returns
+  `callback_honored` (a real callback vs a model-claimed one); the startup warning names
+  `OLLAMA_API_KEY` on an auth failure.
+
+### Fixed
+- **Safety (CRITICAL)** — the terminal harsh-language gate had a single-homoglyph bypass: the
+  confusable fold omitted the look-alikes for `i`/`s` (and, on adversarial re-audit, `b/f/l/n/r/u`),
+  so a slur with one substituted Cyrillic/Greek/Armenian letter (e.g. a Cyrillic `і` for `i`) passed
+  the gate and could reach the user — falsifying the SECURITY.md "defeats homoglyphs" claim. The
+  detection fold now covers the common look-alikes for the **entire slur alphabet, both cases**
+  (including the Cyrillic capital `Н`=H and Greek `Ν`=N classes), verified by an exhaustive both-case
+  fuzz sweep. A runtime-derived coverage test fails CI if a new slur term ever adds an uncovered letter.
+- `catchphrase_callback` no longer livelocks on a dirty persisted phrase (it was counted before the
+  gate, permanently shadowing clean phrases).
+- A non-object JSON response from a proxy/older Ollama is classified truthfully (`json-parse`) instead
+  of a misleading `unknown`.
+- Scorecard: the `dry` mood no longer false-FAILs on acronym runs (`API URL SDK`); the `chaotic` pivot
+  is anchored + broadened; the `cynic` label no longer accepts roast labels; the Wilson interval is
+  NaN-safe and reconciled with SPRT for the exit code.
+
+### Changed
+- CI now tests Node 22 (the release/Docker toolchain); release-notes extraction is awk-independent.
+- README ships a concrete MCP client configuration example; `.env.example` clarifies the server reads
+  `process.env` (it does not auto-load `.env`); SECURITY.md documents the supply-chain posture.
+
 ## [1.2.1] - 2026-06-30
 
 ### Fixed
