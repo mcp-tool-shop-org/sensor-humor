@@ -1,5 +1,11 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { loadMoodPrompt, getMoodSystemPrompt, getMoodVoiceNotes, getActivePromptKey } from '../src/prompts/loader.js';
+import {
+  loadMoodPrompt,
+  getMoodSystemPrompt,
+  getMoodVoiceNotes,
+  getActivePromptKey,
+  getRegisteredPromptKeys,
+} from '../src/prompts/loader.js';
 import { MOOD_STYLES, type MoodStyle } from '../src/types.js';
 
 describe('Prompt Loader', () => {
@@ -61,6 +67,29 @@ describe('Prompt Loader', () => {
       process.env.SENSOR_HUMOR_PROMPT_VERSION = '999';
       // requested v999 silently downgrades to v1 — the active key exposes that
       expect(getActivePromptKey('dry')).toBe('dry.v1');
+    });
+
+    // b-sc-004: the v2 on-ramp has a silent-downgrade failure mode — a dev adds a
+    // `<mood>.v2.prompt.ts` import but forgets the PROMPT_MAP entry, so version=2 silently serves v1
+    // for that mood and the A/B knob is a no-op. This asserts that for EVERY `<mood>.v2` key actually
+    // registered in PROMPT_MAP, getActivePromptKey(mood) at version=2 resolves to that v2 key. It
+    // reads the LIVE registration set (getRegisteredPromptKeys) so it guards the half-wiring case
+    // rather than a hand-listed expectation. Today only dry.v2 exists; this stays correct as more
+    // v2 prompts are registered, and if a registered v2 fails to resolve, CI names the mood.
+    it('every registered <mood>.v2 resolves via getActivePromptKey at version=2 (v2 half-wiring guard)', () => {
+      process.env.SENSOR_HUMOR_PROMPT_VERSION = '2';
+      const v2Keys = getRegisteredPromptKeys().filter((k) => k.endsWith('.v2'));
+      expect(v2Keys.length, 'expected at least one registered v2 prompt (dry.v2 exemplar)').toBeGreaterThan(0);
+      const unresolved: string[] = [];
+      for (const key of v2Keys) {
+        const mood = key.slice(0, -'.v2'.length) as MoodStyle;
+        if (getActivePromptKey(mood) !== key) {
+          unresolved.push(`${key} -> got ${getActivePromptKey(mood)}`);
+        }
+      }
+      // Non-empty means a v2 was registered but does NOT win at version=2 (or a key is malformed) —
+      // the silent-downgrade bug, named per mood.
+      expect(unresolved).toEqual([]);
     });
   });
 

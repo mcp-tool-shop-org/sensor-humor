@@ -24,6 +24,16 @@ import * as zoomer_v1 from './moods/zoomer.v1.prompt.js';
 // back to v1 per the resolution below). Add future v2 prompts here the same way.
 import * as dry_v2 from './moods/dry.v2.prompt.js';
 
+/**
+ * Adding a v2 prompt — DO ALL THREE (a miss silently downgrades that mood to v1):
+ *   1. `import * as <mood>_v2 from './moods/<mood>.v2.prompt.js';` in the import block above.
+ *   2. Add a `'<mood>.v2': <mood>_v2,` entry to PROMPT_MAP below.
+ *   3. Prove the change with the regression scorecard before shipping.
+ * The half-wiring failure mode (step 1 done, step 2 forgotten) is guarded by the b-sc-004 test in
+ * tests/loader.test.ts: it asserts every `<mood>.v2` key registered here actually resolves via
+ * getActivePromptKey(mood) at version=2 — but that test can only see keys that made it into the
+ * map, so keep this map the single registration point.
+ */
 const PROMPT_MAP: Record<string, MoodPromptModule> = {
   'dry.v1': dry_v1,
   'roast.v1': roast_v1,
@@ -65,6 +75,17 @@ export function getPromptVersion(): string {
 export function getActivePromptKey(mood: MoodStyle): string {
   const key = `${mood}.v${getPromptVersion()}`;
   return PROMPT_MAP[key] ? key : `${mood}.v1`;
+}
+
+/**
+ * The prompt keys actually REGISTERED in PROMPT_MAP (e.g. 'dry.v1', 'dry.v2'). Exposed read-only so
+ * a test can enumerate the real registration set — in particular to guard the v2 half-wiring case
+ * (b-sc-004): an added-but-unregistered v2 import silently downgrades to v1, and a test that only
+ * knows the intended v2 keys would miss it. Iterating THIS list keeps the guard honest against the
+ * live map. Returns a fresh array so callers cannot mutate the registration.
+ */
+export function getRegisteredPromptKeys(): string[] {
+  return Object.keys(PROMPT_MAP);
 }
 
 // loadMoodPrompt runs on every tool call, so a version-downgrade warning is emitted at most

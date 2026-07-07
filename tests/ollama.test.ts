@@ -16,7 +16,8 @@ vi.mock('ollama', () => ({
 }));
 
 // Must import AFTER mock setup
-const { generateComedy, getTemperature, hasApiKey } = await import('../src/ollama.js');
+const { generateComedy, getTemperature, getMaxRetries, hasApiKey, getOllamaStats, resetOllamaStats } =
+  await import('../src/ollama.js');
 
 const TestSchema = z.object({
   text: z.string(),
@@ -44,6 +45,7 @@ function makeOptions() {
 describe('generateComedy', () => {
   beforeEach(() => {
     mockChat.mockReset();
+    resetOllamaStats();
   });
 
   afterEach(() => {
@@ -291,5 +293,166 @@ describe('generateComedy', () => {
       expect(result.data.text).toBe('fallback');
       expect(result.fallback_reason).toBe(expected);
     }
+  });
+
+  // b-server-001: cumulative counters alone can't answer "how bad is it right now". A computed
+  // fallback_rate (lifetime) plus a recent-window rate must both be exposed and correct.
+  describe('fallback_rate + fallback_rate_recent (b-server-001)', () => {
+    it('fallback_rate is 0 when no calls have been made (division guard)', () => {
+      resetOllamaStats();
+      const stats = getOllamaStats();
+      expect(stats.total_calls).toBe(0);
+      expect(stats.fallback_rate).toBe(0);
+      expect(stats.fallback_rate_recent).toBe(0);
+    });
+
+    it('computes the lifetime fallback_rate from total vs fallback calls', async () => {
+      resetOllamaStats();
+      // 2 successes, 2 fallbacks => 0.5 lifetime rate.
+      mockChat.mockResolvedValue({ message: { content: '{"text": "ok"}' }, prompt_eval_count: 1, eval_count: 1 });
+      await generateComedy<TestResult>(makeOptions(), fallback);
+      await generateComedy<TestResult>(makeOptions(), fallback);
+      mockChat.mockReset();
+      mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
+      await generateComedy<TestResult>(makeOptions(), fallback);
+      await generateComedy<TestResult>(makeOptions(), fallback);
+
+      const stats = getOllamaStats();
+      expect(stats.total_calls).toBe(4);
+      expect(stats.fallback_calls).toBe(2);
+      expect(stats.fallback_rate).toBeCloseTo(0.5, 5);
+    });
+
+    it('fallback_rate_recent tracks a bounded window, so a fresh outage shows immediately', async () => {
+      resetOllamaStats();
+      // Prime a long healthy history well beyond the recent window.
+      mockChat.mockResolvedValue({ message: { content: '{"text": "ok"}' }, prompt_eval_count: 1, eval_count: 1 });
+      for (let i = 0; i < 30; i++) await generateComedy<TestResult>(makeOptions(), fallback);
+      expect(getOllamaStats().fallback_rate_recent).toBe(0);
+
+      // Now the backend dies. After 20 straight fallbacks the recent window is ALL fallbacks (1.0)
+      // even though the lifetime rate is diluted by the 30 prior successes.
+      mockChat.mockReset();
+      mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
+      for (let i = 0; i < 20; i++) await generateComedy<TestResult>(makeOptions(), fallback);
+
+      const stats = getOllamaStats();
+      expect(stats.fallback_rate_recent).toBe(1);
+      // Lifetime rate is 20/50 = 0.4 — the window signal is strictly louder than the cumulative one.
+      expect(stats.fallback_rate).toBeCloseTo(0.4, 5);
+      expect(stats.fallback_rate_recent).toBeGreaterThan(stats.fallback_rate);
+    });
+  });
+
+  // b-server-002: a sustained silent degradation must show as consecutive_fallbacks + last_success_ts,
+  // and must emit ONE loud escalation on crossing the threshold (not per-call spam).
+  describe('consecutive_fallbacks + last_success_ts + degrade-loudly (b-server-002)', () => {
+    it('increments consecutive_fallbacks on each fallback and resets to 0 on a success', async () => {
+      resetOllamaStats();
+      mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
+      await generateComedy<TestResult>(makeOptions(), fallback);
+      await generateComedy<TestResult>(makeOptions(), fallback);
+      expect(getOllamaStats().consecutive_fallbacks).toBe(2);
+
+      // A success clears the streak.
+      mockChat.mockReset();
+      mockChat.mockResolvedValue({ message: { content: '{"text": "ok"}' }, prompt_eval_count: 1, eval_count: 1 });
+      await generateComedy<TestResult>(makeOptions(), fallback);
+      expect(getOllamaStats().consecutive_fallbacks).toBe(0);
+    });
+
+    it('stamps last_success_ts on a successful generate (undefined before any success)', async () => {
+      resetOllamaStats();
+      expect(getOllamaStats().last_success_ts).toBeUndefined();
+      const before = Date.now();
+      mockChat.mockResolvedValue({ message: { content: '{"text": "ok"}' }, prompt_eval_count: 1, eval_count: 1 });
+      await generateComedy<TestResult>(makeOptions(), fallback);
+      const stats = getOllamaStats();
+      expect(stats.last_success_ts).toBeGreaterThanOrEqual(before);
+      expect(stats.last_success_ts).toBeLessThanOrEqual(Date.now());
+    });
+
+    it('emits exactly ONE escalation line when the streak crosses the threshold (no per-call spam)', async () => {
+      resetOllamaStats();
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
+        // Threshold is 5. Drive 8 consecutive fallbacks; the DEGRADED line must fire once, at the crossing.
+        for (let i = 0; i < 8; i++) await generateComedy<TestResult>(makeOptions(), fallback);
+        const degradedLines = spy.mock.calls.filter(
+          (c) => typeof c[0] === 'string' && c[0].includes('DEGRADED'),
+        );
+        expect(degradedLines).toHaveLength(1);
+        expect(degradedLines[0][0]).toContain('consecutive Ollama fallbacks');
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('re-arms the escalation after a success interrupts the streak (a new streak can alert again)', async () => {
+      resetOllamaStats();
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        // First streak of 5 -> one alert.
+        mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
+        for (let i = 0; i < 5; i++) await generateComedy<TestResult>(makeOptions(), fallback);
+        // A success resets the latch.
+        mockChat.mockReset();
+        mockChat.mockResolvedValue({ message: { content: '{"text": "ok"}' }, prompt_eval_count: 1, eval_count: 1 });
+        await generateComedy<TestResult>(makeOptions(), fallback);
+        // Second streak of 5 -> a SECOND alert (latch was cleared by the success).
+        mockChat.mockReset();
+        mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
+        for (let i = 0; i < 5; i++) await generateComedy<TestResult>(makeOptions(), fallback);
+
+        const degradedLines = spy.mock.calls.filter(
+          (c) => typeof c[0] === 'string' && c[0].includes('DEGRADED'),
+        );
+        expect(degradedLines).toHaveLength(2);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  });
+
+  // b-server-005: MAX_RETRIES was a hardcoded const while every other knob is env-tunable.
+  describe('getMaxRetries env knob (b-server-005)', () => {
+    afterEach(() => {
+      delete process.env.SENSOR_HUMOR_MAX_RETRIES;
+    });
+
+    it('defaults to 1, reads valid overrides in 0..3, and guards invalid/out-of-range', () => {
+      delete process.env.SENSOR_HUMOR_MAX_RETRIES;
+      expect(getMaxRetries()).toBe(1);
+      for (const [val, want] of [['0', 0], ['2', 2], ['3', 3]] as Array<[string, number]>) {
+        process.env.SENSOR_HUMOR_MAX_RETRIES = val;
+        expect(getMaxRetries()).toBe(want);
+      }
+      // Invalid or out-of-range -> default.
+      for (const bad of ['abc', '-1', '4', '99', '']) {
+        process.env.SENSOR_HUMOR_MAX_RETRIES = bad;
+        expect(getMaxRetries()).toBe(1);
+      }
+    });
+
+    it('SENSOR_HUMOR_MAX_RETRIES=0 makes generateComedy attempt exactly once (no retry)', async () => {
+      resetOllamaStats();
+      process.env.SENSOR_HUMOR_MAX_RETRIES = '0';
+      mockChat.mockResolvedValue({ message: { content: 'not json' } });
+      const result = await generateComedy<TestResult>(makeOptions(), fallback);
+      expect(result.data.text).toBe('fallback');
+      // Zero retries => a single attempt, not the default two.
+      expect(mockChat).toHaveBeenCalledTimes(1);
+    });
+
+    it('SENSOR_HUMOR_MAX_RETRIES=3 allows up to four attempts before falling back', async () => {
+      resetOllamaStats();
+      process.env.SENSOR_HUMOR_MAX_RETRIES = '3';
+      mockChat.mockResolvedValue({ message: { content: 'still not json' } });
+      const result = await generateComedy<TestResult>(makeOptions(), fallback);
+      expect(result.data.text).toBe('fallback');
+      // 3 retries after the first attempt => 4 total.
+      expect(mockChat).toHaveBeenCalledTimes(4);
+    });
   });
 });

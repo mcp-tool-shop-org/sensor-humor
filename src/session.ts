@@ -67,6 +67,11 @@ export class Session implements SensorHumorSession {
   recent_bits: RecentBit[];
   catchphrases: Map<string, number>;
   turn_counter: number;
+  /** Lifetime count of gags evicted by the LRU cap. Invisible outside SENSOR_HUMOR_DEBUG before —
+   *  surfaced in bufferStats/debug_status so churn (a session hammering distinct gags) is legible. */
+  gags_evicted: number;
+  /** Lifetime count of catchphrases evicted by the LRU cap (same rationale as gags_evicted). */
+  catchphrases_evicted: number;
 
   constructor() {
     this.mood = DEFAULT_MOOD;
@@ -74,6 +79,8 @@ export class Session implements SensorHumorSession {
     this.recent_bits = [];
     this.catchphrases = new Map();
     this.turn_counter = 0;
+    this.gags_evicted = 0;
+    this.catchphrases_evicted = 0;
   }
 
   /** Advance turn counter. Call once per tool invocation. */
@@ -128,6 +135,7 @@ export class Session implements SensorHumorSession {
           }
         }
         const [evicted] = this.running_gags.splice(stalest, 1);
+        this.gags_evicted++;
         if (process.env.SENSOR_HUMOR_DEBUG === 'true' && evicted) {
           console.error(
             `[sensor-humor] Evicted gag "${evicted.tag}" (last turn ${evicted.last_turn}, used ${evicted.used}x; cap ${MAX_RUNNING_GAGS})`
@@ -157,6 +165,7 @@ export class Session implements SensorHumorSession {
       }
       if (stalestKey !== undefined) {
         this.catchphrases.delete(stalestKey);
+        this.catchphrases_evicted++;
         if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
           console.error(
             `[sensor-humor] Evicted catchphrase "${stalestKey}" (used ${stalestCount}x; cap ${MAX_CATCHPHRASES})`
@@ -224,6 +233,8 @@ export class Session implements SensorHumorSession {
     max_running_gags: number;
     catchphrases: number;
     max_catchphrases: number;
+    gags_evicted: number;
+    catchphrases_evicted: number;
   } {
     return {
       recent_bits: this.recent_bits.length,
@@ -232,7 +243,23 @@ export class Session implements SensorHumorSession {
       max_running_gags: MAX_RUNNING_GAGS,
       catchphrases: this.catchphrases.size,
       max_catchphrases: MAX_CATCHPHRASES,
+      // Eviction counters: non-zero means the caps are actively churning entries out — a
+      // legibility signal that was previously only a debug-only stderr line.
+      gags_evicted: this.gags_evicted,
+      catchphrases_evicted: this.catchphrases_evicted,
     };
+  }
+
+  /**
+   * The most-recently-referenced running gags, newest first, capped to `limit`. Accessor for
+   * debug_status so it can surface gag CONTENTS (setup/tag/used/last_turn) — bounded so a long
+   * session's full gag list never bloats the tool output. Ordering mirrors gagsSummary's
+   * highest-last_turn selection.
+   */
+  recentGags(limit = SUMMARY_INJECT_LIMIT): RunningGag[] {
+    return [...this.running_gags]
+      .sort((a, b) => b.last_turn - a.last_turn)
+      .slice(0, Math.max(0, limit));
   }
 
   /** Full state summary for prompt context. */

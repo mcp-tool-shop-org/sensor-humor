@@ -240,6 +240,10 @@ server.tool(
         turn_counter: session.turn_counter,
         recent_bits_count: session.recent_bits.length,
         running_gags_count: session.running_gags.length,
+        // Surface gag CONTENTS (setup/tag/used/last_turn), not just the count — the count alone
+        // can't tell the operator WHICH gags are live or being called back. Capped to the most
+        // recent few so a long session's full list never bloats this output.
+        running_gags: session.recentGags(),
         catchphrase_count: session.catchphrases.size,
         buffer_stats: session.bufferStats(),
         catchphrases: Object.fromEntries(session.catchphrases),
@@ -289,6 +293,16 @@ server.tool(
 async function checkOllamaHealth(): Promise<void> {
   const probe = await probeOllama();
   if (!probe.reachable) {
+    // Distinguish the AUTH case: an unreachable-due-to-auth backend is a wrong/missing key, not a
+    // down daemon — the fix is OLLAMA_API_KEY, not "start ollama". Naming it here saves the operator
+    // a wrong debugging path. Mirrors ERROR_HINTS.auth.
+    if (probe.reason === 'auth') {
+      console.error(
+        `[sensor-humor] WARNING: Ollama rejected the request at ${getOllamaHost()} (auth). ` +
+          `Set OLLAMA_API_KEY for this remote/cloud host. Tools will use fallbacks until it's fixed.`,
+      );
+      return;
+    }
     console.error(
       `[sensor-humor] WARNING: Ollama not reachable at ${getOllamaHost()}. Tools will use fallbacks until available.`,
     );

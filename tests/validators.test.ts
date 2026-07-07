@@ -7,6 +7,10 @@ import {
   sanitizeForPrompt,
   voicedSafeFallback,
   STATIC_SAFE_FALLBACK,
+  slurAlphabet,
+  coversLetter,
+  FOLDED_LETTERS,
+  DETECTION_FOLD_MAPS,
 } from '../src/validators.js';
 
 // Built from char codes so the obfuscation bytes are unambiguous in source.
@@ -366,6 +370,131 @@ describe('validators', () => {
       expect(hasHarshLeak(`${fromCodes(0x0455)}lut`)).toBe(true);         // ѕlut (Cyrillic ѕ)
       expect(hasHarshLeak(`n${fromCodes(0x0456)}gger`)).toBe(true);       // nіgger (Cyrillic і)
       expect(hasHarshLeak(`n${fromCodes(0x03b9)}gger`)).toBe(true);       // nιgger (Greek ι)
+    });
+  });
+
+  // ── b-sc-001: enforce the load-bearing homoglyph-coverage INVARIANT with a RED-CI gate ────────
+  // validators.ts carries a comment invariant: "the detection maps MUST cover the common homoglyph
+  // of every ASCII letter in the HARSH term list." Nothing enforced it — the fuzz sweep above
+  // hardcodes today's 7 slurs, so adding a HARSH term with a NEW letter (m/j/z/q/v...) would ship an
+  // uncovered single-substitution bypass with GREEN CI. This block derives the slur alphabet AT
+  // RUNTIME from the real source of truth (slurAlphabet(), which decodes HARSH_FILTER_TERMS) and
+  // asserts EVERY letter is defended by at least one mapped homoglyph — proven BOTH via the exported
+  // coverage set AND via a live single-substitution through hasHarshLeak. If HARSH_TERMS grows a new
+  // letter, this test names exactly which letter is uncovered. All test slurs are built from CHAR
+  // CODES only (mirroring the base64 / fromCodes pattern) — no plaintext slur in source.
+  describe('homoglyph-coverage invariant over the runtime slur alphabet (b-sc-001)', () => {
+    const fromCodes = (...codes: number[]): string => String.fromCharCode(...codes);
+
+    // Base harsh terms, built from char codes so no plaintext slur appears in source. Used to
+    // construct a LIVE single-substitution per alphabet letter (splice one homoglyph in place of one
+    // ASCII letter and assert hasHarshLeak still fires). MUST reconstruct the same alphabet
+    // slurAlphabet() derives from HARSH_FILTER_TERMS — a guard test below asserts they agree, so if
+    // HARSH_TERMS_B64 changes and this list is not updated, CI goes red with a legible reason.
+    const BASE_SLURS: number[][] = [
+      [119, 104, 111, 114, 101],       // w h o r e
+      [98, 105, 116, 99, 104],         // b i t c h
+      [115, 108, 117, 116],            // s l u t
+      [99, 117, 110, 116],             // c u n t
+      [102, 97, 103, 103, 111, 116],   // f a g g o t
+      [110, 105, 103, 103, 101, 114],  // n i g g e r
+      [114, 101, 116, 97, 114, 100],   // r e t a r d
+    ];
+
+    /**
+     * DOCUMENTED allow-list: ASCII letters that genuinely have NO safe, convincing single-character
+     * homoglyph and are therefore intentionally NOT covered. This is EMPTY today — every letter in
+     * the current 7-term alphabet (whore|bitch|slut|cunt|faggot|nigger|retard) is defended, the
+     * residual b/f/l/n/r/u having been folded detection-only per the CONFUSABLE_MAP invariant. If a
+     * future HARSH term introduces a letter with no defensible homoglyph, add it here WITH A REASON —
+     * that is a deliberate, reviewed decision, not a silent gap. The test names any uncovered letter
+     * that is NOT on this list, so the gap can never ship unnoticed.
+     */
+    const NO_HOMOGLYPH_ALLOWLIST: ReadonlySet<string> = new Set<string>([
+      // (empty — the current alphabet is fully covered)
+    ]);
+
+    // Invert the exported fold maps: ASCII letter -> homoglyph codepoints that fold to it. Built
+    // from the LIVE exported maps (not hand-listed), so it is exactly the coverage the runtime maps
+    // provide. A capital-map entry whose key is an UPPERCASE homoglyph still lands under its
+    // lowercase ASCII target here (its value is already lowercase).
+    const homoglyphsFor: Record<string, number[]> = {};
+    for (const map of [DETECTION_FOLD_MAPS.shared, DETECTION_FOLD_MAPS.residual, DETECTION_FOLD_MAPS.capital]) {
+      for (const [homo, ascii] of Object.entries(map)) {
+        const a = ascii.toLowerCase();
+        (homoglyphsFor[a] ??= []).push(homo.codePointAt(0)!);
+      }
+    }
+
+    it('slurAlphabet() agrees with the char-code BASE_SLURS reconstruction (source-of-truth guard)', () => {
+      // If HARSH_TERMS_B64 changes but BASE_SLURS above is not updated, these diverge and CI names it.
+      const fromBase = new Set<string>();
+      for (const codes of BASE_SLURS) for (const c of codes) fromBase.add(String.fromCharCode(c).toLowerCase());
+      expect([...slurAlphabet()].sort()).toEqual([...fromBase].sort());
+    });
+
+    it('derives the slur alphabet at RUNTIME from HARSH_FILTER_TERMS (not a hand-copied list)', () => {
+      const alphabet = slurAlphabet();
+      // Sanity: it is the distinct letters of the 7 current terms — 17 of them, all lowercase a–z.
+      expect(alphabet.size).toBe(17);
+      for (const ch of alphabet) expect(ch).toMatch(/^[a-z]$/);
+    });
+
+    it('EVERY runtime slur-alphabet letter is covered by a mapped homoglyph (via the exported set)', () => {
+      const uncovered: string[] = [];
+      for (const letter of slurAlphabet()) {
+        if (NO_HOMOGLYPH_ALLOWLIST.has(letter)) continue;
+        if (!coversLetter(letter)) uncovered.push(letter);
+      }
+      // A non-empty array names EXACTLY which HARSH-alphabet letter lost its homoglyph coverage.
+      // Fix: add a folding homoglyph for that letter to the appropriate map in validators.ts, OR
+      // (only if no safe homoglyph exists) add it to NO_HOMOGLYPH_ALLOWLIST above with a reason.
+      expect(uncovered).toEqual([]);
+    });
+
+    it('EVERY runtime slur-alphabet letter is caught as a LIVE single-substitution (via hasHarshLeak)', () => {
+      // Stronger than the set check: for each alphabet letter, take a base slur that contains it,
+      // swap that ONE letter for a mapped homoglyph, and assert hasHarshLeak() still fires — proving
+      // the map coverage actually closes the single-substitution bypass end-to-end.
+      const escaped: string[] = [];
+      for (const letter of slurAlphabet()) {
+        if (NO_HOMOGLYPH_ALLOWLIST.has(letter)) continue;
+        const homos = homoglyphsFor[letter];
+        if (!homos || homos.length === 0) {
+          escaped.push(`${letter}: no mapped homoglyph`);
+          continue;
+        }
+        const homoCp = homos[0];
+        // Find a base slur containing this letter and substitute the FIRST occurrence.
+        const target = BASE_SLURS.find((codes) =>
+          codes.some((c) => String.fromCharCode(c).toLowerCase() === letter),
+        );
+        expect(target, `no base slur contains "${letter}"`).toBeDefined();
+        const codes = target!;
+        const idx = codes.findIndex((c) => String.fromCharCode(c).toLowerCase() === letter);
+        const parts = codes.map((c) => fromCodes(c));
+        parts[idx] = fromCodes(homoCp);
+        const single = parts.join('');
+        if (!hasHarshLeak(`you absolute ${single} of a dev`)) {
+          escaped.push(`${letter}->U+${homoCp.toString(16)} in ${JSON.stringify(single)}`);
+        }
+      }
+      expect(escaped).toEqual([]);
+    });
+
+    it('FOLDED_LETTERS is a non-empty lowercase a–z set derived from the live maps', () => {
+      expect(FOLDED_LETTERS.size).toBeGreaterThan(10);
+      for (const ch of FOLDED_LETTERS) expect(ch).toMatch(/^[a-z]$/);
+      // coversLetter is exactly membership in FOLDED_LETTERS (predicate form).
+      for (const ch of FOLDED_LETTERS) expect(coversLetter(ch)).toBe(true);
+      expect(coversLetter('q')).toBe(FOLDED_LETTERS.has('q')); // consistency on a non-alphabet letter
+    });
+
+    it('the exported fold maps are frozen (a test/importer cannot mutate the live maps)', () => {
+      expect(Object.isFrozen(DETECTION_FOLD_MAPS)).toBe(true);
+      expect(Object.isFrozen(DETECTION_FOLD_MAPS.shared)).toBe(true);
+      expect(Object.isFrozen(DETECTION_FOLD_MAPS.residual)).toBe(true);
+      expect(Object.isFrozen(DETECTION_FOLD_MAPS.capital)).toBe(true);
     });
   });
 

@@ -19,6 +19,16 @@ const ComicTimingSchema = z.object({
 });
 
 /**
+ * Result shape returned by this tool, structurally extending ComicTimingResult with the
+ * caller-legibility field `callback_honored` (b-tools-002). Declared locally rather than in
+ * types.ts (which this agent does not own): when technique_used === 'callback', honored === true
+ * means callback_source matched a real gag candidate (a verified callback); false means the model
+ * claimed 'callback' but nothing matched (a hallucinated callback). Absent for non-callback
+ * techniques, so existing callers and the base ComicTimingResult contract are unaffected.
+ */
+type ComicTimingResultWithHonor = ComicTimingResult & { callback_honored?: boolean };
+
+/**
  * Detect meta-commentary or prompt leakage in output. Anchored on multi-word leakage phrases
  * rather than bare nouns ("rule", "prompt", "instruction") so ordinary dev-humor vocabulary
  * ("the linter rule fired", "a prompt apology") no longer triggers a needless retry.
@@ -75,7 +85,7 @@ function buildTechniqueGuidance(technique: ComicTechnique, hasCallbacks: boolean
 export async function comicTiming(
   text: string,
   technique: ComicTechnique = 'auto',
-): Promise<ComicTimingResult> {
+): Promise<ComicTimingResultWithHonor> {
   const session = getSession();
   session.tick();
   // Snapshot the mood ONCE at entry (matches roast.ts / heckle.ts). Reading session.mood again
@@ -188,15 +198,33 @@ Respond with JSON only.`;
   // Update session state
   session.pushBit(result.data.rewrite, result.data.technique_used);
 
-  // If the model used a callback, update the gag's usage count
-  if (result.data.technique_used === 'callback' && result.data.callback_source) {
-    const gag = callbackCandidates.find(
-      (g) => g.setup === result.data.callback_source || g.tag === result.data.callback_source,
-    );
+  // If the model used a callback, update the gag's usage count and record whether the claimed
+  // callback was actually HONORED — i.e. callback_source matched a real gag candidate. A gate
+  // substitution above rewrites technique_used to 'understatement', so this only fires for a
+  // genuine model 'callback'. When the model claims 'callback' but nothing matches (a hallucinated
+  // callback), callback_honored is false so the caller can distinguish a real callback from an
+  // invented one instead of trusting an unverified 'callback' label with no source (b-tools-002).
+  // Typed view of the result data so the additive callback_honored field type-checks without
+  // editing the shared ComicTimingResult in types.ts (this agent does not own it).
+  const data = result.data as ComicTimingResultWithHonor;
+  if (data.technique_used === 'callback') {
+    const gag = data.callback_source
+      ? callbackCandidates.find(
+          (g) => g.setup === data.callback_source || g.tag === data.callback_source,
+        )
+      : undefined;
     if (gag) {
       session.addGag(gag.setup, gag.tag);
-    } else if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
-      console.error(`[sensor-humor] callback_source "${result.data.callback_source}" did not match any gag candidate`);
+      data.callback_honored = true;
+    } else {
+      // Model labeled this a callback but callback_source matched no gag candidate (or was absent).
+      // Flag it as unhonored rather than silently passing an unverified 'callback' through.
+      data.callback_honored = false;
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+        console.error(
+          `[sensor-humor] callback_source "${data.callback_source ?? '(none)'}" did not match any gag candidate — callback_honored: false`,
+        );
+      }
     }
   }
 

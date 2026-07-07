@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
+import { MOOD_STYLES } from '../src/types.js';
 import * as dry_v1 from '../src/prompts/moods/dry.v1.prompt.js';
 import * as roast_v1 from '../src/prompts/moods/roast.v1.prompt.js';
 import * as chaotic_v1 from '../src/prompts/moods/chaotic.v1.prompt.js';
@@ -32,4 +33,16 @@ describe('frozen v1 prompts (prompt-stability lock)', () => {
       expect(fingerprint(mod)).toBe(fp);
     });
   }
+
+  // b-sc-003: the FROZEN map above is hand-maintained. If a 7th mood ships, the fingerprint loop
+  // simply would not cover it — the new mood's v1 prompt could drift with green CI because nothing
+  // pins it. This iterates the REAL mood registry (MOOD_STYLES) and asserts FROZEN has a
+  // `${mood}.v1` entry for EVERY mood, so an unpinned mood turns CI red and names the omission.
+  it('FROZEN pins a v1 fingerprint for EVERY mood in MOOD_STYLES (no mood ships unpinned)', () => {
+    const missing = MOOD_STYLES.filter((mood) => !(`${mood}.v1` in FROZEN));
+    expect(
+      missing,
+      `moods missing a frozen v1 fingerprint: ${missing.join(', ')} — pin them in FROZEN`,
+    ).toEqual([]);
+  });
 });

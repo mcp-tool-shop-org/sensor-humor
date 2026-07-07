@@ -15,7 +15,8 @@ const DEFAULT_TOP_K = 40;
 const DEFAULT_MIROSTAT = 2;
 const DEFAULT_MIROSTAT_TAU = 5.0;
 const MAX_PREDICT = 60;
-const MAX_RETRIES = 1;
+/** Default retry budget (one retry after the first attempt). Env-overridable via getMaxRetries(). */
+const DEFAULT_MAX_RETRIES = 1;
 const DEFAULT_TIMEOUT_MS = 30_000;
 /** Backoff before retrying a throttled/5xx response — an instant retry just re-hits the limit. */
 const RETRY_BACKOFF_MS = 400;
@@ -31,6 +32,27 @@ export function getTimeoutMs(): number {
       );
     }
     return DEFAULT_TIMEOUT_MS;
+  }
+  return n;
+}
+
+/**
+ * Resolve the retry budget, env-overridable via SENSOR_HUMOR_MAX_RETRIES (clamped 0..3).
+ * Every other generation knob (timeout, temperature) is env-tunable; this one was a hardcoded
+ * const. 0 disables retries (single attempt); the ceiling of 3 caps worst-case latency on a
+ * flapping backend. Invalid/absent falls back to the default with a debug-gated log.
+ */
+export function getMaxRetries(): number {
+  const env = process.env.SENSOR_HUMOR_MAX_RETRIES;
+  if (env === undefined) return DEFAULT_MAX_RETRIES;
+  const n = Number.parseInt(env, 10);
+  if (!Number.isFinite(n) || n < 0 || n > 3) {
+    if (isDebug()) {
+      console.error(
+        `[sensor-humor] Invalid SENSOR_HUMOR_MAX_RETRIES="${env}" (want 0..3); falling back to ${DEFAULT_MAX_RETRIES}`,
+      );
+    }
+    return DEFAULT_MAX_RETRIES;
   }
   return n;
 }
@@ -142,6 +164,12 @@ function getAbortableClient(signal: AbortSignal): Ollama {
   return new Ollama(buildClientConfig(signal));
 }
 
+/** Size of the recent-outcome ring — enough to reflect a current-window fallback rate without
+ *  smearing a fresh outage across the whole cumulative history. */
+const RECENT_WINDOW = 20;
+/** How many consecutive fallbacks before we escalate ONCE to stderr (degrade loudly, not per-call). */
+const CONSECUTIVE_FALLBACK_ALERT = 5;
+
 /** Lightweight in-process generation stats, surfaced by the debug_status tool. */
 export interface OllamaStats {
   total_calls: number;
@@ -149,15 +177,110 @@ export interface OllamaStats {
   /** Count of safety-filter substitutions (slur/simile/meta-leak) across all tools — a distinct
    *  degradation class from backend fallbacks, and the key content-trust signal for an operator. */
   safety_filter_fires: number;
+  /** fallback_calls / total_calls over the whole process lifetime (0 when total_calls===0). A
+   *  cumulative counter alone can't answer "how bad is it right now" — this is the lifetime ratio. */
+  fallback_rate: number;
+  /** Fallback ratio over the last ~RECENT_WINDOW calls only, so a fresh outage shows immediately
+   *  instead of being diluted by a long healthy history (0 when the window is empty). */
+  fallback_rate_recent: number;
+  /** Fallbacks since the last successful generate — resets to 0 on any success. A sustained,
+   *  silent degradation shows here as a climbing number even while total counts look fine. */
+  consecutive_fallbacks: number;
+  /** Epoch ms of the last successful (non-fallback) generate, or undefined if none yet. */
+  last_success_ts?: number;
   last_fallback_reason?: DegradedReason;
   last_latency_ms?: number;
 }
 
-const _stats: OllamaStats = { total_calls: 0, fallback_calls: 0, safety_filter_fires: 0 };
+interface InternalStats {
+  total_calls: number;
+  fallback_calls: number;
+  safety_filter_fires: number;
+  consecutive_fallbacks: number;
+  last_success_ts?: number;
+  last_fallback_reason?: DegradedReason;
+  last_latency_ms?: number;
+}
+
+const _stats: InternalStats = {
+  total_calls: 0,
+  fallback_calls: 0,
+  safety_filter_fires: 0,
+  consecutive_fallbacks: 0,
+};
+
+/** Ring of the last RECENT_WINDOW call outcomes (true = fell back). Kept separate from the
+ *  cumulative counters so fallback_rate_recent reflects the current window, not all of history. */
+const _recentOutcomes: boolean[] = [];
+/** Have we already emitted the escalation line for the CURRENT consecutive-fallback streak?
+ *  Latches so we warn once on crossing the threshold, not on every subsequent fallback (no spam);
+ *  cleared on the next success. */
+let _consecutiveAlertFired = false;
+
+function pushOutcome(fellBack: boolean): void {
+  _recentOutcomes.push(fellBack);
+  if (_recentOutcomes.length > RECENT_WINDOW) _recentOutcomes.shift();
+}
+
+/** Record a fallback outcome and drive the consecutive-fallback escalation (degrade loudly). */
+function recordFallback(reason: DegradedReason): void {
+  _stats.fallback_calls++;
+  _stats.last_fallback_reason = reason;
+  _stats.consecutive_fallbacks++;
+  pushOutcome(true);
+  // Escalate exactly once when the streak first crosses the threshold — one loud line, not
+  // per-call spam. The latch resets on the next success so a new streak can alert again.
+  if (_stats.consecutive_fallbacks >= CONSECUTIVE_FALLBACK_ALERT && !_consecutiveAlertFired) {
+    _consecutiveAlertFired = true;
+    console.error(
+      `[sensor-humor] DEGRADED: ${_stats.consecutive_fallbacks} consecutive Ollama fallbacks ` +
+        `(last reason: ${reason}). Comedy tools are serving canned fallbacks — check the backend ` +
+        `(model pulled? OLLAMA_HOST reachable?). Set SENSOR_HUMOR_DEBUG=true for per-call detail.`,
+    );
+  }
+}
+
+/** Record a successful generate: reset the degradation streak and stamp the success time. */
+function recordSuccess(latencyMs: number): void {
+  _stats.last_latency_ms = latencyMs;
+  _stats.last_success_ts = Date.now();
+  _stats.consecutive_fallbacks = 0;
+  _consecutiveAlertFired = false;
+  pushOutcome(false);
+}
 
 /** Read a snapshot of generation stats (does not perform any live Ollama call). */
 export function getOllamaStats(): OllamaStats {
-  return { ..._stats };
+  const fallback_rate = _stats.total_calls === 0 ? 0 : _stats.fallback_calls / _stats.total_calls;
+  const fallback_rate_recent =
+    _recentOutcomes.length === 0
+      ? 0
+      : _recentOutcomes.filter((b) => b).length / _recentOutcomes.length;
+  return {
+    total_calls: _stats.total_calls,
+    fallback_calls: _stats.fallback_calls,
+    safety_filter_fires: _stats.safety_filter_fires,
+    fallback_rate,
+    fallback_rate_recent,
+    consecutive_fallbacks: _stats.consecutive_fallbacks,
+    last_success_ts: _stats.last_success_ts,
+    last_fallback_reason: _stats.last_fallback_reason,
+    last_latency_ms: _stats.last_latency_ms,
+  };
+}
+
+/** Reset all in-process generation stats. Test-only seam so ring-window and streak assertions
+ *  start from a known-clean baseline (the counters are module-global and otherwise accrete). */
+export function resetOllamaStats(): void {
+  _stats.total_calls = 0;
+  _stats.fallback_calls = 0;
+  _stats.safety_filter_fires = 0;
+  _stats.consecutive_fallbacks = 0;
+  _stats.last_success_ts = undefined;
+  _stats.last_fallback_reason = undefined;
+  _stats.last_latency_ms = undefined;
+  _recentOutcomes.length = 0;
+  _consecutiveAlertFired = false;
 }
 
 /**
@@ -232,14 +355,15 @@ export async function generateComedy<T>(
   const { systemPrompt, userPrompt, schema, jsonSchema, numPredict } = options;
   const model = getModel();
   const temperature = getTemperature();
+  const maxRetries = getMaxRetries();
   const debug = isDebug();
   _stats.total_calls++;
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const startMs = Date.now();
 
     if (debug) {
-      console.error(`[sensor-humor] Attempt ${attempt + 1}/${MAX_RETRIES + 1}`);
+      console.error(`[sensor-humor] Attempt ${attempt + 1}/${maxRetries + 1}`);
       console.error(`[sensor-humor] Model: ${model}`);
       console.error(`[sensor-humor] System prompt:\n${systemPrompt}`);
       console.error(`[sensor-humor] User prompt:\n${userPrompt}`);
@@ -335,19 +459,18 @@ export async function generateComedy<T>(
           }
         : undefined;
 
-      _stats.last_latency_ms = latencyMs;
+      recordSuccess(latencyMs);
       return { data: validated, metadata };
     } catch (err) {
       const errType = classifyError(err);
       if (debug) {
         console.error(`[sensor-humor] Attempt ${attempt + 1} failed [${errType}]:`, (err as Error).message);
       }
-      if (attempt === MAX_RETRIES) {
+      if (attempt === maxRetries) {
         if (debug) {
           console.error(`[sensor-humor] All retries exhausted (last: ${errType}), returning fallback`);
         }
-        _stats.fallback_calls++;
-        _stats.last_fallback_reason = errType;
+        recordFallback(errType);
         return { data: fallback, fallback_reason: errType };
       }
       // A throttled (429) or 5xx response retried instantly just re-hits the same limit; honor
@@ -359,7 +482,6 @@ export async function generateComedy<T>(
   }
 
   // TypeScript exhaustiveness guard — loop always returns or falls through to the catch block's return
-  _stats.fallback_calls++;
-  _stats.last_fallback_reason = 'exhausted';
+  recordFallback('exhausted');
   return { data: fallback, fallback_reason: 'exhausted' };
 }

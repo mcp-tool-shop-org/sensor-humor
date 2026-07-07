@@ -531,6 +531,8 @@ describe('Session introspection', () => {
       max_running_gags: 30,
       catchphrases: 1,
       max_catchphrases: 30,
+      gags_evicted: 0,
+      catchphrases_evicted: 0,
     });
   });
 
@@ -546,5 +548,80 @@ describe('Session introspection', () => {
     // 'seg' as a whole word does NOT match inside 'segfaulting'
     expect(s.findCallbackCandidates('the app is segfaulting')).toHaveLength(0);
     expect(s.findCallbackCandidates('that seg again')).toHaveLength(1);
+  });
+
+  // b-tools-006: LRU eviction was invisible outside SENSOR_HUMOR_DEBUG. bufferStats must now
+  // expose gags_evicted / catchphrases_evicted so churn is legible from debug_status.
+  describe('eviction counters (b-tools-006)', () => {
+    it('starts both eviction counters at 0', () => {
+      const s = getSession();
+      expect(s.gags_evicted).toBe(0);
+      expect(s.catchphrases_evicted).toBe(0);
+      const stats = s.bufferStats();
+      expect(stats.gags_evicted).toBe(0);
+      expect(stats.catchphrases_evicted).toBe(0);
+    });
+
+    it('counts gag evictions once per stalest gag pushed out over the cap', () => {
+      const s = getSession();
+      // 35 distinct gags against a cap of 30 => exactly 5 evictions.
+      for (let i = 0; i < 35; i++) {
+        s.tick();
+        s.addGag(`setup ${i}`, `tag${i}`);
+      }
+      expect(s.bufferStats().gags_evicted).toBe(5);
+      // Re-touching an EXISTING tag updates in place — it must NOT count as an eviction.
+      const before = s.gags_evicted;
+      s.addGag('setup 34 again', 'tag34');
+      expect(s.gags_evicted).toBe(before);
+    });
+
+    it('counts catchphrase evictions once per stalest phrase pushed out over the cap', () => {
+      const s = getSession();
+      // 33 distinct phrases against a cap of 30 => exactly 3 evictions.
+      for (let i = 0; i < 33; i++) {
+        s.tick();
+        s.useCatchphrase(`phrase ${i}`);
+      }
+      expect(s.bufferStats().catchphrases_evicted).toBe(3);
+      // Re-using an existing phrase does not evict.
+      const before = s.catchphrases_evicted;
+      s.useCatchphrase('phrase 32');
+      expect(s.catchphrases_evicted).toBe(before);
+    });
+  });
+
+  // b-tools-003: debug_status needs gag CONTENTS, not just a count. recentGags exposes the
+  // most-recently-referenced gags, newest first, capped.
+  describe('recentGags accessor (b-tools-003)', () => {
+    it('returns [] when there are no gags', () => {
+      expect(getSession().recentGags()).toEqual([]);
+    });
+
+    it('returns full gag entries (setup/tag/used/last_turn), newest first', () => {
+      const s = getSession();
+      s.tick(); // turn 1
+      s.addGag('older setup', 'older');
+      s.tick(); // turn 2
+      s.addGag('newer setup', 'newer');
+      const gags = s.recentGags();
+      expect(gags[0].tag).toBe('newer');
+      expect(gags[0].setup).toBe('newer setup');
+      expect(gags[0].last_turn).toBe(2);
+      expect(typeof gags[0].used).toBe('number');
+      expect(gags[1].tag).toBe('older');
+    });
+
+    it('caps the number of returned gags and keeps the most recent', () => {
+      const s = getSession();
+      for (let i = 0; i < 12; i++) {
+        s.tick();
+        s.addGag(`setup ${i}`, `tag${i}`);
+      }
+      const capped = s.recentGags(3);
+      expect(capped).toHaveLength(3);
+      expect(capped.map((g) => g.tag)).toContain('tag11');
+      expect(capped.map((g) => g.tag)).not.toContain('tag0');
+    });
   });
 });

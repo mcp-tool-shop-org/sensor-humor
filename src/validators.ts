@@ -169,6 +169,66 @@ const DETECTION_CAPITAL_MAP: Record<string, string> = {
 };
 const DETECTION_CAPITAL_PATTERN = new RegExp(`[${Object.keys(DETECTION_CAPITAL_MAP).join('')}]`, 'g');
 
+// ── b-sc-001: make the load-bearing INVARIANT (above CONFUSABLE_MAP) machine-checkable ─────────
+// The comment says "the detection maps MUST cover the common homoglyph of every ASCII letter in
+// the HARSH term list." Nothing enforced it: the fuzz sweep hardcodes today's 7 slurs, so adding
+// a term with a NEW letter (m/j/z/q/v...) would ship an uncovered single-substitution bypass with
+// green CI. The three exports below turn that comment into a red-CI gate (see the coverage test in
+// tests/validators.test.ts). They are ADDITIVE — no existing signature changes.
+
+/**
+ * The three homoglyph→ASCII fold maps, exported READ-ONLY for the coverage test. These are the
+ * real source of truth normalizeForDetection folds through; a test derives the set of ASCII
+ * letters they can PRODUCE and asserts it covers the runtime slur alphabet. Frozen so a test (or
+ * any importer) cannot mutate the live maps. Order/contents mirror the private constants exactly.
+ */
+export const DETECTION_FOLD_MAPS: {
+  readonly shared: Readonly<Record<string, string>>;
+  readonly residual: Readonly<Record<string, string>>;
+  readonly capital: Readonly<Record<string, string>>;
+} = Object.freeze({
+  shared: Object.freeze({ ...CONFUSABLE_MAP }),
+  residual: Object.freeze({ ...DETECTION_CONFUSABLE_MAP }),
+  capital: Object.freeze({ ...DETECTION_CAPITAL_MAP }),
+});
+
+/**
+ * The set of ASCII letters that AT LEAST ONE mapped homoglyph folds to, across all three detection
+ * maps. This is the "letters we can defend with a single-substitution homoglyph" set. If a slur
+ * alphabet letter is NOT in here, a one-character homoglyph swap of that letter bypasses the
+ * terminal harsh gate. Derived once at module load from the live maps (never hand-listed) so it
+ * can never drift out of sync with the maps it summarizes.
+ */
+export const FOLDED_LETTERS: ReadonlySet<string> = new Set<string>(
+  [
+    ...Object.values(CONFUSABLE_MAP),
+    ...Object.values(DETECTION_CONFUSABLE_MAP),
+    ...Object.values(DETECTION_CAPITAL_MAP),
+  ].map((c) => c.toLowerCase()),
+);
+
+/** True iff `ascii` (a single lowercase a–z letter) has at least one mapped homoglyph that folds
+ *  to it. The predicate form of FOLDED_LETTERS, for the coverage test and any future caller. */
+export function coversLetter(ascii: string): boolean {
+  return FOLDED_LETTERS.has(ascii.toLowerCase());
+}
+
+/**
+ * The distinct ASCII letters of the LIVE harsh-term list, derived AT RUNTIME from the real source
+ * of truth (the base64-decoded, `|`-joined HARSH_FILTER_TERMS string) — never hand-copied. This is
+ * the alphabet the INVARIANT is about: the coverage test asserts coversLetter() holds for every
+ * member. When HARSH_TERMS_B64 grows a term with a new letter, THIS set grows automatically and the
+ * coverage test fails until the maps are extended (or the letter is added to the documented
+ * NO_HOMOGLYPH allow-list in the test), converting the comment into a real gate.
+ */
+export function slurAlphabet(): ReadonlySet<string> {
+  const letters = new Set<string>();
+  for (const ch of HARSH_FILTER_TERMS.toLowerCase()) {
+    if (ch >= 'a' && ch <= 'z') letters.add(ch);
+  }
+  return letters;
+}
+
 /**
  * Aggressive normalization for the HARSH DETECTION path ONLY (hasHarshLeak). On top of
  * normalizeConfusables it folds the three most common real-world slur obfuscations so the

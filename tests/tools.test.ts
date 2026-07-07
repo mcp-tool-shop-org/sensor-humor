@@ -55,6 +55,40 @@ describe('mood tools', () => {
       expect(() => moodSet('silly')).toThrow('Invalid mood');
       expect(() => moodSet('')).toThrow('Invalid mood');
     });
+
+    // --- b-tools-004: mood transition feedback (previous_mood / changed) ---
+
+    it('reports previous_mood and changed=true on a real transition', () => {
+      // Session starts at the default mood ('dry').
+      const result = moodSet('roast');
+      expect(result.previous_mood).toBe('dry');
+      expect(result.mood).toBe('roast');
+      expect(result.changed).toBe(true);
+    });
+
+    it('reports changed=false on a no-op re-set of the current mood', () => {
+      moodSet('roast');
+      const result = moodSet('roast'); // setting the same mood again
+      expect(result.previous_mood).toBe('roast');
+      expect(result.mood).toBe('roast');
+      expect(result.changed).toBe(false);
+    });
+
+    it('tracks previous_mood across successive transitions', () => {
+      moodSet('cynic');
+      const result = moodSet('zoomer');
+      expect(result.previous_mood).toBe('cynic');
+      expect(result.mood).toBe('zoomer');
+      expect(result.changed).toBe(true);
+    });
+
+    it('still returns the existing fields alongside transition feedback', () => {
+      const result = moodSet('cheeky');
+      // Backward-compatible: original MoodSetResult fields are unchanged.
+      expect(result.mood).toBe('cheeky');
+      expect(result.description).toBe(MOOD_DESCRIPTIONS.cheeky);
+      expect(result.voice_notes.length).toBeGreaterThan(0);
+    });
   });
 
   describe('moodGet', () => {
@@ -385,6 +419,96 @@ describe('comic_timing tool', () => {
     expect(result.callback_source).toBe('nonexistent_tag');
     // Gag should NOT be incremented since source didn't match
     const gag = session.running_gags.find(g => g.tag === 'realtag');
+    expect(gag!.used).toBe(1);
+  });
+
+  // --- b-tools-002: callback honesty (callback_honored) ---
+
+  it('sets callback_honored=true when callback_source matches a real gag', async () => {
+    const session = getSession();
+    session.addGag('The deadbeef incident', 'deadbeef');
+
+    mockGenerate.mockResolvedValue({
+      data: {
+        rewrite: 'Deadbeef strikes again.',
+        technique_used: 'callback',
+        callback_source: 'deadbeef',
+      },
+    });
+
+    const result = await comicTiming('another null pointer at deadbeef', 'callback');
+    expect(result.callback_honored).toBe(true);
+    // Still reports the source (backward-compatible: field is added, not removed).
+    expect(result.callback_source).toBe('deadbeef');
+  });
+
+  it('sets callback_honored=false when callback_source matches no gag (hallucinated callback)', async () => {
+    const session = getSession();
+    session.addGag('Real gag', 'realtag');
+
+    mockGenerate.mockResolvedValue({
+      data: {
+        rewrite: 'Reference to nothing.',
+        technique_used: 'callback',
+        callback_source: 'nonexistent_tag',
+      },
+    });
+
+    const result = await comicTiming('some text about realtag', 'callback');
+    // The caller can now distinguish a hallucinated callback from a real one.
+    expect(result.callback_honored).toBe(false);
+    // Backward-compatible: technique label + source are still present (not silently removed).
+    expect(result.technique_used).toBe('callback');
+    expect(result.callback_source).toBe('nonexistent_tag');
+  });
+
+  it('sets callback_honored=false when technique is callback but no source is provided', async () => {
+    const session = getSession();
+    session.addGag('Real gag', 'realtag');
+
+    mockGenerate.mockResolvedValue({
+      data: {
+        // Model claims callback but omits callback_source entirely — cannot be verified.
+        rewrite: 'A vague callback with no source.',
+        technique_used: 'callback',
+      },
+    });
+
+    const result = await comicTiming('some text about realtag', 'callback');
+    expect(result.callback_honored).toBe(false);
+  });
+
+  it('omits callback_honored entirely for non-callback techniques', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'Deadpan line.', technique_used: 'understatement' },
+    });
+
+    const result = await comicTiming('some dry input');
+    // Absent on non-callback results — existing callers and the base contract are unaffected.
+    expect(result.callback_honored).toBeUndefined();
+  });
+
+  it('does not report an honored callback when a safety gate rewrote technique to understatement', async () => {
+    const session = getSession();
+    session.addGag('The deadbeef incident', 'deadbeef');
+
+    // Model returns a slur-laden "callback"; the terminal safety gate substitutes a safe line
+    // and rewrites technique_used to 'understatement'. The claimed callback must NOT be honored.
+    const slur = HARSH_FILTER.source.match(/[a-z]{4,}/)?.[0] ?? 'retard';
+    mockGenerate.mockResolvedValue({
+      data: {
+        rewrite: `You absolute ${slur}, deadbeef again.`,
+        technique_used: 'callback',
+        callback_source: 'deadbeef',
+      },
+    });
+
+    const result = await comicTiming('another null pointer at deadbeef', 'callback');
+    expect(result.technique_used).toBe('understatement');
+    // No callback_honored signal because the result is no longer a callback at all.
+    expect(result.callback_honored).toBeUndefined();
+    // The real gag was NOT credited a use by a substituted line.
+    const gag = session.running_gags.find(g => g.tag === 'deadbeef');
     expect(gag!.used).toBe(1);
   });
 

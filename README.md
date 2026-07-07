@@ -63,6 +63,27 @@ docker run -i --rm -e OLLAMA_HOST=http://host.docker.internal:11434 \
   ghcr.io/mcp-tool-shop-org/sensor-humor:latest
 ```
 
+### Configure your MCP client
+
+Register sensor-humor as a stdio server in your client's MCP config. For Claude Code / Claude Desktop (`claude_desktop_config.json`) or any `mcpServers`-shaped config:
+
+```json
+{
+  "mcpServers": {
+    "sensor-humor": {
+      "command": "npx",
+      "args": ["-y", "@mcptoolshop/sensor-humor"],
+      "env": {
+        "SENSOR_HUMOR_MODEL": "qwen2.5:7b",
+        "OLLAMA_HOST": "http://127.0.0.1:11434"
+      }
+    }
+  }
+}
+```
+
+The server reads its configuration from this `env` block (or the shell that launches it) — it does **not** auto-load a `.env` file. See [`.env.example`](.env.example) for every supported variable. If you installed the package globally, use `"command": "sensor-humor"` with no `args`.
+
 ## Quick Start
 
 1. Start Ollama:

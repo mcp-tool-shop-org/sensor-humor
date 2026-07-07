@@ -21,6 +21,7 @@
  * manual `npm run scorecard` (or a workflow_dispatch), never an unattended cron.
  */
 
+import { writeFileSync } from 'node:fs';
 import { MOOD_STYLES, type MoodStyle } from '../src/types.js';
 import { resetSession } from '../src/session.js';
 import { moodSet } from '../src/tools/mood.js';
@@ -44,6 +45,49 @@ const MAX_N = (() => {
   if (Number.isFinite(env) && env > 0) return env;
   return recommendedSampleSize(0.7, 0.06); // ~224 — the study-swarm's sound-N family
 })();
+
+// b-sc-002: machine-readable output for the roadmap's nightly drift job (archive + diff). When a
+// path is provided — via SENSOR_HUMOR_SCORECARD_JSON=<path> OR `--json <path>` — the full per-mood
+// reports are written there as JSON. Human rows stay on stderr (stdout is free), so this is purely
+// additive to the existing CLI behavior. No path -> unchanged (JSON write is skipped).
+function resolveJsonPath(argv: readonly string[], env: NodeJS.ProcessEnv): string | undefined {
+  const flagIdx = argv.indexOf('--json');
+  if (flagIdx !== -1) {
+    const next = argv[flagIdx + 1];
+    // `--json <path>`; a bare trailing `--json` (no path, or followed by another flag) is ignored.
+    if (next && !next.startsWith('--')) return next;
+  }
+  const envPath = env.SENSOR_HUMOR_SCORECARD_JSON?.trim();
+  return envPath ? envPath : undefined;
+}
+
+/**
+ * Pure shape of the JSON artifact — separated from the write so it stays deterministic and easy to
+ * reason about. `generatedAt` is passed in (the caller supplies `new Date().toISOString()` at
+ * runtime; the stats/rules modules forbid a clock, but this is a top-level SCRIPT, so a wall-clock
+ * timestamp here is fine and is exactly what a nightly archive/diff wants).
+ */
+function buildScorecardJson(args: {
+  model: string;
+  threshold: number;
+  maxN: number;
+  generatedAt: string;
+  reports: readonly MoodReport[];
+}): {
+  model: string;
+  threshold: number;
+  maxN: number;
+  generatedAt: string;
+  moods: readonly MoodReport[];
+} {
+  return {
+    model: args.model,
+    threshold: args.threshold,
+    maxN: args.maxN,
+    generatedAt: args.generatedAt,
+    moods: args.reports,
+  };
+}
 
 // Fixed dev-humor inputs, cycled across samples. Stable so the run measures the prompt/model, not
 // input variety.
@@ -160,6 +204,21 @@ async function main(): Promise<void> {
       `  ${r.mood.padEnd(8)} ${r.verdict.padEnd(12)} ${`${r.hits}/${r.total}`.padEnd(8)} (${pct.padEnd(4)})  ` +
         `[${r.interval.lower.toFixed(2)}, ${r.interval.upper.toFixed(2)}]   ${String(r.degraded).padEnd(8)}  ${r.stopped}`,
     );
+  }
+
+  // b-sc-002: write the machine-readable artifact BEFORE the exit-code branch so a FAIL run (exit 1)
+  // still archives its results for the nightly diff. Human rows already went to stderr above.
+  const jsonPath = resolveJsonPath(process.argv.slice(2), process.env);
+  if (jsonPath) {
+    const payload = buildScorecardJson({
+      model: getModel(),
+      threshold: THRESHOLD,
+      maxN: MAX_N,
+      generatedAt: new Date().toISOString(),
+      reports,
+    });
+    writeFileSync(jsonPath, JSON.stringify(payload, null, 2));
+    console.error(`[scorecard] wrote JSON report to ${jsonPath}`);
   }
 
   const failed = reports.filter((r) => r.verdict === 'FAIL');
