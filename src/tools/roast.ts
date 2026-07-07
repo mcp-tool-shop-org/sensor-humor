@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
 import type { RoastContext, RoastResult, MoodStyle } from '../types.js';
-import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, sanitizeForPrompt, voicedSafeFallback } from '../validators.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, sanitizeForPrompt, voicedSafeFallback, STATIC_SAFE_FALLBACK } from '../validators.js';
 
 const RoastSchema = z.object({
   roast: z.string().max(200),
@@ -162,7 +162,14 @@ export async function roast(
     hasSimileLeak(result.data.roast) ||
     COMPARISON_LEAK.test(result.data.roast)
   ) {
-    result.data.roast = voicedSafeFallback(mood, target);
+    // If the gate fired on the CALLER-SPECIFIC COMPARISON_LEAK pattern, the interpolating
+    // voicedSafeFallback (which only re-checks hasHarshLeak/hasSimileLeak, NOT COMPARISON_LEAK)
+    // could re-emit the very COMPARISON_LEAK word if it appears in `target` (e.g. a benign
+    // 'blanket'/'coffee break'). Use the input-free STATIC_SAFE_FALLBACK so the returned line
+    // cannot re-contain the pattern that fired the gate — terminal gate is the last word (server-003).
+    result.data.roast = COMPARISON_LEAK.test(result.data.roast)
+      ? STATIC_SAFE_FALLBACK[mood]
+      : voicedSafeFallback(mood, target);
     safetySubstituted = true;
   }
   if (safetySubstituted) recordSafetyFilterFire();

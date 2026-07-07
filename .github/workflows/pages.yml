@@ -1,5 +1,9 @@
 name: Deploy site to GitHub Pages
 
+# Approved exception to the studio "max 2 workflow files" rule (cdt-008): sensor-humor ships
+# a landing page + Starlight handbook under site/, whose deploy is legitimately separable from
+# build/test (ci.yml) and release (release.yml). Three single-purpose, paths-gated workflows.
+# Folding this into ci.yml would couple a site deploy to every code push — worse, not better.
 on:
   push:
     branches: [main]

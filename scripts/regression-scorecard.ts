@@ -32,6 +32,7 @@ import {
   sprt,
   recommendedSampleSize,
   type Verdict,
+  type SprtDecision,
 } from '../src/scorecard/stats.js';
 import { probeOllama, getModel } from '../src/ollama.js';
 
@@ -69,6 +70,32 @@ interface MoodReport {
   stopped: string;
 }
 
+/**
+ * Authoritative verdict layer for the exit code (sc-005).
+ *
+ * SPRT and the Wilson three-valued verdict answer DIFFERENT questions on the SAME sample, and on a
+ * truncated (early-stopped) sample they can disagree: SPRT can reach ACCEPT_DRIFTED (a confirmed
+ * drift by its own error-controlled boundary) while the Wilson interval on the truncated N is still
+ * wide enough to straddle the threshold and report INCONCLUSIVE. If we reported the Wilson verdict
+ * alone, that confirmed drift would be downgraded to a non-blocking INCONCLUSIVE and slip past the
+ * exit-1 gate.
+ *
+ * Resolution — SPRT is AUTHORITATIVE for the exit code whenever it stopped:
+ *   - SPRT ACCEPT_DRIFTED  -> FAIL         (a confirmed regression; blocks the release)
+ *   - SPRT ACCEPT_HEALTHY  -> PASS         (a confirmed healthy stream)
+ *   - SPRT CONTINUE / never fired (fixed-N exhaustion) -> fall back to the Wilson three-valued
+ *     verdict on the full realized sample (the andon-correct decision at fixed N).
+ *
+ * The Wilson interval is still computed and reported for the human-readable row; only the
+ * exit-code verdict is reconciled here.
+ */
+function reconcileVerdict(sprtDecision: SprtDecision | null, hits: number, total: number): Verdict {
+  if (sprtDecision === 'ACCEPT_DRIFTED') return 'FAIL';
+  if (sprtDecision === 'ACCEPT_HEALTHY') return 'PASS';
+  if (total === 0) return 'INCONCLUSIVE';
+  return threeValuedVerdict(hits, total, { threshold: THRESHOLD });
+}
+
 async function scoreMood(mood: MoodStyle): Promise<MoodReport> {
   resetSession();
   moodSet(mood);
@@ -76,6 +103,7 @@ async function scoreMood(mood: MoodStyle): Promise<MoodReport> {
   let total = 0;
   let degraded = 0;
   let stopped = `fixed-N(${MAX_N})`;
+  let sprtDecision: SprtDecision | null = null;
 
   for (let i = 0; i < MAX_N; i++) {
     const result = await comicTiming(INPUTS[i % INPUTS.length]);
@@ -93,14 +121,17 @@ async function scoreMood(mood: MoodStyle): Promise<MoodReport> {
       const decision = sprt({ successes: hits, n: total, ...SPRT });
       if (decision !== 'CONTINUE') {
         stopped = decision;
+        sprtDecision = decision;
         break;
       }
     }
   }
 
   const interval = wilsonInterval(hits, total);
-  const verdict: Verdict =
-    total === 0 ? 'INCONCLUSIVE' : threeValuedVerdict(hits, total, { threshold: THRESHOLD });
+  // sc-005: SPRT is authoritative for the exit-code verdict when it stopped the run; otherwise the
+  // Wilson three-valued verdict on the full sample decides. This prevents an early ACCEPT_DRIFTED
+  // from being reported as a non-blocking INCONCLUSIVE on the truncated sample.
+  const verdict: Verdict = reconcileVerdict(sprtDecision, hits, total);
   return { mood, total, hits, degraded, interval, verdict, stopped };
 }
 
@@ -143,7 +174,8 @@ async function main(): Promise<void> {
   if (failed.length) {
     console.error(
       `[scorecard] FAIL: ${failed.map((r) => r.mood).join(', ')} drifted below ${THRESHOLD} ` +
-        `(Wilson upper < threshold — a confirmed regression). Investigate the prompt/model before shipping.`,
+        `(SPRT ACCEPT_DRIFTED or Wilson upper < threshold — a confirmed regression). ` +
+        `Investigate the prompt/model before shipping.`,
     );
     process.exit(1);
   }

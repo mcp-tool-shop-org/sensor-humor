@@ -253,6 +253,11 @@ export async function generateComedy<T>(
     const client = getAbortableClient(controller.signal);
     try {
       const timeoutMs = getTimeoutMs();
+      // Abort is driven solely by the custom fetch wrapper in buildClientConfig, which merges
+      // controller.signal into every fetch init. A request-level `signal` on chat() is a no-op
+      // on non-streamed calls (the ollama client never reads it), so it is deliberately omitted
+      // here — do NOT re-add it and do NOT remove the fetch wrapper, or timeout cancellation
+      // silently breaks (A-BK-002 / server-002).
       const chatPromise = client.chat({
         model,
         messages: [
@@ -260,7 +265,6 @@ export async function generateComedy<T>(
           { role: 'user', content: userPrompt },
         ],
         format: jsonSchema,
-        signal: controller.signal,
         options: {
           temperature,
           top_p: DEFAULT_TOP_P,
@@ -269,7 +273,7 @@ export async function generateComedy<T>(
           mirostat_tau: DEFAULT_MIROSTAT_TAU,
           num_predict: numPredict ?? MAX_PREDICT,
         },
-      } as Parameters<typeof client.chat>[0]);
+      });
       // The timeout timer is cleared in the finally below so a winning chat
       // never leaves a dangling timer holding the event loop open (BK-03).
       let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
@@ -299,6 +303,16 @@ export async function generateComedy<T>(
       }
 
       const parsed = JSON.parse(raw);
+
+      // Guard the JSON root before the trim loop. A model/proxy can return a bare string,
+      // null, or an array as the top-level value; Object.keys(null) throws, and assigning
+      // to a string's read-only index throws in ESM strict mode. Either TypeError would be
+      // classified 'unknown', mislabeling a structurally-invalid response and burning the
+      // retry with the wrong degraded_reason. Throw a SyntaxError so classifyError reports
+      // 'json-parse' truthfully — a non-object root is a structural parse failure. (server-001)
+      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new SyntaxError('Model returned non-object JSON');
+      }
 
       // Trim surrounding whitespace from string fields. JSON.parse already guarantees
       // balanced delimiters, so we must NOT strip trailing braces — doing so silently

@@ -31,6 +31,12 @@ import type { MoodStyle } from '../types.js';
 import { hasHarshLeak, hasSimileLeak } from '../validators.js';
 import { ROAST_LABEL_PATTERN } from '../tools/roast.js';
 
+/**
+ * NOTE (sc-003): ROAST_LABEL_PATTERN (imported above) is reused by the `cynic` skeleton to
+ * EXCLUDE roast-shaped "Word:" labels ("Verdict:", "Diagnosis:", …) from the cynic general
+ * colon fallback. Without this, a roast line satisfies the cynic skeleton (cross-mood bleed).
+ */
+
 /** Result of scoring a single output against its mood's form + safety contract. */
 export interface ConformanceResult {
   /** True iff the output is safe AND well-formed AND conforms to the mood skeleton. */
@@ -65,10 +71,31 @@ const HAS_WORD = /[A-Za-z]{2,}/;
 
 /**
  * zoomer: prompt mandates "exactly one caps block (3-6 consecutive capitalized words)".
- * We accept a run of 3-6 ALL-CAPS words (each >= 2 letters, allowing trailing digits like
- * "FR2"). Lenient on the exact count boundary — the structural signal is "a caps block exists".
+ *
+ * A caps block is a genuine SHOUT, not an incidental run of short technical acronyms — dev humor
+ * is full of acronym runs ("The API URL SDK were all misconfigured", "HTTP GET POST", "AWS EC2 S3")
+ * that are NOT shouting and must not read as a zoomer caps block (sc-001) nor false-FAIL a flat
+ * `dry` line (sc-007 is the mirror: a 2-letter "IT IS OK" run must NOT qualify, and a 7-word
+ * all-caps shout MUST). So "a caps block exists" is the DISJUNCTION of two shapes:
+ *
+ *   A. LONG-WORD SHOUT — 3-6 consecutive ALL-CAPS words each >= 4 chars (dictionary-word length,
+ *      allowing trailing digits like "FR2"). "SKILL ISSUE DETECTED" qualifies; "API URL SDK"
+ *      (all 3-char acronyms) does not. Four chars is the floor because real shout-words
+ *      ("SKILL", "BROKEN", "ISSUE") are dictionary-length while the common technical acronyms
+ *      that create false positives (API, URL, SDK, AWS, EC2, GET, S3) are 2-3 chars.
+ *   B. LONG RUN — a sustained run of 4+ consecutive caps tokens (each >= 2 chars). A genuinely
+ *      long all-caps stretch ("THIS ENTIRE THING IS COMPLETELY BROKEN FOREVER") is a shout even
+ *      when some words are short; a 3-token acronym run cannot reach this length.
+ *
+ * Lenient by design on the exact count — the structural signal is "a real caps SHOUT exists".
  */
-const ZOOMER_CAPS_BLOCK = /\b([A-Z][A-Z0-9]{1,}(?:\s+[A-Z][A-Z0-9]{1,}){2,5})\b/;
+const ZOOMER_CAPS_LONGWORDS = /\b([A-Z][A-Z0-9]{3,}(?:\s+[A-Z][A-Z0-9]{3,}){2,5})\b/;
+const ZOOMER_CAPS_LONGRUN = /\b([A-Z][A-Z0-9]{1,}(?:\s+[A-Z][A-Z0-9]{1,}){3,})\b/;
+
+/** True iff `text` contains a genuine zoomer caps SHOUT (long-word block OR sustained long run). */
+function hasZoomerCapsBlock(text: string): boolean {
+  return ZOOMER_CAPS_LONGWORDS.test(text) || ZOOMER_CAPS_LONGRUN.test(text);
+}
 
 /**
  * cynic: prompt mandates "[label starter]: [observation]". Label starters are a fixed varied set
@@ -94,15 +121,28 @@ const CHEEKY_OPENERS =
 const CHEEKY_GENERAL_OPENER = /^[A-Z][A-Za-z']*(?:\s+[A-Za-z']+){0,3}\s*,/;
 
 /**
- * chaotic: prompt mandates "[normal sentence]. [pivot word], [absurd escalation]." — exactly TWO
- * sentences bridged by a pivot word. We require BOTH (i) at least two sentence-terminators AND
- * (ii) a pivot word present, OR the canonical pivot set appearing after the first sentence break.
- * Lenient: we look for a pivot signal anywhere plus evidence of a second sentence.
+ * chaotic: prompt mandates "[normal sentence]. [pivot], [absurd escalation]." — TWO sentences
+ * BRIDGED by a pivot that sits at the start of the second sentence.
+ *
+ * The old check (pivot present ANYWHERE) AND (any two-sentence break) had two failure modes
+ * (sc-002): it false-PASSED a line whose pivot merely led sentence 1 with no bridge
+ * ("Reportedly the build failed. It stayed down.") and false-FAILED a valid varied pivot the
+ * prompt invites but that isn't in the closed canonical list ("The build broke. Rumor has it,
+ * the CI achieved sentience."). So we ANCHOR the pivot to the sentence-2 position and BROADEN
+ * what counts as a pivot, mirroring the cynic/cheeky general fallbacks:
+ *
+ *   The match must be: a sentence terminator, whitespace, then EITHER
+ *     (i)  a canonical pivot word, OR
+ *     (ii) a capitalized phrase (1-4 words) immediately followed by a comma
+ *          — the general "[Pivot phrase], escalation" shape.
+ *
+ * This inherently requires a real second sentence (the terminator + following content), so a
+ * separate two-sentence check is redundant and has been folded in. Lenient by design: any
+ * capitalized-phrase-then-comma after the first break passes, but the pivot can no longer float
+ * inside sentence 1.
  */
-const CHAOTIC_PIVOTS =
-  /\b(Reportedly|Sources confirm|Update|Witnesses say|Upon inspection|Further analysis reveals|Apparently|Allegedly|Investigators found)\b/i;
-/** Two-sentence evidence: at least one internal sentence break followed by more content. */
-const TWO_SENTENCE = /[.!?]\s+\S/;
+const CHAOTIC_PIVOT_ANCHORED =
+  /[.!?]\s+(?:(?:Reportedly|Sources confirm|Update|Witnesses say|Upon inspection|Further analysis reveals|Apparently|Allegedly|Investigators found)\b|[A-Z][a-z]+(?:\s+[A-Za-z]+){0,3}\s*,)/;
 
 /**
  * dry: prompt mandates ONE flat sentence; bans the loud signals other moods carry. We treat dry
@@ -163,18 +203,27 @@ function checkSkeleton(mood: MoodStyle, text: string, reasons: string[]): boolea
       return true;
 
     case 'zoomer':
-      if (!ZOOMER_CAPS_BLOCK.test(trimmed)) {
+      if (!hasZoomerCapsBlock(trimmed)) {
         reasons.push('skeleton:zoomer-missing-caps-block');
         return false;
       }
       return true;
 
-    case 'cynic':
-      if (!CYNIC_LABEL_STARTERS.test(trimmed) && !CYNIC_GENERAL_LABEL.test(trimmed)) {
+    case 'cynic': {
+      // Canonical starter always counts. The general "Word:" fallback counts too — but NOT when
+      // the "Word:" is a ROAST label ("Verdict:", "Diagnosis:", …); accepting those let a
+      // roast-shaped line satisfy the cynic skeleton (sc-003 cross-mood bleed). Canonical cynic
+      // starters ("Of course", "Per the pattern", …) are not roast labels, so this exclusion
+      // only ever removes the true roast-label collisions.
+      const cynicOk =
+        CYNIC_LABEL_STARTERS.test(trimmed) ||
+        (CYNIC_GENERAL_LABEL.test(trimmed) && !ROAST_LABEL_PATTERN.test(trimmed));
+      if (!cynicOk) {
         reasons.push('skeleton:cynic-missing-label-starter');
         return false;
       }
       return true;
+    }
 
     case 'cheeky':
       if (!CHEEKY_OPENERS.test(trimmed) && !CHEEKY_GENERAL_OPENER.test(trimmed)) {
@@ -184,15 +233,19 @@ function checkSkeleton(mood: MoodStyle, text: string, reasons: string[]): boolea
       return true;
 
     case 'chaotic':
-      if (!CHAOTIC_PIVOTS.test(trimmed) || !TWO_SENTENCE.test(trimmed)) {
+      // Pivot must sit at the START of sentence 2 (anchored), and the anchor already implies a
+      // real second sentence — so this single check subsumes the old pivot+two-sentence pair.
+      if (!CHAOTIC_PIVOT_ANCHORED.test(trimmed)) {
         reasons.push('skeleton:chaotic-missing-pivot-or-second-sentence');
         return false;
       }
       return true;
 
     case 'dry':
-      // dry = a flat sentence: conformant iff it does NOT shout like zoomer.
-      if (ZOOMER_CAPS_BLOCK.test(trimmed)) {
+      // dry = a flat sentence: conformant iff it does NOT shout like zoomer. The tightened caps
+      // definition (>=4-char words OR a 4+ run) means an ordinary acronym run — "The API URL SDK
+      // were all misconfigured." — no longer trips this, so dev-humor acronyms pass (sc-001).
+      if (hasZoomerCapsBlock(trimmed)) {
         reasons.push('skeleton:dry-unexpected-caps-block');
         return false;
       }
@@ -365,5 +418,61 @@ export const GOLDEN_SET: ReadonlyArray<{
     text: '```json\n{ "roast": "Verdict: it leaked", "severity": 3 }\n```',
     expectHit: false,
     note: 'form: raw JSON / code-fence envelope leaked into displayed text',
+  },
+
+  // --- sc-001: dry lines with dev-humor acronym runs must NOT false-FAIL as a caps "shout" ---
+  {
+    mood: 'dry',
+    text: 'The API URL SDK were all misconfigured.',
+    expectHit: true,
+    note: 'sc-001 dry: 3-char acronym run (API URL SDK) is not a shout -> flat sentence hits',
+  },
+  {
+    mood: 'dry',
+    text: 'The HTTP GET POST calls all returned five hundred errors.',
+    expectHit: true,
+    note: 'sc-001 dry: HTTP GET POST acronym run is not a caps block -> flat sentence hits',
+  },
+  {
+    mood: 'dry',
+    text: 'The AWS EC2 S3 stack was down for the third time this week.',
+    expectHit: true,
+    note: 'sc-001 dry: AWS EC2 S3 acronym run is not a caps block -> flat sentence hits',
+  },
+
+  // --- sc-007: the same tightened caps definition, on the zoomer side ---
+  {
+    mood: 'zoomer',
+    text: 'THIS ENTIRE THING IS COMPLETELY BROKEN FOREVER and I cannot even',
+    expectHit: true,
+    note: 'sc-007 zoomer: a 7+ word sustained all-caps shout is a valid caps block (long-run branch)',
+  },
+  {
+    mood: 'zoomer',
+    text: 'IT IS OK i guess but the tests still fail every single time',
+    expectHit: false,
+    note: 'sc-007 zoomer: a 2-letter "IT IS OK" run is too short to be a shout -> no caps block, wrong shape',
+  },
+
+  // --- sc-002: chaotic pivot must anchor to sentence 2; broaden the accepted pivot ---
+  {
+    mood: 'chaotic',
+    text: 'The build broke. Rumor has it, the CI achieved sentience.',
+    expectHit: true,
+    note: 'sc-002 chaotic: varied pivot ("Rumor has it,") after the first break -> general fallback hits',
+  },
+  {
+    mood: 'chaotic',
+    text: 'Reportedly the build failed. It stayed down.',
+    expectHit: false,
+    note: 'sc-002 chaotic: pivot leads sentence 1 with no bridge into sentence 2 -> not a chaotic pivot',
+  },
+
+  // --- sc-003: a roast-shaped "Word:" label must NOT satisfy the cynic skeleton ---
+  {
+    mood: 'cynic',
+    text: 'Verdict: the whole thing is held together with hope and duct tape.',
+    expectHit: false,
+    note: 'sc-003 cynic: a roast label ("Verdict:") is excluded from the cynic general fallback',
   },
 ];

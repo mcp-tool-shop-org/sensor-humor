@@ -70,14 +70,31 @@ jobs:
         run: npm pack --dry-run
 
       - name: Extract release notes from CHANGELOG
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          awk -v ver="$VERSION" '
-            $0 ~ "^## \\[" ver "\\]" { capture=1; next }
-            /^## \[/ { if (capture) exit }
-            capture { print }
-          ' CHANGELOG.md > RELEASE_NOTES.md
-          if [ ! -s RELEASE_NOTES.md ]; then echo "See CHANGELOG.md" > RELEASE_NOTES.md; fi
+          # awk-implementation-independent extraction (cdt-005): gawk and mawk differ on
+          # dynamic-regex backslash handling, and an unescaped '.' in the version string is a
+          # regex wildcard. Use an exact-prefix string match in node, and FAIL LOUDLY if the
+          # section is missing rather than silently shipping a barren "See CHANGELOG.md" body.
+          node -e '
+            const { readFileSync, writeFileSync } = require("fs");
+            const version = (process.env.REF_NAME || "").replace(/^v/, "");
+            const target = "## [" + version + "]";
+            const lines = readFileSync("CHANGELOG.md", "utf8").split(/\r?\n/);
+            if (!lines.some((l) => l.indexOf(target) === 0)) {
+              console.error("::error::No CHANGELOG section found for " + target);
+              process.exit(1);
+            }
+            let capture = false; const out = [];
+            for (const line of lines) {
+              if (/^## \[/.test(line)) { if (capture) break; capture = line.indexOf(target) === 0; continue; }
+              if (capture) out.push(line);
+            }
+            const notes = out.join("\n").trim();
+            writeFileSync("RELEASE_NOTES.md", (notes || "See CHANGELOG.md") + "\n");
+          '
+          echo "--- RELEASE_NOTES.md ---"; cat RELEASE_NOTES.md
 
       - name: Publish to npm with provenance (OIDC trusted publisher)
         run: npm publish --provenance --access public

@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { resetSession, getSession } from '../src/session.js';
 import { MOOD_STYLES, MOOD_DESCRIPTIONS, type MoodStyle } from '../src/types.js';
-import { HARSH_FILTER, SIMILE_PATTERN } from '../src/validators.js';
+import { HARSH_FILTER, SIMILE_PATTERN, STATIC_SAFE_FALLBACK } from '../src/validators.js';
+
+// Local mirror of roast.ts's (non-exported) COMPARISON_LEAK term-list, so a server-003 test can
+// assert a benign comparison word did not survive the terminal gate without importing a private symbol.
+const COMPARISON_LEAK_WORDS = /\bblanket\b|\bcoffee break\b|\bband[\s-]?aid\b|\bbandaid\b/i;
 
 // Mock the Ollama module so tests don't need a live server. recordSafetyFilterFire is a no-op
 // counter the tools call when a terminal gate fires — stub it so the tool code path runs.
@@ -1259,5 +1263,197 @@ describe('Stage C degradation contract', () => {
     const result = await comicTiming('anything');
     expect(result.degraded).toBe(true);
     expect(KNOWN_DEGRADED_REASONS.has(result.degraded_reason as string)).toBe(true);
+  });
+});
+
+// tools-001 — catchphrase_callback must not livelock on a poisoned (dirty) stored phrase.
+// A dirty phrase's count was bumped every call BEFORE the safety gate substituted it, so it stayed
+// the map maximum forever and shadowed every clean phrase for the rest of the session.
+describe('catchphraseCallback livelock (tools-001)', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+    mockRecordSafetyFire.mockClear();
+  });
+
+  it('a poisoned phrase does NOT shadow clean phrases across repeated callbacks', () => {
+    const session = getSession();
+    // Seed a dirty phrase and a clean phrase. Give the dirty one a HEAD START so the OLD code
+    // (which bumps the selected phrase pre-gate) would keep re-selecting it forever.
+    session.useCatchphrase('you absolute retard'); // dirty, count 1
+    session.useCatchphrase('Ship it and pray.');   // clean, count 1
+
+    // Every callback must recall the CLEAN phrase; the dirty phrase must never surface, and its
+    // count must never be mutated (so it can't climb back to the maximum).
+    for (let i = 0; i < 5; i++) {
+      const result = catchphraseCallback();
+      expect(result).not.toBeNull();
+      expect(HARSH_FILTER.test(result!.phrase)).toBe(false);
+      expect(result!.phrase).not.toMatch(/retard/i);
+      expect(result!.phrase).toBe('Ship it and pray.');
+    }
+    // The dirty phrase's count was never bumped — still at its seeded value of 1.
+    expect(session.catchphrases.get('you absolute retard')).toBe(1);
+    // The clean phrase climbed 1 (seed) + 5 (callbacks) = 6.
+    expect(session.catchphrases.get('Ship it and pray.')).toBe(6);
+  });
+
+  it('use_count matches the returned (clean) phrase, not a different bestPhrase', () => {
+    const session = getSession();
+    // Dirty phrase seeded to a HIGHER count than the clean one. If the scan picked the dirty phrase
+    // as bestPhrase (old behavior) but returned the static substitute, use_count would describe the
+    // dirty phrase while `phrase` is a different string. Skipping dirty entries keeps them aligned.
+    session.useCatchphrase('you absolute retard');
+    session.useCatchphrase('you absolute retard');
+    session.useCatchphrase('you absolute retard'); // dirty, count 3
+    session.useCatchphrase('Ship it and pray.');   // clean, count 1
+
+    const result = catchphraseCallback();
+    expect(result!.phrase).toBe('Ship it and pray.');
+    // use_count describes the RETURNED phrase: 1 (seed) + 1 (this callback) = 2.
+    expect(result!.use_count).toBe(2);
+    expect(session.catchphrases.get('Ship it and pray.')).toBe(2);
+  });
+
+  it('all-dirty map → static safe line, degraded, and NO count mutation', () => {
+    const session = getSession();
+    session.useCatchphrase('you absolute retard');  // dirty, count 1
+    session.useCatchphrase('broken like a charm');  // dirty (simile), count 1
+    const before = new Map(session.catchphrases);
+
+    const result = catchphraseCallback();
+    expect(result).not.toBeNull();
+    // Returned line is safe on BOTH filters.
+    expect(HARSH_FILTER.test(result!.phrase)).toBe(false);
+    expect(SIMILE_PATTERN.test(result!.phrase)).toBe(false);
+    expect(result!.phrase).not.toMatch(/retard|like a/i);
+    // Substitution is machine-visible.
+    expect(result!.degraded).toBe(true);
+    expect(result!.degraded_reason).toBe('safety-filter');
+    expect(result!.use_count).toBe(0);
+    expect(mockRecordSafetyFire).toHaveBeenCalled();
+    // No count was mutated — every dirty entry keeps its pre-callback count.
+    for (const [k, v] of before) {
+      expect(session.catchphrases.get(k)).toBe(v);
+    }
+  });
+});
+
+// tools-003 — catchphraseGenerate context reuse must match on any significant word of the stored
+// phrase and tolerate trailing punctuation (old code compared only the FIRST word WITH punctuation).
+describe('catchphraseGenerate context reuse (tools-003)', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  it('reuses a phrase whose FIRST word carries a trailing comma', async () => {
+    const session = getSession();
+    // Old code: firstWord = "cooked," (punctuation kept) → \bcooked,\b never matches "cooked".
+    session.useCatchphrase('cooked, no cap.');
+
+    const result = await catchphraseGenerate('this build is absolutely cooked today');
+    expect(result.phrase).toBe('cooked, no cap.');
+    expect(result.is_fresh).toBe(false);
+    expect(mockGenerate).not.toHaveBeenCalled();
+  });
+
+  it('reuses a phrase by a NON-first significant word', async () => {
+    const session = getSession();
+    // "ship" is the first word; "pray" is a later significant word. Old code compared only the
+    // first word, so a context that mentioned "pray" but not "ship" would miss the reuse.
+    session.useCatchphrase('Ship it and pray.');
+
+    const result = await catchphraseGenerate('all we can do now is pray it compiles');
+    expect(result.phrase).toBe('Ship it and pray.');
+    expect(result.is_fresh).toBe(false);
+    expect(mockGenerate).not.toHaveBeenCalled();
+  });
+});
+
+// tools-002 — comic_timing must snapshot mood once at entry. A concurrent mood_set during the
+// generateComedy await must NOT flip the roast-label enforcement decision.
+describe('comic_timing mood snapshot (tools-002)', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  it('uses the ENTRY mood for the roast-label retry, not a mid-await mood_set', async () => {
+    // Enter in a NON-roast mood (dry). While the first generateComedy await is in flight, a
+    // concurrent mood_set flips the session to roast. If comic_timing read session.mood post-await
+    // (the bug), it would now enforce the roast label and fire a second generation. With the entry
+    // snapshot, it stays 'dry' and does NOT retry.
+    moodSet('dry');
+    mockGenerate.mockImplementationOnce(async () => {
+      moodSet('roast'); // concurrent mood change lands during the await
+      return { data: { rewrite: 'The config is a mess.', technique_used: 'understatement' } };
+    });
+
+    const result = await comicTiming('config broke');
+    // Entry mood was 'dry' → no roast-label enforcement → exactly one generation.
+    expect(mockGenerate).toHaveBeenCalledTimes(1);
+    expect(result.rewrite).toBe('The config is a mess.');
+  });
+
+  it('ENTERS in roast mood → enforces the label even if a mid-await mood_set flips to dry', async () => {
+    // Symmetric case: entry mood is roast, so the label retry MUST fire even though a concurrent
+    // mood_set flips to dry during the await. Reading session.mood post-await would wrongly skip it.
+    moodSet('roast');
+    mockGenerate
+      .mockImplementationOnce(async () => {
+        moodSet('dry'); // concurrent flip away from roast during the await
+        return { data: { rewrite: 'This code is questionable.', technique_used: 'understatement' } };
+      })
+      .mockResolvedValueOnce({ data: { rewrite: 'Verdict: architectural malpractice.', technique_used: 'understatement' } });
+
+    const result = await comicTiming('bad code');
+    // Entry mood roast + unlabeled first output → label retry fires → two generations.
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+    expect(result.rewrite).toMatch(/^Verdict:/i);
+  });
+});
+
+// server-003 — terminal gate that fires on a CALLER-SPECIFIC pattern must use the input-free
+// STATIC_SAFE_FALLBACK, so a benign COMPARISON_LEAK / META_LEAK word in the caller's target/text
+// cannot survive into the returned line via the interpolating voicedSafeFallback.
+describe('terminal gate uses input-free fallback for caller-specific patterns (server-003)', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+    mockRecordSafetyFire.mockClear();
+  });
+
+  it('roast: a COMPARISON_LEAK word ("blanket") in the target does not survive into the line', async () => {
+    // 'blanket' is a COMPARISON_LEAK term. Model persistently emits it; the simile/comparison retry
+    // cannot clear it, so the terminal gate fires ON COMPARISON_LEAK. The OLD voicedSafeFallback
+    // would interpolate the target ("...blanket policy...") and re-emit 'blanket'. The input-free
+    // STATIC_SAFE_FALLBACK must be used instead — 'blanket' must NOT appear in the result.
+    mockGenerate.mockResolvedValue({ data: { roast: 'Verdict: a blanket statement.', severity: 3 } });
+
+    const result = await roast('the blanket retry policy', 'code');
+    expect(COMPARISON_LEAK_WORDS.test(result.roast)).toBe(false);
+    expect(result.roast).not.toMatch(/blanket/i);
+    // It collapsed to the dry static safe line (default mood).
+    expect(result.roast).toBe(STATIC_SAFE_FALLBACK.dry);
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('safety-filter');
+  });
+
+  it('comic_timing: a META_LEAK phrase in the text does not survive into the rewrite', async () => {
+    // Model persistently leaks a meta phrase ("no emoji") that ALSO appears in the caller's text.
+    // The meta retry cannot clear it, so the terminal gate fires on META_LEAK_PATTERN. The
+    // input-free STATIC_SAFE_FALLBACK must be used so the caller's own 'no emoji' cannot be
+    // re-emitted through an interpolating fallback.
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'well, no emoji allowed here', technique_used: 'understatement' },
+    });
+
+    const result = await comicTiming('the linter enforces no emoji in commit messages');
+    expect(result.rewrite).not.toMatch(/no emoji/i);
+    // Collapsed to the input-free dry static line (default mood), not an interpolation of the text.
+    expect(result.rewrite).toBe(STATIC_SAFE_FALLBACK.dry);
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('safety-filter');
   });
 });

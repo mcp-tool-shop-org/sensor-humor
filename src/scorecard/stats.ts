@@ -58,12 +58,18 @@ function clamp01(x: number): number {
  * @param successes count of conforming/safe samples (0..n)
  * @param n         total samples
  * @param z         standard-normal critical value (1.96 = 95% two-sided)
- * @returns interval clamped to [0, 1]; { lower: 0, upper: 1 } when n <= 0
+ * @returns interval clamped to [0, 1]; { lower: 0, upper: 1 } when n <= 0 OR successes is non-finite
  */
 export function wilsonInterval(successes: number, n: number, z = 1.96): Interval {
   // Guard invalid input — an undefined proportion is maximally uncertain.
   if (!Number.isFinite(n) || n <= 0) return { lower: 0, upper: 1 };
-  if (!Number.isFinite(successes) || successes < 0) successes = 0;
+  // sc-004: a NON-FINITE successes (NaN/Infinity) yields an UNDEFINED proportion — it must be
+  // maximally uncertain, NOT silently clamped to 0. Clamping NaN->0 would make wilson(0, n)'s
+  // low interval read as a genuine zero-conformance FAIL, letting garbage drive a release-blocking
+  // verdict through threeValuedVerdict. Returning {0,1} forces INCONCLUSIVE instead (andon-correct:
+  // never pull the cord on garbage). A finite negative count is a real "no successes" -> clamp to 0.
+  if (!Number.isFinite(successes)) return { lower: 0, upper: 1 };
+  if (successes < 0) successes = 0;
   if (successes > n) successes = n;
 
   const pHat = successes / n;

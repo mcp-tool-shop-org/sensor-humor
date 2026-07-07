@@ -141,6 +141,234 @@ describe('validators', () => {
     });
   });
 
+  // ── cdt-002: many-seed obfuscation fuzz sweep over the terminal harsh gate ──────────────────
+  // The prior study's §21 warns "safety behavior is unstable across seeds; one clean run proves
+  // nothing." The block above tests ~15 hand-picked strings; this generates HUNDREDS of
+  // adversarial variants programmatically and asserts hasHarshLeak() === true for every one, plus
+  // a benign negative corpus asserting === false. Base slurs are reconstructed from CHAR CODES
+  // only (mirroring src/scorecard/rules.ts fromCodes + validators.ts base64) — never spelled in
+  // source. Regenerate the homoglyph table below if src/validators.ts CONFUSABLE_MAP changes.
+  describe('hasHarshLeak — many-seed obfuscation fuzz sweep (cdt-002)', () => {
+    const fromCodes = (...codes: number[]): string => String.fromCharCode(...codes);
+
+    // Base harsh terms, built from char codes so no plaintext slur appears in source.
+    const BASE_SLURS: number[][] = [
+      [119, 104, 111, 114, 101],       // w h o r e
+      [98, 105, 116, 99, 104],         // b i t c h
+      [115, 108, 117, 116],            // s l u t
+      [99, 117, 110, 116],             // c u n t
+      [102, 97, 103, 103, 111, 116],   // f a g g o t
+      [110, 105, 103, 103, 101, 114],  // n i g g e r
+      [114, 101, 116, 97, 114, 100],   // r e t a r d
+    ];
+
+    // Inverse of src/validators.ts CONFUSABLE_MAP: ASCII letter -> homoglyph codepoints that fold
+    // back to it. MUST stay in sync with CONFUSABLE_MAP (the map's own INVARIANT comment governs
+    // which letters are covered. b/f/l/n/r/u ARE folded DETECTION-ONLY now; this bounded table
+    // keeps ~1-2 per letter for the Cartesian product, and the EXHAUSTIVE both-case per-codepoint
+    // sweep + capital-class regression (two it() blocks below) exercise every mapped codepoint).
+    const HOMOGLYPHS: Record<string, number[]> = {
+      a: [0x0430, 0x03b1],   // Cyrillic а, Greek α
+      c: [0x0441],           // Cyrillic с
+      d: [0x0501],           // Cyrillic ԁ
+      e: [0x0435],           // Cyrillic е
+      g: [0x0261],           // Latin script ɡ
+      h: [0x04bb],           // Cyrillic һ
+      i: [0x0456, 0x03b9],   // Cyrillic і, Greek ι
+      k: [0x043a, 0x03ba],   // Cyrillic к, Greek κ
+      o: [0x043e, 0x03bf],   // Cyrillic о, Greek ο
+      p: [0x0440, 0x03c1],   // Cyrillic р, Greek ρ
+      s: [0x0455],           // Cyrillic ѕ
+      t: [0x0442],           // Cyrillic т
+      w: [0x051d],           // Cyrillic ԝ
+      x: [0x0445, 0x03c7],   // Cyrillic х, Greek χ
+      y: [0x0443],           // Cyrillic у
+    };
+
+    const ZWSP = 0x200b;       // zero-width space
+    const COMBINING_ACUTE = 0x0301;
+    const LEET: Record<string, string> = { o: '0', i: '1', e: '3', a: '4', s: '5', t: '7' };
+
+    // Generate the FULL Cartesian product of homoglyph choices across every mapped position of
+    // each base slur: each mapped position independently stays ASCII or becomes one of its
+    // homoglyphs. This subsumes single-position substitution (the all-but-one-ASCII members) and
+    // adds every multi-homoglyph combination, yielding a couple hundred adversarial variants.
+    // The all-ASCII member of each product is dropped (it is not obfuscated and appears in the
+    // dedicated core-001 test instead). Positions whose letter has no mapped homoglyph
+    // (b/f/l/n/r/u — see the CONFUSABLE_MAP INVARIANT) are held at ASCII.
+    const homoglyphVariants: string[] = [];
+    for (const codes of BASE_SLURS) {
+      // choices[i] = array of single-char strings this position may take (ASCII first).
+      const choices: string[][] = codes.map((c) => {
+        const homos = HOMOGLYPHS[String.fromCharCode(c)] ?? [];
+        return [fromCodes(c), ...homos.map((cp) => fromCodes(cp))];
+      });
+      // Iterate the mixed-radix product index-by-index.
+      let combos = 1;
+      for (const ch of choices) combos *= ch.length;
+      for (let n = 1; n < combos; n++) {
+        // n starts at 1 to skip the all-ASCII (index-0-everywhere) combination.
+        let rem = n;
+        const parts: string[] = [];
+        for (const ch of choices) {
+          parts.push(ch[rem % ch.length]);
+          rem = Math.floor(rem / ch.length);
+        }
+        if (parts.join('') === codes.map((c) => fromCodes(c)).join('')) continue; // safety net
+        homoglyphVariants.push(parts.join(''));
+      }
+    }
+
+    it('generated a large homoglyph corpus (hundreds of cases, not a trivial run)', () => {
+      // Guards against the sweep silently degrading if HOMOGLYPHS is emptied/mistyped.
+      expect(homoglyphVariants.length).toBeGreaterThan(150);
+    });
+
+    it('catches EVERY homoglyph variant (single- and multi-position substitution)', () => {
+      const escaped: string[] = [];
+      for (const v of homoglyphVariants) {
+        if (!hasHarshLeak(`you absolute ${v} of a function`)) {
+          escaped.push([...v].map((ch) => 'U+' + ch.codePointAt(0)!.toString(16)).join(' '));
+        }
+      }
+      expect(escaped).toEqual([]); // any non-empty array prints the exact escaping codepoints
+    });
+
+    // EXHAUSTIVE per-codepoint single-substitution sweep — the permanent guard for the post-fix
+    // adversarial verify (5 rounds) that found the residual-letter (b/f/l/n/r/u) AND capital-class
+    // bypasses Agent A's original map missed. Every mapped homoglyph, BOTH cases, both a lowercased
+    // and a Capitalized-word-start context. Linear (fast). Regenerate if the validators.ts maps grow.
+    it('catches a single homoglyph substitution of EVERY mapped codepoint (both cases, both contexts)', () => {
+      const ALL_HOMOGLYPHS: Record<string, number[]> = {
+        a: [0x0430, 0x03b1, 0x0410, 0x0391], b: [0x044c, 0x0185, 0x0184, 0x0412, 0x0432, 0x0392, 0x03b2],
+        c: [0x0441, 0x0421], d: [0x0501, 0x0500], e: [0x0435, 0x0415, 0x03b5, 0x0395], f: [0x0192, 0x0584],
+        g: [0x0261], h: [0x04bb, 0x04ba, 0x041d, 0x043d, 0x0397, 0x03b7], i: [0x0456, 0x03b9, 0x0406, 0x0399],
+        k: [0x043a, 0x03ba, 0x041a, 0x039a], l: [0x04cf, 0x04c0, 0x0269, 0x01c0, 0x2113],
+        n: [0x0578, 0x0548, 0x057c, 0x043f, 0x041f, 0x039d], o: [0x043e, 0x03bf, 0x041e, 0x039f],
+        p: [0x0440, 0x03c1, 0x0420, 0x03a1], r: [0x0580, 0x0550, 0x0433, 0x0413, 0x027c], s: [0x0455, 0x0405],
+        t: [0x0442, 0x0422, 0x03c4, 0x03a4], u: [0x057d, 0x054d, 0x03c5, 0x03a5, 0x1d1c, 0x028b],
+        w: [0x051d, 0x051c, 0x03c9, 0x03a9], x: [0x0445, 0x03c7, 0x0425, 0x03a7], y: [0x0443, 0x0423],
+      };
+      const escaped: string[] = [];
+      for (const codes of BASE_SLURS) {
+        const ascii = codes.map((c) => fromCodes(c));
+        for (let i = 0; i < codes.length; i++) {
+          for (const cp of ALL_HOMOGLYPHS[ascii[i]] ?? []) {
+            const parts = [...ascii]; parts[i] = fromCodes(cp);
+            const s = parts.join('');
+            const ctxs = [`you absolute ${s} of a dev`, s[0].toUpperCase() + s.slice(1) + ' build'];
+            for (const ctx of ctxs) if (!hasHarshLeak(ctx)) escaped.push(`${ascii[i]}->U+${cp.toString(16)} in ${JSON.stringify(s)}`);
+          }
+        }
+      }
+      expect(escaped).toEqual([]);
+    });
+
+    // Named regression for the specific classes the adversarial verify caught last, so a future map
+    // change that reopens them turns CI red with a legible reason (not just a fuzz-corpus failure).
+    it('closes the capital-homoglyph classes: Cyrillic Н(En)=H, Greek Ν(Nu)=N, Greek τ/Τ(tau)=t', () => {
+      const bitch_capH = fromCodes(98, 105, 116, 99) + fromCodes(0x041d);       // bitcН — Cyrillic capital En
+      const cunt_capN = fromCodes(99, 117) + fromCodes(0x039d) + fromCodes(116); // cuΝt — Greek capital Nu
+      const slut_tau = fromCodes(115, 108, 117) + fromCodes(0x03c4);            // sluτ — Greek lowercase tau
+      const whore_capH = fromCodes(119) + fromCodes(0x041d) + fromCodes(111, 114, 101); // wНore
+      expect(hasHarshLeak(`you absolute ${bitch_capH} of a dev`)).toBe(true);
+      expect(hasHarshLeak(`you absolute ${cunt_capN} of a dev`)).toBe(true);
+      expect(hasHarshLeak(`you absolute ${slut_tau} of a dev`)).toBe(true);
+      expect(hasHarshLeak(`${whore_capH} build`)).toBe(true);
+    });
+
+    // Combined obfuscation stacks: homoglyph + leet + zero-width + intra-word separator +
+    // combining diacritic, layered onto each base slur. Built entirely from char codes.
+    const combinedStackVariants: string[] = [];
+    for (const codes of BASE_SLURS) {
+      // Stack A: swap first mapped-homoglyph letter, insert a zero-width space mid-word.
+      {
+        const parts: string[] = [];
+        let swapped = false;
+        for (let i = 0; i < codes.length; i++) {
+          const letter = String.fromCharCode(codes[i]);
+          const homos = HOMOGLYPHS[letter];
+          if (!swapped && homos) { parts.push(fromCodes(homos[0])); swapped = true; }
+          else parts.push(fromCodes(codes[i]));
+          if (i === 1) parts.push(fromCodes(ZWSP)); // zero-width space after 2nd char
+        }
+        if (swapped) combinedStackVariants.push(parts.join(''));
+      }
+      // Stack B: leetspeak every leetable letter + a dash separator in the middle.
+      {
+        const chars = codes.map((c) => {
+          const letter = String.fromCharCode(c);
+          return LEET[letter] ?? letter;
+        });
+        const mid = Math.floor(chars.length / 2);
+        combinedStackVariants.push(chars.slice(0, mid).join('') + '-' + chars.slice(mid).join(''));
+      }
+      // Stack C: swap first mapped-homoglyph letter, then append a combining acute to some ASCII
+      // letter (combining marks are NFKD-stripped downstream, so this must not defeat detection).
+      {
+        const parts: string[] = [];
+        let swapped = false;
+        for (let i = 0; i < codes.length; i++) {
+          const letter = String.fromCharCode(codes[i]);
+          const homos = HOMOGLYPHS[letter];
+          if (!swapped && homos) { parts.push(fromCodes(homos[0])); swapped = true; }
+          else {
+            parts.push(fromCodes(codes[i]));
+            if (i === codes.length - 1) parts.push(fromCodes(COMBINING_ACUTE));
+          }
+        }
+        if (swapped) combinedStackVariants.push(parts.join(''));
+      }
+      // Stack D: dotted separators between every character (r.e.t.a.r.d style), no homoglyph.
+      combinedStackVariants.push(codes.map((c) => fromCodes(c)).join('.'));
+    }
+
+    it('catches EVERY combined obfuscation stack (homoglyph + leet + zero-width + sep + combining)', () => {
+      const escaped: string[] = [];
+      for (const v of combinedStackVariants) {
+        if (!hasHarshLeak(`verdict: ${v}, no further comment`)) {
+          escaped.push(JSON.stringify(v));
+        }
+      }
+      expect(escaped).toEqual([]);
+    });
+
+    // NEGATIVE corpus: benign strings that share letters/digits/separators with slurs but must
+    // NOT be flagged. Proves the stronger homoglyph fold did not introduce over-flagging.
+    const BENIGN: string[] = [
+      'i18n',
+      's3 bucket',
+      '800-line function',
+      'v3.2 release',
+      'well-known',
+      'e.g. this',
+      'naive approach',
+      'the class instance',
+      'refactor this 800-line god function v3.2',
+      'i18n config for the s3 bucket',
+      'the async await pattern',
+      'commit the docker image to ghcr',
+      'set up the ci pipeline',
+      'a nice clean utility helper',
+      'the retry with backoff strategy',
+      'slate-grey theme tokens',
+      'a subtle gradient',
+    ];
+
+    it('does NOT flag any benign string (no over-flagging from the stronger fold)', () => {
+      const falsePositives = BENIGN.filter((b) => hasHarshLeak(b));
+      expect(falsePositives).toEqual([]);
+    });
+
+    it('confirms the specific homoglyph gaps from core-001 are now closed', () => {
+      // The finding's VERIFIED bypasses: single Cyrillic/Greek homoglyph for i and s.
+      expect(hasHarshLeak(`b${fromCodes(0x0456)}tch`)).toBe(true);        // bІtch (Cyrillic і)
+      expect(hasHarshLeak(`${fromCodes(0x0455)}lut`)).toBe(true);         // ѕlut (Cyrillic ѕ)
+      expect(hasHarshLeak(`n${fromCodes(0x0456)}gger`)).toBe(true);       // nіgger (Cyrillic і)
+      expect(hasHarshLeak(`n${fromCodes(0x03b9)}gger`)).toBe(true);       // nιgger (Greek ι)
+    });
+  });
+
   describe('sanitizeForPrompt', () => {
     it('strips newlines', () => {
       expect(sanitizeForPrompt('hello\nworld\r\nfoo')).toBe('hello world foo');

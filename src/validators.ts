@@ -57,16 +57,49 @@ const ZERO_WIDTH_AND_FORMAT = new RegExp(
  * way that survives NFKC (Cyrillic / Greek letters NFKC-normalize to themselves, not to ASCII).
  * Folding them to ASCII lets HARSH_FILTER's \b actually hold.
  *
+ * \u2500\u2500 INVARIANT (load-bearing safety contract) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+ * CONFUSABLE_MAP MUST cover the common single-character homoglyph of every ASCII letter that
+ * appears in the HARSH term list. A single-homoglyph substitution needs to swap only ONE letter
+ * (e.g. Cyrillic \u0456 for "i" -> "b\u0456tch"); if that letter's homoglyph is absent, the slur
+ * bypasses the terminal harsh gate entirely. THE MAP CANNOT DRIFT OUT OF SYNC WITH THE TERMS IT
+ * PROTECTS: whenever HARSH_TERMS_B64 changes, re-derive the slur alphabet and revisit this map.
+ *
+ * Slur alphabet today (whore|bitch|slut|cunt|faggot|nigger|retard): w h o r e b i t c s l u n f a g d
+ *   Covered here with a visually-identical homoglyph: a c d e g h i o s t w x y k p v
+ *   Deliberately NOT mapped (no SAFE, visually-identical single-char Cyrillic/Greek look-alike
+ *   exists, and folding a merely-resembling letter would mangle legitimate non-English display
+ *   text \u2014 normalizeConfusables is shared with the sanitize/display path): b f l n r u
+ *   These residual letters still get caught whenever ANOTHER position in the same slur carries a
+ *   mapped homoglyph, leet digit, separator, or combining mark \u2014 so they are not a free bypass,
+ *   only a narrowed one. UPDATE (post-fix adversarial verify, 2026-07-07): each residual letter
+ *   DOES have a convincing look-alike (Cyrillic b/l/n/r, Armenian n/r/u/f, Greek u, Latin f/l/u),
+ *   so ALL are now folded DETECTION-ONLY via DETECTION_CONFUSABLE_MAP in normalizeForDetection
+ *   (kept out of this shared/display map so legit non-English display text is never mangled).
+ *
  * NOTE (study-swarm): this RAISES the deterministic floor; it is NOT full confusable coverage \u2014
- * the full Unicode confusables table is a known ceiling. The regex stays the deterministic
- * floor; we deliberately do NOT add an LLM classifier (proven more bypassable).
+ * the full Unicode confusables table is a known ceiling, and precomposed accented homoglyphs
+ * (e.g. Greek \u03ac) fold only if decomposed before this map runs, which they are not. The regex
+ * stays the deterministic floor; we deliberately do NOT add an LLM classifier (proven more
+ * bypassable). Only well-known, visually-identical look-alikes are mapped, never distinct letters
+ * that merely resemble, to avoid false folds in the display path.
  */
 const CONFUSABLE_MAP: Record<string, string> = {
   // Cyrillic -> Latin
   '\u0430': 'a', '\u0435': 'e', '\u043e': 'o', '\u0440': 'p', '\u0441': 'c',
   '\u0445': 'x', '\u0443': 'y', '\u043a': 'k', '\u0442': 't',
+  '\u0456': 'i', // Cyrillic \u0456 (byelorussian-ukrainian i) \u2014 CONFIRMED prior gap
+  '\u0455': 's', // Cyrillic \u0455 (dze)                       \u2014 CONFIRMED prior gap
+  '\u04bb': 'h', // Cyrillic \u04bb (shha)
+  '\u0501': 'd', // Cyrillic \u0501 (komi de)
+  '\u051d': 'w', // Cyrillic \u051d (we)
   // Greek -> Latin
   '\u03bf': 'o', '\u03b1': 'a', '\u03bd': 'v',
+  '\u03b9': 'i', // Greek \u03b9 (iota)  \u2014 CONFIRMED prior gap
+  '\u03c1': 'p', // Greek \u03c1 (rho)
+  '\u03ba': 'k', // Greek \u03ba (kappa)
+  '\u03c7': 'x', // Greek \u03c7 (chi)
+  // Latin extension -> ASCII
+  '\u0261': 'g', // Latin small letter script g (survives NFKC as non-ASCII)
 };
 const CONFUSABLE_PATTERN = new RegExp(`[${Object.keys(CONFUSABLE_MAP).join('')}]`, 'g');
 
@@ -92,12 +125,59 @@ const LEET_MAP: Record<string, string> = {
 const LEET_PATTERN = /[013457@$!]/g;
 
 /**
+ * DETECTION-ONLY extended homoglyph fold for the residual slur-alphabet letters (b f l n r u)
+ * that have no SAFE display-path look-alike but DO have convincing Cyrillic/Greek/Armenian/Latin
+ * homoglyphs. Applied ONLY in normalizeForDetection (never in the shared normalizeConfusables), so
+ * the aggressive fold catches homoglyph-spelled slurs without mangling legitimate non-English
+ * DISPLAY text. Closes the 24 single-substitution bypasses the post-fix adversarial verify found
+ * (e.g. Cyrillic ь->b, palochka ӏ->l, Armenian ո->n / ս->u / ր->r). Keys are LOWERCASE codepoints —
+ * uppercase look-alikes are folded by the preceding toLowerCase(); caseless small-caps (ᴜ) are
+ * mapped directly. Floor, not full UTS-39 confusables coverage (see SECURITY.md).
+ */
+const DETECTION_CONFUSABLE_MAP: Record<string, string> = {
+  'τ': 't', 'ω': 'w', 'ε': 'e',                       // Greek τ(tau)=t, ω(omega)=w, ε(epsilon)=e (caps fold via toLowerCase)
+  'ь': 'b', 'ƅ': 'b', 'Ƅ': 'b',                       // Cyrillic ь, Latin ƅ (U+0185) + its uppercase Ƅ
+  'ӏ': 'l', 'ɩ': 'l', 'ǀ': 'l', 'ℓ': 'l',   // Cyrillic ӏ, Latin ɩ, ǀ, ℓ
+  'ո': 'n', 'ռ': 'n', 'п': 'n',                  // Armenian ո, ռ, Cyrillic п
+  'ր': 'r', 'г': 'r', 'ɼ': 'r',                  // Armenian ր, Cyrillic г, Latin ɼ
+  'ս': 'u', 'υ': 'u', 'ᴜ': 'u', 'ʋ': 'u',   // Armenian ս, Greek υ, ᴜ, Latin ʋ
+  'ƒ': 'f', 'ք': 'f',                                 // Latin ƒ, Armenian ք
+};
+/**
+ * Combined fold re-applied AFTER toLowerCase in the detection path. The shared CONFUSABLE_MAP runs
+ * (inside normalizeConfusables) BEFORE lowercasing and has only lowercase keys, so an UPPERCASE
+ * homoglyph (Cyrillic Т U+0422 -> т, С U+0421 -> с, Greek Ο -> ο) would slip past it. Re-folding the
+ * union of both maps after toLowerCase closes that casing gap. Detection-only (never in the shared
+ * display path), so it cannot mangle legit non-English DISPLAY text.
+ */
+const DETECTION_FOLD_MAP: Record<string, string> = { ...CONFUSABLE_MAP, ...DETECTION_CONFUSABLE_MAP };
+const DETECTION_FOLD_PATTERN = new RegExp(`[${Object.keys(DETECTION_FOLD_MAP).join('')}]`, 'g');
+
+/**
+ * Capital Cyrillic/Greek homoglyphs whose SCRIPT-lowercase is NOT the Latin look-alike, so a
+ * post-toLowerCase fold would miss them (Cyrillic Н U+041D reads as H but lowercases to н U+043D)
+ * or map them WRONG (Greek Ν reads as N but lowercases to ν -> 'v' in the shared map). Folded by
+ * EXACT codepoint BEFORE lowercasing so the capital disambiguates from its script-lowercase.
+ * Detection-only. Found by the post-fix adversarial verify (Cyrillic Н was the last bypass class).
+ */
+const DETECTION_CAPITAL_MAP: Record<string, string> = {
+  'Н': 'h', 'н': 'h', // Cyrillic Н/н (En) = H
+  'В': 'b', 'в': 'b', // Cyrillic В/в (Ve) = B
+  'Η': 'h', 'η': 'h', // Greek Η/η (Eta)  = H
+  'Β': 'b', 'β': 'b', // Greek Β/β (Beta) = B
+  'Ν': 'n',                // Greek Ν (Nu)     = N (lowercase ν stays -> v)
+};
+const DETECTION_CAPITAL_PATTERN = new RegExp(`[${Object.keys(DETECTION_CAPITAL_MAP).join('')}]`, 'g');
+
+/**
  * Aggressive normalization for the HARSH DETECTION path ONLY (hasHarshLeak). On top of
  * normalizeConfusables it folds the three most common real-world slur obfuscations so the
  * \b term-list still catches them:
  *   - combining diacritics (NFKD + strip U+0300-U+036F): "retárd" / accented look-alikes -> ASCII
  *   - leetspeak digit/symbol substitution: r3tard / b1tch / f@ggot -> retard / bitch / faggot
  *   - intra-word separators (. - _): "re-tard" / "r.e.t.a.r.d" -> "retard"
+ *   - residual-letter homoglyphs (DETECTION_CONFUSABLE_MAP): Cyrillic/Greek/Armenian/Latin
+ *     look-alikes for b/f/l/n/r/u -> ASCII, closing the single-substitution slur bypass
  * DETECTION-ONLY: deliberately NOT used by sanitizeForPrompt, because aggressively folding
  * leet/separators would corrupt legitimate DISPLAYED text ("800-line", "v3", "i18n"). When this
  * check fires, the caller returns an input-free static safe line, so the obfuscated source text
@@ -108,9 +188,11 @@ const LEET_PATTERN = /[013457@$!]/g;
  */
 export function normalizeForDetection(input: string): string {
   return normalizeConfusables(input)
+    .replace(DETECTION_CAPITAL_PATTERN, (ch) => DETECTION_CAPITAL_MAP[ch] ?? ch) // mismatched-lowercase capitals (Cyrillic Н->h, Greek Ν->n), exact codepoint, BEFORE lowercasing
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')           // strip combining diacritical marks
     .toLowerCase()
+    .replace(DETECTION_FOLD_PATTERN, (ch) => DETECTION_FOLD_MAP[ch] ?? ch) // re-fold homoglyphs post-lowercase — catches UPPERCASE look-alikes too (detection-only)
     .replace(LEET_PATTERN, (ch) => LEET_MAP[ch] ?? ch)   // fold leetspeak
     .replace(/[._-]/g, '');                              // remove intra-word separators
 }

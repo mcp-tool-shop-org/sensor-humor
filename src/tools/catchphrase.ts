@@ -76,8 +76,16 @@ export async function catchphraseGenerate(
       // Never reuse a dirty stored phrase (legacy/persisted slur/simile): skip it so we fall
       // through to a fresh, gated generation instead of replaying a banned token.
       if (hasHarshLeak(phrase) || hasSimileLeak(phrase)) continue;
-      const firstWord = phrase.toLowerCase().split(' ')[0];
-      if (firstWord.length >= 3 && new RegExp(`\\b${escapeRegex(firstWord)}\\b`).test(lower)) {
+      // Match against ALL significant words of the stored phrase (mirrors how
+      // findCallbackCandidates matches a gag tag), not just the first word — and strip trailing
+      // punctuation first so a stored "cooked," still matches the context word "cooked" (tools-003).
+      const words = phrase
+        .toLowerCase()
+        .split(/\s+/)
+        .map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
+        .filter((w) => w.length >= 3);
+      const matched = words.some((w) => new RegExp(`\\b${escapeRegex(w)}\\b`).test(lower));
+      if (matched) {
         session.useCatchphrase(phrase);
         session.pushBit(phrase, 'catchphrase');
         return { phrase, is_fresh: false };
@@ -144,23 +152,37 @@ export function catchphraseCallback(): CatchphraseCallbackResult | null {
 
   if (session.catchphrases.size === 0) return null;
 
-  // Find the most-used catchphrase
+  // Find the most-used CLEAN catchphrase. Dirty phrases (persisted/legacy slur/simile) are skipped
+  // during the max scan (mirrors how catchphraseGenerate skips dirty stored phrases). This closes a
+  // session-long livelock (tools-001): if a dirty phrase were selected, useCatchphrase would bump
+  // ITS count every call, keeping it the map maximum forever, so the user would never recall a real
+  // phrase again. Skipping it here means its count is never mutated and a clean phrase surfaces.
   let bestPhrase = '';
   let bestCount = 0;
   for (const [phrase, count] of session.catchphrases) {
+    if (hasHarshLeak(phrase) || hasSimileLeak(phrase)) continue;
     if (count > bestCount) {
       bestPhrase = phrase;
       bestCount = count;
     }
   }
 
-  // Increment usage
+  // No clean phrase exists (every stored phrase is dirty): return an input-free static safe line
+  // WITHOUT mutating any count — do not call useCatchphrase, so no dirty phrase's count is bumped.
+  // Signal degraded:'safety-filter' so the substitution is machine-visible and never reads as a
+  // genuine recall (Q4 / BK-B-01).
+  if (bestPhrase === '') {
+    recordSafetyFilterFire();
+    const safe = STATIC_SAFE_CATCHPHRASE[session.mood];
+    session.pushBit(safe, 'catchphrase');
+    session.tick();
+    return { phrase: safe, use_count: 0, degraded: true, degraded_reason: 'safety-filter' as const };
+  }
+
+  // Only mutate the phrase we ACTUALLY return, so use_count always describes the returned phrase
+  // (tools-001b). bestPhrase is already clean (dirty entries were skipped above), so the terminal
+  // gate below cannot fire on it — the gate is retained as defense-in-depth only.
   const newCount = session.useCatchphrase(bestPhrase);
-  // Terminal safety gate: a persisted/legacy phrase could be dirty (slur/simile). Re-check and
-  // substitute an input-free static catchphrase before returning, so callback never replays a
-  // banned token. pushBit uses the gated phrase so the recent-bits ring stays clean too. When the
-  // gate fires, signal degraded:'safety-filter' so the substitution is machine-visible — a
-  // substituted callback must never read as a genuine recall (Q4 / BK-B-01). (B1)
   const gate = safeCatchphrase(session.mood, bestPhrase);
   if (gate.gated) recordSafetyFilterFire();
   session.pushBit(gate.phrase, 'catchphrase');

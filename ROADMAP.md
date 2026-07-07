@@ -1,7 +1,7 @@
 # sensor-humor Roadmap
 
 **Current:** v1.2.1 — shipped 2026-06-30
-**Quality baseline:** 6 moods at 70%+, 187 tests, terminal safety gate, degradation signal (`degraded`), persistent session, Ollama Cloud auth, simile post-validation, mood-specific fallbacks, Piper prosody, live sessions addictive with voice on.
+**Quality baseline:** 6 moods at 70%+, 346 tests, terminal safety gate, degradation signal (`degraded`), persistent session, Ollama Cloud auth, simile post-validation, mood-specific fallbacks, Piper prosody, live sessions addictive with voice on.
 
 Everything below must meaningfully move quality, determinism, debuggability, developer time, or end-user edge. Nothing else gets in.
 
@@ -26,7 +26,7 @@ The prompt war taught us that small wording changes cause 20%+ swings. Lock what
 
 **Honest scope (what the gate measures):** *structural form + safety*, NOT "funniness." It checks that output matches the mood skeleton, avoids similes, passes the safety filters, and is non-degraded — a **form-and-safety regression gate**, not a comedy-quality metric. Automated humor scoring is unreliable: the best LLM-vs-human funniness correlation is only ρ≈0.2, and pattern conformance ≠ originality. (Grounded in a research study-swarm run during the 2026-06-30 dogfood swarm.)
 
-- [x] Snapshot all 6 mood prompts as v1 frozen — `tests/scorecard-frozen-prompts.ts` pins each v1 fingerprint; an in-place edit fails CI and names the fix (bump to v2)
+- [x] Snapshot all 6 mood prompts as v1 frozen — `tests/scorecard-frozen-prompts.test.ts` pins each v1 fingerprint; an in-place edit fails CI and names the fix (bump to v2)
 - [x] Add a prompt fingerprint to `debug_status` (hash of active prompt text + model id) for drift attribution — `prompt_fingerprint` + `active_prompt_key`
 - [x] `SENSOR_HUMOR_PROMPT_VERSION=2` scaffolding — v2 prompts load alongside v1, switchable per-session
 - [x] **Per-PR gate (fast, deterministic):** (`src/scorecard/rules.ts` GOLDEN_SET + stats tests in `npm test`) a small golden set (10–20 fixed inputs) asserting skeleton rules + safety-filter behavior. Exact-match ONLY on the CPU-side regex/base64 layer — never on stochastic humor text (temp=0 is not deterministic on GPU).
@@ -152,4 +152,4 @@ These are not planned for any version unless proven necessary by real usage data
 
 ---
 
-*Last updated: 2026-03-31 — swarm health pass*
+*Last updated: 2026-07-07 — re-swarm health pass (Stage A)*
