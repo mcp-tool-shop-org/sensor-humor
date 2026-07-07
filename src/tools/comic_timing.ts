@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { getSession } from '../session.js';
+import { getSession, fullTraceEnabled } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
@@ -70,8 +70,12 @@ function buildTechniqueGuidance(technique: ComicTechnique, hasCallbacks: boolean
     case 'escalation':
       return 'Use escalation: start reasonable, then each beat gets progressively more absurd.';
     case 'callback':
+      // Fresh-twist guidance (callback-revival C4): a callback that merely repeats the bit verbatim
+      // is not funny and reads as tedium. Petrović & Matthews 2013 (ACL P13-2041) — humor requires
+      // related AND unexpected; West & Horvitz 2019 (arXiv:1901.03253) — models default to safe
+      // reuse, so we must explicitly demand fresh incongruity. Escalate or add a new angle.
       return hasCallbacks
-        ? 'Use a callback: reference an earlier bit from this session. Check the session state for material.'
+        ? 'Use a callback: reference an earlier bit from this session (check the session state / callback material). Do NOT repeat it verbatim — ESCALATE it or add a NEW twist so the callback lands as a fresh surprise, not a rerun.'
         : 'A callback was requested but there are no earlier bits to reference. Use understatement instead.';
     case 'understatement':
       return 'Use understatement: describe something dramatic as if it were completely mundane.';
@@ -145,18 +149,26 @@ Respond with JSON only.`;
 
   let result = await gen(userPrompt);
 
+  // Which local safety/pattern gates fired this call — captured best-effort for the forensic trace
+  // (ROADMAP v2.0 "Chain Trace Tool"), so debug_chain can show WHY a retry happened. Each block
+  // below records its tag when it fires; the terminal gate records 'terminal-gate'.
+  const validatorsTriggered: string[] = [];
+
   // Post-validation: reject meta-commentary leaks and retry once
   if (META_LEAK_PATTERN.test(result.data.rewrite)) {
+    validatorsTriggered.push('meta-leak');
     result = await gen(`${userPrompt}\n\nOutput ONLY the comedic rewrite. No rules, no comments, no meta text. Pure comedy only.`);
   }
 
   // Simile/comparison leak check: retry once with negative prompt
   if (hasSimileLeak(result.data.rewrite)) {
+    validatorsTriggered.push('simile');
     result = await gen(`${userPrompt}${SIMILE_RETRY_SUFFIX}`);
   }
 
   // Harshness filter: reject slurs/extreme insults and retry once
   if (hasHarshLeak(result.data.rewrite)) {
+    validatorsTriggered.push('harsh');
     result = await gen(`${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel. Pure comedy only.`);
   }
 
@@ -164,6 +176,7 @@ Respond with JSON only.`;
   // Uses the entry-snapshot `mood`, not session.mood, so a concurrent mood_set during an await
   // above cannot flip this decision (tools-002).
   if (mood === 'roast' && !ROAST_LABEL_PATTERN.test(result.data.rewrite)) {
+    validatorsTriggered.push('roast-label');
     result = await gen(`${userPrompt}\n\nStart with a label like "Verdict:", "Diagnosis:", or "Classification:" followed by 1 tight sentence.`);
   }
 
@@ -189,6 +202,7 @@ Respond with JSON only.`;
       : voicedSafeFallback(mood, text);
     result.data.technique_used = 'understatement';
     gateFired = true;
+    validatorsTriggered.push('terminal-gate');
     recordSafetyFilterFire();
     if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
       console.error('[sensor-humor] ComicTiming: terminal safety gate triggered, using safe fallback');
@@ -234,6 +248,29 @@ Respond with JSON only.`;
     result.data.degraded = true;
     result.data.degraded_reason = degradedReason;
   }
+
+  // Record ONE forensic trace entry for this call (ROADMAP v2.0 "Chain Trace Tool") so a dev can
+  // reconstruct this generation via debug_chain. Light fields always; heavy fields (prompt/raw/
+  // parsed) only under SENSOR_HUMOR_FULL_TRACE to bound the ring size. The gen-metadata fields are
+  // optional (a mocked generateComedy omits them), so they pass through as undefined harmlessly.
+  session.recordTrace({
+    turn: session.turn_counter,
+    tool: 'comic_timing',
+    mood,
+    input: text,
+    prompt_fingerprint: result.prompt_fingerprint,
+    retries: result.retries,
+    validators_triggered: validatorsTriggered,
+    degraded_reason: degradedReason,
+    latency_ms: result.latency_ms,
+    ...(fullTraceEnabled()
+      ? {
+          prompt_text: `${systemPrompt}\n\n${userPrompt}`,
+          raw_output: result.raw_output,
+          parsed_output: result.data,
+        }
+      : {}),
+  });
 
   return result.data;
 }

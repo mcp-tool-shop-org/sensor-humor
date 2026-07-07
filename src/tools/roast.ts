@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { getSession } from '../session.js';
+import { getSession, fullTraceEnabled } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
@@ -89,8 +89,13 @@ export async function roast(
     fallback,
   );
 
+  // Which local safety/pattern gates fired this call — captured best-effort for the forensic trace
+  // (ROADMAP v2.0 "Chain Trace Tool"), so debug_chain shows WHY a retry/substitution happened.
+  const validatorsTriggered: string[] = [];
+
   // Label pattern enforcement: ONLY in roast mood
   if (mood === 'roast' && !ROAST_LABEL_PATTERN.test(result.data.roast)) {
+    validatorsTriggered.push('roast-label');
     const retryPrompt = `${userPrompt}\n\nStart with a label like "Verdict:", "Diagnosis:", or "Classification:" followed by 1 tight sentence.`;
     result = await generateComedy<z.infer<typeof RoastSchema>>(
       {
@@ -111,6 +116,7 @@ export async function roast(
 
   // Comparison/metaphor/simile leak check: retry once with negative prompt
   if (COMPARISON_LEAK.test(result.data.roast) || hasSimileLeak(result.data.roast)) {
+    validatorsTriggered.push('simile');
     const cleanPrompt = `${userPrompt}${SIMILE_RETRY_SUFFIX}`;
     result = await generateComedy<z.infer<typeof RoastSchema>>(
       {
@@ -134,6 +140,7 @@ export async function roast(
 
   // Harshness filter: reject slurs/extreme insults and retry once
   if (hasHarshLeak(result.data.roast)) {
+    validatorsTriggered.push('harsh');
     const cleanPrompt = `${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel.`;
     result = await generateComedy<z.infer<typeof RoastSchema>>(
       {
@@ -171,6 +178,7 @@ export async function roast(
       ? STATIC_SAFE_FALLBACK[mood]
       : voicedSafeFallback(mood, target);
     safetySubstituted = true;
+    validatorsTriggered.push('terminal-gate');
   }
   if (safetySubstituted) recordSafetyFilterFire();
 
@@ -182,6 +190,29 @@ export async function roast(
   session.pushBit(result.data.roast, 'roast');
 
   const degradedReason = result.fallback_reason ?? (safetySubstituted ? 'safety-filter' : undefined);
+
+  // Record ONE forensic trace entry for this call (ROADMAP v2.0 "Chain Trace Tool"). Light fields
+  // always; heavy fields only under SENSOR_HUMOR_FULL_TRACE. gen-metadata fields are optional (a
+  // mocked generateComedy omits them) and pass through as undefined harmlessly.
+  session.recordTrace({
+    turn: session.turn_counter,
+    tool: 'roast',
+    mood,
+    input: target,
+    prompt_fingerprint: result.prompt_fingerprint,
+    retries: result.retries,
+    validators_triggered: validatorsTriggered,
+    degraded_reason: degradedReason,
+    latency_ms: result.latency_ms,
+    ...(fullTraceEnabled()
+      ? {
+          prompt_text: `${systemPrompt}\n\n${userPrompt}`,
+          raw_output: result.raw_output,
+          parsed_output: result.data,
+        }
+      : {}),
+  });
+
   return {
     roast: result.data.roast,
     severity,

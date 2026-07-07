@@ -13,10 +13,17 @@ import {
   type RecentBit,
   type RunningGag,
   type SensorHumorSession,
+  type TraceEntry,
 } from './types.js';
 import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak } from './validators.js';
 
 const MAX_RECENT_BITS = 20;
+/**
+ * Forensic trace ring depth (ROADMAP v2.0 "Chain Trace Tool"). Kept small and bounded like
+ * recent_bits — a debug_chain call only ever needs the LAST handful of calls to reconstruct a
+ * recent pipeline, and heavy full-trace entries (prompt/raw/parsed) must not accumulate unbounded.
+ */
+const MAX_TRACES = 10;
 // Unbounded collections balloon the system prompt in a long persisted session; cap them like
 // recent_bits and evict the stalest entry (lowest last_turn / use count) when over the cap.
 const MAX_RUNNING_GAGS = 30;
@@ -32,6 +39,73 @@ const SUPPORTED_SNAPSHOT_VERSIONS = new Set<number>([1]);
 
 function persistEnabled(): boolean {
   return process.env.SENSOR_HUMOR_PERSIST === 'true';
+}
+
+/**
+ * Full-trace capture flag (ROADMAP v2.0 "Chain Trace Tool"). When true, each trace entry
+ * additionally carries the heavy fields (full prompt text + raw model output + parsed output).
+ * Default OFF so the trace ring stays small — mirrors the SENSOR_HUMOR_PERSIST boolean knob.
+ */
+export function fullTraceEnabled(): boolean {
+  return process.env.SENSOR_HUMOR_FULL_TRACE === 'true';
+}
+
+// ── Callback mechanic knobs (the running-gag/callback feature) ──────────────────────────────────
+// Two tuning constants govern when a planted gag is an eligible callback candidate. Both are
+// env-overridable, mirroring getTimeoutMs/getTemperature in ollama.ts (parse, clamp sane,
+// invalid/absent -> default with a debug-gated log).
+
+/** Default turns a gag must age past its setup before it can fire (see Ma et al. 2026 below). */
+const DEFAULT_GAG_MIN_DISTANCE = 2;
+/** Default number of fires after which a gag retires (see Pistole & Shor / Schmidt & Eisend). */
+const DEFAULT_GAG_MAX_FIRES = 3;
+
+/**
+ * Minimum temporal distance (in turns) between a gag's setup and its first eligible callback.
+ * Grounding: Ma et al. 2026 (arXiv:2605.00143) — for callbacks, temporal distance / built-up
+ * anticipation outweighs the content of the tag itself; firing a callback immediately after its
+ * setup reads as repetition, not payoff. So a freshly-planted gag is withheld until it has aged
+ * at least this many turns. Env: SENSOR_HUMOR_GAG_MIN_DISTANCE, clamped 0..20 (0 = fire
+ * immediately, disabling the gate; 20 caps how long a gag can be starved). Invalid/absent ->
+ * default, matching the getTimeoutMs env-knob pattern.
+ */
+export function getGagMinDistance(): number {
+  const env = process.env.SENSOR_HUMOR_GAG_MIN_DISTANCE;
+  if (env === undefined) return DEFAULT_GAG_MIN_DISTANCE;
+  const n = Number.parseInt(env, 10);
+  if (!Number.isFinite(n) || n < 0 || n > 20) {
+    if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+      console.error(
+        `[sensor-humor] Invalid SENSOR_HUMOR_GAG_MIN_DISTANCE="${env}" (want 0..20); falling back to ${DEFAULT_GAG_MIN_DISTANCE}`,
+      );
+    }
+    return DEFAULT_GAG_MIN_DISTANCE;
+  }
+  return n;
+}
+
+/**
+ * Maximum times a gag may fire before it retires (stops being an eligible callback candidate).
+ * Grounding: Pistole & Shor 1979 (DOI:10.1080/00221309.1979.9710524) and Schmidt & Eisend 2015
+ * (DOI:10.1080/00913367.2015.1018460) — humor repetition follows an inverted-U: funniness rises
+ * to a low peak around 3–4 exposures, then decays into tedium. Retiring a gag at this cap stops
+ * it before the down-slope. A gag's `used` count is its fire count (comic_timing bumps it on an
+ * honored callback). Env: SENSOR_HUMOR_GAG_MAX_FIRES, clamped 1..10 (must allow at least one
+ * fire). Invalid/absent -> default, matching the getTimeoutMs env-knob pattern.
+ */
+export function getGagMaxFires(): number {
+  const env = process.env.SENSOR_HUMOR_GAG_MAX_FIRES;
+  if (env === undefined) return DEFAULT_GAG_MAX_FIRES;
+  const n = Number.parseInt(env, 10);
+  if (!Number.isFinite(n) || n < 1 || n > 10) {
+    if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+      console.error(
+        `[sensor-humor] Invalid SENSOR_HUMOR_GAG_MAX_FIRES="${env}" (want 1..10); falling back to ${DEFAULT_GAG_MAX_FIRES}`,
+      );
+    }
+    return DEFAULT_GAG_MAX_FIRES;
+  }
+  return n;
 }
 
 /** Session file path, resolved lazily so SENSOR_HUMOR_SESSION_DIR can override it. */
@@ -72,6 +146,14 @@ export class Session implements SensorHumorSession {
   gags_evicted: number;
   /** Lifetime count of catchphrases evicted by the LRU cap (same rationale as gags_evicted). */
   catchphrases_evicted: number;
+  /**
+   * Forensic trace ring (ROADMAP v2.0 "Chain Trace Tool"): the last MAX_TRACES comedy-tool calls,
+   * oldest-first internally. debug_chain reads it newest-first via getTraces(). In-memory only and
+   * NOT persisted — traces are a live-debugging aid (they can carry full prompt/raw text under
+   * SENSOR_HUMOR_FULL_TRACE, which must never land in the session.json file) and reset with the
+   * session by virtue of a fresh Session() starting empty.
+   */
+  traces: TraceEntry[];
 
   constructor() {
     this.mood = DEFAULT_MOOD;
@@ -81,6 +163,7 @@ export class Session implements SensorHumorSession {
     this.turn_counter = 0;
     this.gags_evicted = 0;
     this.catchphrases_evicted = 0;
+    this.traces = [];
   }
 
   /** Advance turn counter. Call once per tool invocation. */
@@ -123,6 +206,9 @@ export class Session implements SensorHumorSession {
         tag,
         used: 1,
         last_turn: this.turn_counter,
+        // Stamp the plant turn so the callback distance gate can measure age since setup
+        // independently of last reference (callback-revival C2; Ma et al. 2026).
+        created_turn: this.turn_counter,
       });
       if (this.running_gags.length > MAX_RUNNING_GAGS) {
         // Evict the stalest gag: lowest last_turn (oldest reference), then lowest use count.
@@ -178,12 +264,65 @@ export class Session implements SensorHumorSession {
   }
 
   /**
-   * Find gags whose tags appear in the given text.
-   * Used by comic_timing to decide if a callback is available.
+   * Record one comedy-tool call into the forensic trace ring (ROADMAP v2.0 "Chain Trace Tool").
+   * Bounded exactly like pushBit: append, then evict the oldest when over MAX_TRACES, so the ring
+   * always holds the most-recent MAX_TRACES calls. Traces are in-memory only and NOT persisted, so
+   * this deliberately does NOT call save() (unlike the other mutators) — the heavy full-trace
+   * fields must never be written to disk, and a trace is a live-session debugging aid.
+   */
+  recordTrace(entry: TraceEntry): void {
+    this.traces.push(entry);
+    if (this.traces.length > MAX_TRACES) {
+      const evicted = this.traces.shift();
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true' && evicted) {
+        console.error(`[sensor-humor] Evicted trace from turn ${evicted.turn} (ring full at ${MAX_TRACES})`);
+      }
+    }
+  }
+
+  /**
+   * The most recent trace entries, NEWEST first, capped to `limit` (default MAX_TRACES). Backing
+   * accessor for the debug_chain tool. Returns a shallow copy so a caller can't mutate the ring;
+   * `limit` is clamped to [0, MAX_TRACES] so an over-large or negative request stays bounded.
+   */
+  getTraces(limit = MAX_TRACES): TraceEntry[] {
+    const clamped = Math.max(0, Math.min(MAX_TRACES, Math.floor(limit)));
+    // Copy, reverse to newest-first, then slice to the clamped limit.
+    return [...this.traces].reverse().slice(0, clamped);
+  }
+
+  /**
+   * Whether a gag is currently eligible to fire as a callback — the inverted-U + distance gates
+   * that revive the callback mechanic (callback-revival C2 + C3). A gag is eligible only if it has
+   * BOTH:
+   *   - aged at least SENSOR_HUMOR_GAG_MIN_DISTANCE turns since its setup (Ma et al. 2026,
+   *     arXiv:2605.00143 — temporal distance / anticipation is what makes a callback land, so a gag
+   *     is withheld until it is old enough), AND
+   *   - not yet retired: fired fewer than SENSOR_HUMOR_GAG_MAX_FIRES times (Pistole & Shor 1979
+   *     DOI:10.1080/00221309.1979.9710524 + Schmidt & Eisend 2015 DOI:10.1080/00913367.2015.1018460
+   *     — humor repetition is an inverted-U peaking low ~3–4 exposures, then tedium; retire before
+   *     the down-slope).
+   * `used` is the fire count (comic_timing bumps it on an honored callback). created_turn falls
+   * back to last_turn for legacy gags that predate the field.
+   */
+  isEligibleCallback(gag: RunningGag): boolean {
+    const plantedTurn = gag.created_turn ?? gag.last_turn;
+    const age = this.turn_counter - plantedTurn;
+    if (age < getGagMinDistance()) return false; // too soon after setup — no anticipation yet
+    if (gag.used >= getGagMaxFires()) return false; // retired: past the inverted-U peak
+    return true;
+  }
+
+  /**
+   * Find gags whose tags appear in the given text AND that are currently eligible callbacks.
+   * Used by comic_timing to decide if a callback is available. Eligibility (isEligibleCallback)
+   * enforces the distance gate and the retirement cap, so a gag planted this turn, or one that has
+   * already fired its cap, is correctly excluded — the fix that makes the revived mechanic behave.
    */
   findCallbackCandidates(text: string): RunningGag[] {
     const lower = text.toLowerCase();
     return this.running_gags.filter((g) => {
+      if (!this.isEligibleCallback(g)) return false;
       const tag = String(g.tag).toLowerCase();
       if (tag.length < 3) return lower.includes(tag); // short tags: keep substring match
       const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

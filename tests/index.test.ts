@@ -11,11 +11,19 @@ describe('index module', () => {
     expect(versionMatch![1]).toBe(pkg.version);
   });
 
-  it('registers all 9 tools', () => {
+  it('registers all 11 tools', () => {
     const src = readFileSync('src/index.ts', 'utf-8');
     const toolRegistrations = src.match(/server\.tool\(/g);
     expect(toolRegistrations).not.toBeNull();
-    expect(toolRegistrations!.length).toBe(9);
+    // 10 original + debug_chain (ROADMAP v2.0 "Chain Trace Tool").
+    expect(toolRegistrations!.length).toBe(11);
+  });
+
+  it('registers the debug_chain trace tool', () => {
+    const src = readFileSync('src/index.ts', 'utf-8');
+    expect(src).toContain("'debug_chain'");
+    // It returns the session's trace ring, newest-first.
+    expect(src).toContain('session.getTraces(');
   });
 
   it('startup log message matches package version exactly', () => {
@@ -206,6 +214,84 @@ describe('index module', () => {
     connectSpy.mockRestore();
     vi.doUnmock('../src/session.js');
     vi.doUnmock('../src/ollama.js');
+    vi.doUnmock('@modelcontextprotocol/sdk/server/stdio.js');
+    vi.resetModules();
+  });
+
+  // ROADMAP v2.0 "Chain Trace Tool" GATE: one debug_chain call reconstructs the generation
+  // pipeline for a recent comedy output. Exercises the real handler against a real session seeded
+  // with trace entries, asserting the emitted JSON carries the documented fields and that limit
+  // returns the last N newest-first.
+  it('debug_chain returns the trace ring newest-first as JSON and honors limit', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    vi.resetModules();
+
+    vi.doMock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
+      StdioServerTransport: vi.fn().mockImplementation(() => ({})),
+    }));
+
+    // A real session seeded with three trace entries so getTraces() has content to surface.
+    const { Session } = await import('../src/session.js');
+    const realSession = new Session();
+    for (let i = 1; i <= 3; i++) {
+      realSession.tick();
+      realSession.recordTrace({
+        turn: realSession.turn_counter,
+        tool: 'roast',
+        mood: 'dry',
+        input: `target ${i}`,
+        prompt_fingerprint: `fp${i}`,
+        retries: 1,
+        validators_triggered: [],
+        latency_ms: 10 * i,
+      });
+    }
+    vi.doMock('../src/session.js', async () => {
+      const actual = await vi.importActual<typeof import('../src/session.js')>('../src/session.js');
+      return { ...actual, getSession: () => realSession, resetSession: () => realSession };
+    });
+
+    const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
+    const toolSpy = vi
+      .spyOn(McpServer.prototype, 'tool')
+      .mockImplementation(function (this: unknown, name: string, ...rest: unknown[]) {
+        handlers.set(name, rest[rest.length - 1] as (...args: unknown[]) => unknown);
+        return {} as never;
+      });
+    const connectSpy = vi
+      .spyOn(McpServer.prototype, 'connect')
+      .mockResolvedValue(undefined as never);
+
+    await import('../src/index.js');
+
+    const handler = handlers.get('debug_chain');
+    expect(handler).toBeDefined();
+
+    // No limit => the full ring, newest-first (turn 3, then 2, then 1).
+    const all = (await handler!({}, {})) as { content: Array<{ text: string }> };
+    const allTraces = JSON.parse(all.content[0].text);
+    expect(Array.isArray(allTraces)).toBe(true);
+    expect(allTraces).toHaveLength(3);
+    expect(allTraces[0].turn).toBe(3);
+    expect(allTraces[2].turn).toBe(1);
+    // Documented fields present — the pipeline is reconstructable from one call.
+    expect(allTraces[0].tool).toBe('roast');
+    expect(allTraces[0].mood).toBe('dry');
+    expect(allTraces[0].input).toBe('target 3');
+    expect(allTraces[0].prompt_fingerprint).toBe('fp3');
+    expect(allTraces[0]).toHaveProperty('retries');
+    expect(allTraces[0]).toHaveProperty('validators_triggered');
+    expect(allTraces[0]).toHaveProperty('latency_ms');
+
+    // limit=1 => just the newest.
+    const one = (await handler!({ limit: 1 }, {})) as { content: Array<{ text: string }> };
+    const oneTrace = JSON.parse(one.content[0].text);
+    expect(oneTrace).toHaveLength(1);
+    expect(oneTrace[0].turn).toBe(3);
+
+    toolSpy.mockRestore();
+    connectSpy.mockRestore();
+    vi.doUnmock('../src/session.js');
     vi.doUnmock('@modelcontextprotocol/sdk/server/stdio.js');
     vi.resetModules();
   });

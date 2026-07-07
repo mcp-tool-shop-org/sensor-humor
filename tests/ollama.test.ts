@@ -16,7 +16,7 @@ vi.mock('ollama', () => ({
 }));
 
 // Must import AFTER mock setup
-const { generateComedy, getTemperature, getMaxRetries, hasApiKey, getOllamaStats, resetOllamaStats } =
+const { generateComedy, getTemperature, getMaxRetries, hasApiKey, getOllamaStats, resetOllamaStats, promptFingerprint } =
   await import('../src/ollama.js');
 
 const TestSchema = z.object({
@@ -453,6 +453,77 @@ describe('generateComedy', () => {
       expect(result.data.text).toBe('fallback');
       // 3 retries after the first attempt => 4 total.
       expect(mockChat).toHaveBeenCalledTimes(4);
+    });
+  });
+
+  // ROADMAP v2.0 "Chain Trace Tool": generateComedy additively returns the trace metadata each
+  // comedy tool records (retries, prompt_fingerprint, latency_ms), and — only under
+  // SENSOR_HUMOR_FULL_TRACE — the raw model output. Additive: existing callers are unaffected.
+  describe('trace metadata (ROADMAP v2.0 debug_chain)', () => {
+    afterEach(() => {
+      delete process.env.SENSOR_HUMOR_FULL_TRACE;
+      delete process.env.SENSOR_HUMOR_MAX_RETRIES;
+    });
+
+    it('returns retries=1, a prompt_fingerprint, and latency_ms on first-try success', async () => {
+      resetOllamaStats();
+      mockChat.mockResolvedValue({
+        message: { content: '{"text": "ok"}' },
+        prompt_eval_count: 1,
+        eval_count: 1,
+      });
+      const result = await generateComedy<TestResult>(makeOptions(), fallback);
+      expect(result.retries).toBe(1);
+      expect(typeof result.prompt_fingerprint).toBe('string');
+      // Fingerprint is the documented 12-hex-char slice and matches the exported helper over the
+      // same active prompt.
+      expect(result.prompt_fingerprint).toHaveLength(12);
+      expect(result.prompt_fingerprint).toBe(promptFingerprint('system'));
+      expect(typeof result.latency_ms).toBe('number');
+      expect(result.latency_ms).toBeGreaterThanOrEqual(0);
+    });
+
+    it('reports the number of attempts used in retries (retry then success => 2)', async () => {
+      resetOllamaStats();
+      mockChat
+        .mockResolvedValueOnce({ message: { content: 'bad json' } })
+        .mockResolvedValueOnce({
+          message: { content: '{"text": "retry worked"}' },
+          prompt_eval_count: 1,
+          eval_count: 1,
+        });
+      const result = await generateComedy<TestResult>(makeOptions(), fallback);
+      expect(result.data.text).toBe('retry worked');
+      expect(result.retries).toBe(2);
+    });
+
+    it('carries retries + prompt_fingerprint on the fallback path too (so a degraded call still traces)', async () => {
+      resetOllamaStats();
+      mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
+      const result = await generateComedy<TestResult>(makeOptions(), fallback);
+      expect(result.data.text).toBe('fallback');
+      // Default MAX_RETRIES=1 => 2 attempts made.
+      expect(result.retries).toBe(2);
+      expect(typeof result.prompt_fingerprint).toBe('string');
+    });
+
+    it('omits raw_output by default and includes it only under SENSOR_HUMOR_FULL_TRACE', async () => {
+      resetOllamaStats();
+      mockChat.mockResolvedValue({
+        message: { content: '{"text": "hello"}' },
+        prompt_eval_count: 1,
+        eval_count: 1,
+      });
+
+      // Default: heavy raw_output absent (trace stays small).
+      delete process.env.SENSOR_HUMOR_FULL_TRACE;
+      const off = await generateComedy<TestResult>(makeOptions(), fallback);
+      expect(off.raw_output).toBeUndefined();
+
+      // Full-trace on: raw_output captured verbatim.
+      process.env.SENSOR_HUMOR_FULL_TRACE = 'true';
+      const on = await generateComedy<TestResult>(makeOptions(), fallback);
+      expect(on.raw_output).toBe('{"text": "hello"}');
     });
   });
 });

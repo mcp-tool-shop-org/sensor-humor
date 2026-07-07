@@ -142,9 +142,16 @@ describe('Session', () => {
   });
 
   describe('findCallbackCandidates', () => {
+    // The callback distance gate (callback-revival C2) withholds a gag until it has aged past
+    // SENSOR_HUMOR_GAG_MIN_DISTANCE (default 2) turns since its setup. These tests exercise the
+    // TAG-MATCHING behavior, so they advance the turn counter past that gate first; the gate
+    // itself is covered directly in the eligibility tests below and in running_gag.test.ts.
+    const ageGate = () => { session.turn_counter += 3; };
+
     it('finds gags matching text keywords', () => {
       session.addGag('The deadbeef incident', 'deadbeef');
       session.addGag('The segfault saga', 'segfault');
+      ageGate();
       const matches = session.findCallbackCandidates('Another deadbeef crash');
       expect(matches).toHaveLength(1);
       expect(matches[0].tag).toBe('deadbeef');
@@ -152,14 +159,56 @@ describe('Session', () => {
 
     it('is case-insensitive', () => {
       session.addGag('Setup', 'NullPointer');
+      ageGate();
       const matches = session.findCallbackCandidates('found a nullpointer');
       expect(matches).toHaveLength(1);
     });
 
     it('returns empty for no matches', () => {
       session.addGag('Setup', 'deadbeef');
+      ageGate();
       const matches = session.findCallbackCandidates('everything is fine');
       expect(matches).toHaveLength(0);
+    });
+  });
+
+  // Callback eligibility gates (callback-revival C2 + C3) — the distance gate and the retirement
+  // cap that revive the mechanic. isEligibleCallback is the predicate findCallbackCandidates uses.
+  describe('isEligibleCallback (distance gate + retirement cap)', () => {
+    it('withholds a gag until it has aged past the min-distance, then admits it', () => {
+      session.addGag('the setup', 'tagd'); // planted at turn 0
+      const gag = session.running_gags[0];
+      // age 0: too soon after setup
+      expect(session.isEligibleCallback(gag)).toBe(false);
+      session.turn_counter = 1; // age 1 (< default min-distance 2)
+      expect(session.isEligibleCallback(gag)).toBe(false);
+      session.turn_counter = 2; // age 2 (== min-distance) — now eligible
+      expect(session.isEligibleCallback(gag)).toBe(true);
+    });
+
+    it('retires a gag once it has fired the max number of times', () => {
+      session.addGag('the setup', 'tagr'); // planted at turn 0, used = 1
+      const gag = session.running_gags[0];
+      // Open the distance gate wide so only the retirement cap is under test here.
+      session.turn_counter = (gag.created_turn ?? 0) + 20;
+      expect(session.isEligibleCallback(gag)).toBe(true);
+      // Bump to the default cap of 3 fires: 1 (plant) -> 2 -> 3.
+      session.addGag('the setup', 'tagr'); // used = 2
+      expect(session.isEligibleCallback(gag)).toBe(true);
+      session.addGag('the setup', 'tagr'); // used = 3 (== max fires) -> retired
+      expect(session.isEligibleCallback(gag)).toBe(false);
+      expect(session.findCallbackCandidates('the setup again')).toHaveLength(0);
+    });
+
+    it('falls back to last_turn as the plant turn for a legacy gag without created_turn', () => {
+      // A gag reconstructed without created_turn (legacy snapshot) must still gate on last_turn.
+      session.turn_counter = 5;
+      session.running_gags.push({ setup: 'legacy', tag: 'legacytag', used: 1, last_turn: 5 });
+      const gag = session.running_gags[0];
+      expect(gag.created_turn).toBeUndefined();
+      expect(session.isEligibleCallback(gag)).toBe(false); // age 0 off last_turn
+      session.turn_counter = 7; // age 2
+      expect(session.isEligibleCallback(gag)).toBe(true);
     });
   });
 
@@ -296,7 +345,10 @@ describe('Session persistence (serialize / snapshot)', () => {
   // malformed gags rather than admit them.
   it('drops a running gag with a non-string tag and does not crash on the callback hot path', () => {
     const restored = Session.fromSnapshot(
+      // turn_counter set well past the gags' last_turn so the surviving gag has aged past the
+      // callback distance gate (C2) and the good gag is a genuine candidate.
       makeSnapshot({
+        turn_counter: 10,
         running_gags: [
           { setup: 'good', tag: 'deadbeef', used: 1, last_turn: 1 },
           { setup: 'bad-tag', tag: 42 as never, used: 1, last_turn: 1 },
@@ -539,12 +591,14 @@ describe('Session introspection', () => {
   it('findCallbackCandidates uses substring match for short (<3 char) tags', () => {
     const s = getSession();
     s.addGag('the j2 build', 'j2');
+    s.turn_counter += 3; // age past the callback distance gate (C2)
     expect(s.findCallbackCandidates('debugging j2 again')).toHaveLength(1);
   });
 
   it('findCallbackCandidates uses word-boundary match for >=3 char tags', () => {
     const s = getSession();
     s.addGag('segfault city', 'seg');
+    s.turn_counter += 3; // age past the callback distance gate (C2)
     // 'seg' as a whole word does NOT match inside 'segfaulting'
     expect(s.findCallbackCandidates('the app is segfaulting')).toHaveLength(0);
     expect(s.findCallbackCandidates('that seg again')).toHaveLength(1);
@@ -623,5 +677,82 @@ describe('Session introspection', () => {
       expect(capped.map((g) => g.tag)).toContain('tag11');
       expect(capped.map((g) => g.tag)).not.toContain('tag0');
     });
+  });
+});
+
+// ROADMAP v2.0 "Chain Trace Tool": the session carries a bounded forensic trace ring (last 10
+// comedy-tool calls). recordTrace appends + evicts the oldest over the cap; getTraces returns
+// newest-first up to a clamped limit; reset clears it.
+describe('Session trace ring (ROADMAP v2.0 debug_chain)', () => {
+  beforeEach(() => resetSession());
+
+  const makeTrace = (turn: number): import('../src/types.js').TraceEntry => ({
+    turn,
+    tool: 'roast',
+    mood: 'dry',
+    input: `input ${turn}`,
+    prompt_fingerprint: `fp${turn}`,
+    retries: 1,
+    validators_triggered: [],
+    latency_ms: turn,
+  });
+
+  it('starts with an empty trace ring', () => {
+    const s = getSession();
+    expect(s.traces).toEqual([]);
+    expect(s.getTraces()).toEqual([]);
+  });
+
+  it('records a trace entry with the documented fields', () => {
+    const s = getSession();
+    s.tick();
+    s.recordTrace(makeTrace(s.turn_counter));
+    const traces = s.getTraces();
+    expect(traces).toHaveLength(1);
+    const t = traces[0];
+    expect(t.tool).toBe('roast');
+    expect(t.mood).toBe('dry');
+    expect(t.input).toBe('input 1');
+    expect(t.prompt_fingerprint).toBe('fp1');
+    expect(t.retries).toBe(1);
+    expect(t.validators_triggered).toEqual([]);
+    expect(t.latency_ms).toBe(1);
+  });
+
+  it('is bounded: more than 10 calls keeps only the last 10, newest-first', () => {
+    const s = getSession();
+    for (let i = 1; i <= 15; i++) s.recordTrace(makeTrace(i));
+    // Internal ring holds exactly 10.
+    expect(s.traces).toHaveLength(10);
+    const traces = s.getTraces();
+    expect(traces).toHaveLength(10);
+    // Newest first: turn 15 down to turn 6 (turns 1-5 evicted).
+    expect(traces[0].turn).toBe(15);
+    expect(traces[9].turn).toBe(6);
+    expect(traces.map((t) => t.turn)).not.toContain(5);
+  });
+
+  it('getTraces returns newest-first up to limit, and clamps an over-large / negative limit', () => {
+    const s = getSession();
+    for (let i = 1; i <= 8; i++) s.recordTrace(makeTrace(i));
+    // Default limit (10) but only 8 present.
+    expect(s.getTraces()).toHaveLength(8);
+    // Explicit smaller limit returns the newest N.
+    const three = s.getTraces(3);
+    expect(three.map((t) => t.turn)).toEqual([8, 7, 6]);
+    // Over-large limit clamps to the ring depth (10) — never more than what exists.
+    expect(s.getTraces(999)).toHaveLength(8);
+    // Negative limit clamps to 0.
+    expect(s.getTraces(-5)).toEqual([]);
+  });
+
+  it('session_reset clears the trace ring', () => {
+    const s = getSession();
+    s.recordTrace(makeTrace(1));
+    s.recordTrace(makeTrace(2));
+    expect(s.getTraces()).toHaveLength(2);
+    const fresh = resetSession();
+    expect(fresh.traces).toEqual([]);
+    expect(fresh.getTraces()).toEqual([]);
   });
 });

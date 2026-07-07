@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { getSession } from '../session.js';
+import { getSession, fullTraceEnabled } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
@@ -129,8 +129,13 @@ export async function heckle(target: string): Promise<HeckleResult> {
   // fires whenever a safe line replaced the model output, not only on the terminal gate.
   let safetySubstituted = false;
 
+  // Which local safety/pattern gates fired this call — captured best-effort for the forensic trace
+  // (ROADMAP v2.0 "Chain Trace Tool"), so debug_chain shows WHY a retry/substitution happened.
+  const validatorsTriggered: string[] = [];
+
   // Simile/comparison leak check: retry once with negative prompt
   if (hasSimileLeak(result.data.heckle)) {
+    validatorsTriggered.push('simile');
     const simileRetryPrompt = `${userPrompt}${SIMILE_RETRY_SUFFIX}`;
     result = await generateComedy<z.infer<typeof HeckleSchema>>(
       {
@@ -153,6 +158,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
 
   // Harshness filter: reject slurs/extreme insults and retry once
   if (hasHarshLeak(result.data.heckle)) {
+    validatorsTriggered.push('harsh');
     const cleanPrompt = `${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel.`;
     result = await generateComedy<z.infer<typeof HeckleSchema>>(
       {
@@ -179,6 +185,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
   if (hasHarshLeak(result.data.heckle) || hasSimileLeak(result.data.heckle)) {
     result.data.heckle = heckleFallback(mood, target);
     safetySubstituted = true;
+    validatorsTriggered.push('terminal-gate');
   }
   if (safetySubstituted) recordSafetyFilterFire();
 
@@ -186,6 +193,29 @@ export async function heckle(target: string): Promise<HeckleResult> {
   session.pushBit(result.data.heckle, 'heckle');
 
   const degradedReason = result.fallback_reason ?? (safetySubstituted ? 'safety-filter' : undefined);
+
+  // Record ONE forensic trace entry for this call (ROADMAP v2.0 "Chain Trace Tool"). Light fields
+  // always; heavy fields only under SENSOR_HUMOR_FULL_TRACE. gen-metadata fields are optional (a
+  // mocked generateComedy omits them) and pass through as undefined harmlessly.
+  session.recordTrace({
+    turn: session.turn_counter,
+    tool: 'heckle',
+    mood,
+    input: target,
+    prompt_fingerprint: result.prompt_fingerprint,
+    retries: result.retries,
+    validators_triggered: validatorsTriggered,
+    degraded_reason: degradedReason,
+    latency_ms: result.latency_ms,
+    ...(fullTraceEnabled()
+      ? {
+          prompt_text: `${systemPrompt}\n\n${userPrompt}`,
+          raw_output: result.raw_output,
+          parsed_output: result.data,
+        }
+      : {}),
+  });
+
   return {
     heckle: result.data.heckle,
     mood,

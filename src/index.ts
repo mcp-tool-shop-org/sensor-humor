@@ -14,6 +14,7 @@ import { comicTiming } from './tools/comic_timing.js';
 import { roast } from './tools/roast.js';
 import { heckle } from './tools/heckle.js';
 import { catchphraseGenerate, catchphraseCallback } from './tools/catchphrase.js';
+import { runningGag } from './tools/running_gag.js';
 import { getSession, resetSession } from './session.js';
 import { MOOD_DESCRIPTIONS } from './types.js';
 import { createHash } from 'node:crypto';
@@ -38,6 +39,9 @@ const ERROR_HINTS: Record<string, string> = {
 };
 
 function classifyToolError(e: Error): string {
+  // DirtyGagError: running_gag refused an unsafe/empty gag — a caller-input problem, not a backend
+  // fault, so it classifies as 'validation' (the hint points the caller at the arguments).
+  if (e.name === 'DirtyGagError') return 'validation';
   if (e.name === 'ZodError' || /ZodError|Invalid mood|Valid moods/i.test(e.message)) return 'validation';
   if (e.name === 'ResponseError' && /not found|no such model/i.test(e.message)) return 'model-not-found';
   if (/ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET/.test(e.message)) return 'connection';
@@ -212,6 +216,31 @@ server.tool(
   },
 );
 
+// --- running_gag ---
+// The explicit gag-planting affordance the callback mechanic was missing (callback-revival C1).
+// Plants { setup, tag } into the session so comic_timing can later replay it as a callback once
+// the distance gate opens and until the retirement cap closes it. Grounded in explicit-affordance
+// memory research (Xiong et al. 2025; Memory Sandbox 2023; Buçinca et al. 2021) — a chosen tool
+// call, never a silent auto-write.
+server.tool(
+  'running_gag',
+  'Plant a running gag for later callbacks. Provide a setup (the bit) and a short tag (the trigger word comic_timing watches for). Stored for the session; comic_timing can call it back once a couple of turns have passed, and it retires after a few fires so it never gets stale. A gag whose setup or tag trips the safety filter is refused, not stored.',
+  {
+    setup: z.string().describe('The gag itself — the recurring bit to reference later (e.g. "the deadbeef pointer that keeps haunting this build")'),
+    tag: z.string().describe('A short trigger word/phrase comic_timing watches for to fire the callback (e.g. "deadbeef")'),
+  },
+  async ({ setup, tag }) => {
+    try {
+      const result = runningGag(setup, tag);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (err) {
+      return toolError(err);
+    }
+  },
+);
+
 // --- debug_status ---
 server.tool(
   'debug_status',
@@ -265,6 +294,38 @@ server.tool(
       };
       return {
         content: [{ type: 'text', text: JSON.stringify(status, null, 2) }],
+      };
+    } catch (err) {
+      return toolError(err);
+    }
+  },
+);
+
+// --- debug_chain ---
+// Forensic observability (ROADMAP v2.0 "Chain Trace Tool"): return the last N per-call traces so a
+// dev can reconstruct the generation pipeline for a recent comedy output in ONE tool call instead
+// of grepping logs. Each comedy tool records a trace via session.recordTrace; getTraces returns
+// them newest-first, bounded to the ring depth. SENSOR_HUMOR_FULL_TRACE=true adds prompt/raw/parsed
+// to each entry (default off, to bound size).
+server.tool(
+  'debug_chain',
+  'Dump the forensic trace ring: the last N comedy-tool calls with turn, tool, mood, input, prompt fingerprint, retries, validators triggered, degraded reason, and latency. Use to debug "why did this roast land weird?" in one call. Set SENSOR_HUMOR_FULL_TRACE=true to also capture full prompt text + raw model output + parsed output per entry.',
+  {
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .max(10)
+      .optional()
+      .describe('How many recent traces to return, newest first (1-10). Defaults to 10 (the full ring).'),
+  },
+  async ({ limit }) => {
+    try {
+      const session = getSession();
+      // getTraces clamps internally too; the schema already bounds 1-10 for a well-formed caller.
+      const traces = session.getTraces(limit ?? 10);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(traces, null, 2) }],
       };
     } catch (err) {
       return toolError(err);

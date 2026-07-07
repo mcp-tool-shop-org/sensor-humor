@@ -4,6 +4,7 @@
  * retry logic, and debug logging.
  */
 
+import { createHash } from 'node:crypto';
 import { Ollama } from 'ollama';
 import type { z } from 'zod';
 import type { DegradedReason, GenerationMetadata } from './types.js';
@@ -127,6 +128,15 @@ export function getOllamaHost(): string {
 
 export function isDebug(): boolean {
   return process.env.SENSOR_HUMOR_DEBUG === 'true';
+}
+
+/**
+ * Full-trace capture flag (ROADMAP v2.0 "Chain Trace Tool"). Read here directly from the env — the
+ * same knob session.fullTraceEnabled() reads — so generateComedy can decide whether to attach the
+ * heavy raw_output field without importing from session.ts (avoids coupling; mirrors isDebug()).
+ */
+export function isFullTrace(): boolean {
+  return process.env.SENSOR_HUMOR_FULL_TRACE === 'true';
 }
 
 /** True when an Ollama API key is configured (for a remote/cloud OLLAMA_HOST). */
@@ -338,10 +348,41 @@ export interface GenerateComedyOptions<T> {
   numPredict?: number;
 }
 
+/**
+ * Short, stable fingerprint of the ACTIVE prompt for a generation (ROADMAP v2.0 trace's
+ * prompt_hash). Binds the resolved model + temperature + the full system prompt (which already
+ * carries base + mood + session state), so two runs' outputs are attributable to a
+ * prompt-vs-model change deterministically. Mirrors the sha256(...).slice(0,12) idiom used by
+ * debug_status in index.ts. Exported so callers/tests can reproduce or assert it.
+ */
+export function promptFingerprint(systemPrompt: string): string {
+  return createHash('sha256')
+    .update(`${getModel()}|${getTemperature()}|${systemPrompt}`)
+    .digest('hex')
+    .slice(0, 12);
+}
+
 export interface GenerateComedyResult<T> {
   data: T;
   metadata?: GenerationMetadata;
   fallback_reason?: DegradedReason;
+  /**
+   * ── Additive trace metadata (ROADMAP v2.0 "Chain Trace Tool") ──
+   * The generation facts only the client knows, threaded back so each comedy tool can record ONE
+   * trace entry without re-deriving them. All optional so existing callers/destructuring and a
+   * mocked generateComedy (which returns just { data }) are unaffected.
+   */
+  /** Number of attempts actually used (1 = succeeded first try, no retry). */
+  retries?: number;
+  /** Fingerprint of the active prompt (see promptFingerprint) — the trace's prompt_hash. */
+  prompt_fingerprint?: string;
+  /** End-to-end latency of the winning (or last) attempt, in ms. */
+  latency_ms?: number;
+  /**
+   * Raw model output string, captured ONLY under SENSOR_HUMOR_FULL_TRACE so the trace ring stays
+   * small by default. Undefined on the happy path when full-trace is off, and on fallback.
+   */
+  raw_output?: string;
 }
 
 /**
@@ -357,6 +398,11 @@ export async function generateComedy<T>(
   const temperature = getTemperature();
   const maxRetries = getMaxRetries();
   const debug = isDebug();
+  const fullTrace = isFullTrace();
+  // Fingerprint the active prompt once — it's stable across attempts (systemPrompt is fixed for
+  // this call), and is the trace's prompt_hash. Always computed (cheap, and the light trace fields
+  // are always populated). (ROADMAP v2.0 "Chain Trace Tool")
+  const fingerprint = promptFingerprint(systemPrompt);
   _stats.total_calls++;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -460,7 +506,16 @@ export async function generateComedy<T>(
         : undefined;
 
       recordSuccess(latencyMs);
-      return { data: validated, metadata };
+      return {
+        data: validated,
+        metadata,
+        // Additive trace metadata (ROADMAP v2.0). retries = attempts USED (1-based); raw_output is
+        // attached only under full-trace to keep the default trace ring small.
+        retries: attempt + 1,
+        prompt_fingerprint: fingerprint,
+        latency_ms: latencyMs,
+        ...(fullTrace ? { raw_output: raw } : {}),
+      };
     } catch (err) {
       const errType = classifyError(err);
       if (debug) {
@@ -471,7 +526,14 @@ export async function generateComedy<T>(
           console.error(`[sensor-humor] All retries exhausted (last: ${errType}), returning fallback`);
         }
         recordFallback(errType);
-        return { data: fallback, fallback_reason: errType };
+        // Attach trace metadata to the fallback too, so a degraded call still records a full trace
+        // entry. retries = attempts made (attempt + 1); no raw_output (there was no valid output).
+        return {
+          data: fallback,
+          fallback_reason: errType,
+          retries: attempt + 1,
+          prompt_fingerprint: fingerprint,
+        };
       }
       // A throttled (429) or 5xx response retried instantly just re-hits the same limit; honor
       // the classification with a short backoff before the bounded retry. (BK-B-07)
@@ -483,5 +545,10 @@ export async function generateComedy<T>(
 
   // TypeScript exhaustiveness guard — loop always returns or falls through to the catch block's return
   recordFallback('exhausted');
-  return { data: fallback, fallback_reason: 'exhausted' };
+  return {
+    data: fallback,
+    fallback_reason: 'exhausted',
+    retries: maxRetries + 1,
+    prompt_fingerprint: fingerprint,
+  };
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resetSession, getSession } from '../src/session.js';
 import { MOOD_STYLES, MOOD_DESCRIPTIONS, type MoodStyle } from '../src/types.js';
 import { HARSH_FILTER, SIMILE_PATTERN, STATIC_SAFE_FALLBACK } from '../src/validators.js';
@@ -24,6 +24,7 @@ import { roast } from '../src/tools/roast.js';
 import { heckle } from '../src/tools/heckle.js';
 import { comicTiming } from '../src/tools/comic_timing.js';
 import { catchphraseGenerate, catchphraseCallback } from '../src/tools/catchphrase.js';
+import { runningGag } from '../src/tools/running_gag.js';
 
 describe('mood tools', () => {
   beforeEach(() => {
@@ -387,6 +388,9 @@ describe('comic_timing tool', () => {
   it('handles callback technique with gag', async () => {
     const session = getSession();
     session.addGag('The deadbeef incident', 'deadbeef');
+    // Age the gag past the callback distance gate (C2) so it is an eligible candidate — without
+    // this, the revived mechanic correctly withholds a gag planted this same turn.
+    session.turn_counter += 5;
 
     mockGenerate.mockResolvedValue({
       data: {
@@ -427,6 +431,8 @@ describe('comic_timing tool', () => {
   it('sets callback_honored=true when callback_source matches a real gag', async () => {
     const session = getSession();
     session.addGag('The deadbeef incident', 'deadbeef');
+    // Age the gag past the callback distance gate (C2) so it is an eligible candidate.
+    session.turn_counter += 5;
 
     mockGenerate.mockResolvedValue({
       data: {
@@ -521,6 +527,85 @@ describe('comic_timing tool', () => {
     const call = mockGenerate.mock.calls[0];
     const opts = call[0] as { userPrompt: string };
     expect(opts.userPrompt).toContain('Choose the best');
+  });
+
+  // --- callback-revival: the WHOLE loop through the real seeding path (running_gag -> comic_timing).
+  // Before this feature, running_gags was never seeded at runtime, so this end-to-end callback was
+  // IMPOSSIBLE — findCallbackCandidates always returned []. These tests prove it now works.
+  describe('callback revival end-to-end (running_gag -> comic_timing)', () => {
+    it('honors a callback against a gag planted by running_gag once it has aged in', async () => {
+      const session = getSession();
+      session.tick(); // turn 1
+      runningGag('the deadbeef pointer that keeps haunting this build', 'deadbeef'); // plant, created_turn 1
+      // Age past the distance gate (default min-distance 2).
+      session.turn_counter += 3;
+
+      mockGenerate.mockResolvedValue({
+        data: {
+          rewrite: 'Deadbeef, back for an encore, now with 30% more undefined behavior.',
+          technique_used: 'callback',
+          callback_source: 'deadbeef',
+        },
+      });
+
+      const result = await comicTiming('another crash at deadbeef', 'callback');
+      // The planted gag was found, matched, and honored — the mechanic is alive.
+      expect(result.technique_used).toBe('callback');
+      expect(result.callback_source).toBe('deadbeef');
+      expect(result.callback_honored).toBe(true);
+      // The honored callback bumped the gag's fire count (used: 1 -> 2).
+      const gag = session.running_gags.find((g) => g.tag === 'deadbeef');
+      expect(gag!.used).toBe(2);
+      // The prompt actually surfaced the planted gag as callback material.
+      const opts = mockGenerate.mock.calls[0][0] as { userPrompt: string };
+      expect(opts.userPrompt).toContain('deadbeef');
+    });
+
+    it('does NOT honor a callback against a gag still inside the distance gate (planted this turn)', async () => {
+      const session = getSession();
+      session.tick(); // turn 1
+      runningGag('the segfault saga', 'segfault'); // planted at turn 1, not yet aged
+
+      mockGenerate.mockResolvedValue({
+        data: {
+          rewrite: 'Segfault again, apparently.',
+          technique_used: 'callback',
+          callback_source: 'segfault',
+        },
+      });
+
+      const result = await comicTiming('another segfault crash', 'callback');
+      // The gag exists but is withheld by the distance gate, so the model's claimed callback
+      // matches no ELIGIBLE candidate — it is flagged unhonored and the gag is not bumped.
+      expect(result.callback_honored).toBe(false);
+      const gag = session.running_gags.find((g) => g.tag === 'segfault');
+      expect(gag!.used).toBe(1);
+    });
+
+    it('does NOT honor a callback against a RETIRED gag (fired its cap)', async () => {
+      const session = getSession();
+      runningGag('the flaky test saga', 'flaky'); // used 1, created_turn = this turn
+      const gag = session.running_gags.find((g) => g.tag === 'flaky')!;
+      // Fire it up to the default cap of 3 so it retires.
+      session.addGag('the flaky test saga', 'flaky'); // used 2
+      session.addGag('the flaky test saga', 'flaky'); // used 3 -> retired
+      // Open the distance gate wide so RETIREMENT is unambiguously the only reason it's excluded.
+      session.turn_counter = (gag.created_turn ?? 0) + 20;
+      expect(gag.used).toBe(3);
+
+      mockGenerate.mockResolvedValue({
+        data: {
+          rewrite: 'Flaky yet again.',
+          technique_used: 'callback',
+          callback_source: 'flaky',
+        },
+      });
+
+      const result = await comicTiming('another flaky failure', 'callback');
+      // Retired gag is not an eligible candidate -> callback not honored, no further bump.
+      expect(result.callback_honored).toBe(false);
+      expect(gag.used).toBe(3);
+    });
   });
 });
 
@@ -1579,5 +1664,120 @@ describe('terminal gate uses input-free fallback for caller-specific patterns (s
     expect(result.rewrite).toBe(STATIC_SAFE_FALLBACK.dry);
     expect(result.degraded).toBe(true);
     expect(result.degraded_reason).toBe('safety-filter');
+  });
+});
+
+// ROADMAP v2.0 "Chain Trace Tool": every comedy tool records ONE trace entry per call into the
+// session ring, with the documented fields populated. (generateComedy is mocked here, so the
+// gen-metadata fields — retries/fingerprint/latency — are absent; the LIGHT fields the tool owns
+// must always be present.) SENSOR_HUMOR_FULL_TRACE adds the heavy prompt/raw/parsed fields.
+describe('per-tool trace recording (ROADMAP v2.0 debug_chain)', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+  });
+
+  afterEach(() => {
+    delete process.env.SENSOR_HUMOR_FULL_TRACE;
+  });
+
+  it('comic_timing records a trace with the documented fields', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'Forty-seven builds. A record.', technique_used: 'understatement' },
+    });
+    await comicTiming('Build failed after 47 attempts');
+    const traces = getSession().getTraces();
+    expect(traces).toHaveLength(1);
+    const t = traces[0];
+    expect(t.tool).toBe('comic_timing');
+    expect(t.mood).toBe('dry');
+    expect(t.input).toBe('Build failed after 47 attempts');
+    expect(t.turn).toBe(1);
+    expect(Array.isArray(t.validators_triggered)).toBe(true);
+    // No gate fired on clean output, and no degradation.
+    expect(t.validators_triggered).toEqual([]);
+    expect(t.degraded_reason).toBeUndefined();
+  });
+
+  it('roast records a trace tagged with the tool name and input', async () => {
+    mockGenerate.mockResolvedValue({ data: { roast: 'Verdict: Done.', severity: 3 } });
+    await roast('global state everywhere', 'code');
+    const t = getSession().getTraces()[0];
+    expect(t.tool).toBe('roast');
+    expect(t.input).toBe('global state everywhere');
+    expect(t.mood).toBe('dry');
+  });
+
+  it('heckle records a trace', async () => {
+    mockGenerate.mockResolvedValue({ data: { heckle: 'Bold move.' } });
+    await heckle('no tests');
+    const t = getSession().getTraces()[0];
+    expect(t.tool).toBe('heckle');
+    expect(t.input).toBe('no tests');
+  });
+
+  it('catchphrase_generate records a trace', async () => {
+    mockGenerate.mockResolvedValue({ data: { phrase: 'Ship it and pray.' } });
+    await catchphraseGenerate('buggy code');
+    const t = getSession().getTraces()[0];
+    expect(t.tool).toBe('catchphrase');
+    expect(t.input).toBe('buggy code');
+  });
+
+  it('trace captures which validators fired (terminal gate on a slur)', async () => {
+    mockGenerate.mockResolvedValue({ data: { rewrite: 'you absolute retard', technique_used: 'understatement' } });
+    await comicTiming('bad code');
+    const t = getSession().getTraces()[0];
+    // The terminal safety gate fired -> recorded in validators_triggered, and the trace's
+    // degraded_reason mirrors the safety substitution.
+    expect(t.validators_triggered).toContain('terminal-gate');
+    expect(t.degraded_reason).toBe('safety-filter');
+  });
+
+  it('records the degraded_reason from a backend fallback in the trace', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'Forty-seven builds.', technique_used: 'understatement' },
+      fallback_reason: 'connection',
+    });
+    await comicTiming('Build failed');
+    const t = getSession().getTraces()[0];
+    expect(t.degraded_reason).toBe('connection');
+  });
+
+  it('default trace OMITS the heavy prompt/raw/parsed fields (bounded size)', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'Clean line.', technique_used: 'understatement' },
+    });
+    await comicTiming('some text');
+    const t = getSession().getTraces()[0];
+    expect(t.prompt_text).toBeUndefined();
+    expect(t.raw_output).toBeUndefined();
+    expect(t.parsed_output).toBeUndefined();
+  });
+
+  it('SENSOR_HUMOR_FULL_TRACE=true ADDS the heavy prompt_text + parsed_output fields', async () => {
+    process.env.SENSOR_HUMOR_FULL_TRACE = 'true';
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'Clean line.', technique_used: 'understatement' },
+      // Under full-trace, generateComedy would return raw_output; the mock provides it here so the
+      // tool can thread it into the trace.
+      raw_output: '{"rewrite":"Clean line.","technique_used":"understatement"}',
+    });
+    await comicTiming('some text');
+    const t = getSession().getTraces()[0];
+    expect(typeof t.prompt_text).toBe('string');
+    expect(t.prompt_text!.length).toBeGreaterThan(0);
+    expect(t.raw_output).toBe('{"rewrite":"Clean line.","technique_used":"understatement"}');
+    expect(t.parsed_output).toEqual({ rewrite: 'Clean line.', technique_used: 'understatement' });
+  });
+
+  it('records one trace per call: three calls => three ordered entries (newest first)', async () => {
+    mockGenerate.mockResolvedValue({ data: { heckle: 'Bold.' } });
+    await heckle('one');
+    await heckle('two');
+    await heckle('three');
+    const traces = getSession().getTraces();
+    expect(traces).toHaveLength(3);
+    expect(traces.map((t) => t.input)).toEqual(['three', 'two', 'one']);
   });
 });

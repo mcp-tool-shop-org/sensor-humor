@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { getSession } from '../session.js';
+import { getSession, fullTraceEnabled } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
@@ -88,6 +88,16 @@ export async function catchphraseGenerate(
       if (matched) {
         session.useCatchphrase(phrase);
         session.pushBit(phrase, 'catchphrase');
+        // Trace the reuse path too (ROADMAP v2.0 "Chain Trace Tool"): no model generation ran, so
+        // the gen-metadata fields are absent — validators_triggered records the reuse decision.
+        session.recordTrace({
+          turn: session.turn_counter,
+          tool: 'catchphrase',
+          mood: session.mood,
+          input: context ?? '',
+          validators_triggered: ['reuse'],
+          ...(fullTraceEnabled() ? { parsed_output: { phrase, is_fresh: false } } : {}),
+        });
         return { phrase, is_fresh: false };
       }
     }
@@ -131,6 +141,29 @@ Respond with JSON only.`;
     : result.fallback_reason
       ? { degraded: true, degraded_reason: result.fallback_reason }
       : {};
+
+  // Record ONE forensic trace entry for this generation (ROADMAP v2.0 "Chain Trace Tool"). Light
+  // fields always; heavy fields only under SENSOR_HUMOR_FULL_TRACE. Captured once here since both
+  // the reuse-of-generated and fresh branches below store + return the same `phrase`.
+  session.recordTrace({
+    turn: session.turn_counter,
+    tool: 'catchphrase',
+    mood: session.mood,
+    input: context ?? '',
+    prompt_fingerprint: result.prompt_fingerprint,
+    retries: result.retries,
+    validators_triggered: gate.gated ? ['terminal-gate'] : [],
+    degraded_reason: degraded.degraded_reason,
+    latency_ms: result.latency_ms,
+    ...(fullTraceEnabled()
+      ? {
+          prompt_text: `${systemPrompt}\n\n${userPrompt}`,
+          raw_output: result.raw_output,
+          parsed_output: { phrase },
+        }
+      : {}),
+  });
+
   // If Ollama returned a phrase we already have, treat as reuse not fresh
   if (session.catchphrases.has(phrase)) {
     session.useCatchphrase(phrase);

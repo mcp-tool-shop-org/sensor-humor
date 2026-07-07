@@ -46,6 +46,22 @@ export interface RunningGag {
   tag: string;
   used: number;
   last_turn: number;
+  /**
+   * Turn the gag was PLANTED (its setup). Distinct from last_turn (last reference). Load-bearing
+   * for the callback distance gate (Ma et al. 2026, arXiv:2605.00143 — temporal distance /
+   * anticipation is what makes a callback land, so a gag must age a minimum number of turns past
+   * its setup before it is an eligible callback candidate). Optional for back-compat: a legacy
+   * snapshot or a hand-built gag without it falls back to last_turn as the plant turn.
+   */
+  created_turn?: number;
+}
+
+/** Result of the running_gag tool — the explicit gag-planting affordance (callback-revival C1). */
+export interface RunningGagResult {
+  tag: string;
+  setup: string;
+  gag_count: number;
+  created_turn: number;
 }
 
 export interface RecentBit {
@@ -142,4 +158,50 @@ export interface GenerationMetadata {
   tokens_in: number;
   tokens_out: number;
   latency_ms: number;
+}
+
+/**
+ * One entry in the session's forensic trace ring (ROADMAP v2.0 "Chain Trace Tool"). Recorded once
+ * per comedy tool call so a dev can reconstruct the whole generation pipeline for a recent output
+ * in a single debug_chain call, instead of grepping logs. Bounded to the last 10 on the session.
+ *
+ * The light fields are always populated. The heavy fields (prompt_text / raw_output /
+ * parsed_output) are captured ONLY when SENSOR_HUMOR_FULL_TRACE=true, so a default trace stays
+ * small — the ROADMAP's prompt_hash maps to prompt_fingerprint, and ollama_raw/parsed_output are
+ * gated behind the full-trace flag.
+ */
+export interface TraceEntry {
+  /** Session turn this call ran on (session.turn_counter at record time). */
+  turn: number;
+  /** Which comedy tool produced the output ('comic_timing' | 'roast' | 'heckle' | 'catchphrase'). */
+  tool: string;
+  /** Active mood snapshot at generation time. */
+  mood: MoodStyle;
+  /** The caller's input (the raw request text the tool was given). */
+  input: string;
+  /**
+   * Short stable hash of the ACTIVE prompt (the ROADMAP's prompt_hash). Reuses the fingerprint
+   * mechanism generateComedy returns; undefined only if generation metadata was unavailable
+   * (e.g. a mocked generateComedy in tests).
+   */
+  prompt_fingerprint?: string;
+  /** Number of generation attempts used (1 = no retry). Undefined when metadata is unavailable. */
+  retries?: number;
+  /**
+   * Which safety/pattern checks fired locally in the tool (e.g. 'meta-leak', 'simile', 'harsh',
+   * 'roast-label', 'terminal-gate', 'comparison'). Best-effort — captures the tool's local
+   * knowledge of which gates/retries triggered. Empty array when nothing fired.
+   */
+  validators_triggered: string[];
+  /** The degradation reason if the output was degraded (backend fallback or safety substitution). */
+  degraded_reason?: DegradedReason;
+  /** End-to-end generation latency in ms. Undefined when metadata is unavailable. */
+  latency_ms?: number;
+  // ── Heavy fields: only present when SENSOR_HUMOR_FULL_TRACE=true (bounded size by default). ──
+  /** Full active prompt text (system + user). Full-trace only. */
+  prompt_text?: string;
+  /** Raw model output string before parsing. Full-trace only. */
+  raw_output?: string;
+  /** The parsed/validated tool result object. Full-trace only. */
+  parsed_output?: unknown;
 }
