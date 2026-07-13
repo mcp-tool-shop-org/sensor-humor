@@ -111,3 +111,27 @@ describe('roast — affection worn as aggression', () => {
     expect(roast.layers.stance.dimensions.complicity.position).toBeGreaterThan(0.7);
   });
 });
+
+describe('chaotic — deadpan escalation of the absurd, delivered as fact', () => {
+  const chaotic = load('chaotic');
+
+  it('knows the claim is absurd — high self-awareness, not delusion', () => {
+    expect(chaotic.layers.psyche.self_awareness.position).toBeGreaterThan(0.7);
+  });
+
+  it('is the high-aim + low-threshold configuration — knows it lands as nonsense, commits anyway', () => {
+    const f = chaotic.layers.psyche.filter.refines;
+    expect(f.capacity_to_aim.position).toBeGreaterThan(0.8);
+    expect(f.suppression_threshold.position).toBeLessThan(0.25);
+  });
+
+  it('locates high absurdity but delivers it deadpan with total conviction', () => {
+    expect(chaotic.layers.rhetoric.dimensions.absurdity.position).toBeGreaterThan(0.7);
+    expect(chaotic.layers.delivery.affect.position).toBeGreaterThan(0.7);
+    expect(chaotic.layers.delivery.conviction.position).toBeGreaterThan(0.8);
+  });
+
+  it('aims at the situation, not people — the person-directed axis sits low', () => {
+    expect(chaotic.layers.stance.direction.down).toBeLessThan(0.2);
+  });
+});
