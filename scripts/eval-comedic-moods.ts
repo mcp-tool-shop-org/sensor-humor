@@ -20,6 +20,7 @@ import { MOOD_STYLES, type MoodStyle } from '../src/types.js';
 import { STATIC_SAFE_FALLBACK } from '../src/validators.js';
 import { ollamaJudge } from '../src/dataset/eval/ollama-judge.js';
 import { evaluate, type EvalRow, type DegradedLine } from '../src/dataset/eval/controls.js';
+import { scoreCorpus } from '../src/dataset/eval/rubric.js';
 
 function die(msg: string, code = 2): never {
   console.error(msg);
@@ -111,6 +112,20 @@ evaluate(judges, rows, degraded)
         `  ${p.judge} — ${g?.pass ? 'pass' : 'FAIL'}: conform ${pct(p.real_conformance)}, blind ${pct(p.blind_accuracy)}, shuffled ${pct(p.shuffled_conformance)}, degraded ${pct(p.degraded_conformance)}`,
       );
     }
+
+    // Deterministic dimensions (no model) — includes the Slice-4 caricature/stereotype safety floor.
+    const det = scoreCorpus(rows);
+    console.log('\n--- deterministic dimensions (no model) ---');
+    console.log(
+      `  safety ${pct(det.safety_rate)} · language ${pct(det.language_rate)} · form ${pct(det.form_rate)} · caricature-clean ${pct(det.caricature_rate)}`,
+    );
+    if (det.caricature_flags.length > 0) {
+      console.log(`  ⚠ ${det.caricature_flags.length} line(s) tripped the caricature floor — REVIEW:`);
+      for (const f of det.caricature_flags.slice(0, 10)) {
+        console.log(`    [${f.mood}] ${f.signals.join(',')}: ${f.output.slice(0, 70)}`);
+      }
+    }
+
     console.log(`\n=== v0 VERDICT (panel): ${res.pass ? 'PASS' : 'FAIL'} ===`);
     process.exit(res.pass ? 0 : 1);
   })
