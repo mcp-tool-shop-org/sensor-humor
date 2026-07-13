@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
 import type { RoastContext, RoastResult, MoodStyle } from '../types.js';
-import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, sanitizeForPrompt, voicedSafeFallback, STATIC_SAFE_FALLBACK } from '../validators.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, hasLanguageLeak, LANGUAGE_RETRY_SUFFIX, sanitizeForPrompt, voicedSafeFallback, STATIC_SAFE_FALLBACK } from '../validators.js';
 
 const RoastSchema = z.object({
   roast: z.string().max(200),
@@ -113,6 +113,9 @@ export async function roast(
   // signal fires whenever a safe line replaced the model output — not only on the terminal gate.
   // Without this, an intermediate fallback that cleans the output leaves the response unflagged.
   let safetySubstituted = false;
+  // Separate flag for a LANGUAGE (code-switch) substitution — a conformance degrade attributed
+  // degraded_reason:'language', distinct from safety so it never bumps the safety-filter counter.
+  let languageSubstituted = false;
 
   // Comparison/metaphor/simile leak check: retry once with negative prompt
   if (COMPARISON_LEAK.test(result.data.roast) || hasSimileLeak(result.data.roast)) {
@@ -162,6 +165,34 @@ export async function roast(
     }
   }
 
+  // Language-conformance filter: retry once in English if the output code-switched out of the Latin
+  // script, then substitute an input-free English line if it persists. Distinct from the safety
+  // filters — a code-switch is a conformance degrade, not a slur/simile — so it uses its own flag
+  // and is attributed degraded_reason:'language' (and never bumps the safety-filter counter).
+  if (hasLanguageLeak(result.data.roast)) {
+    validatorsTriggered.push('language');
+    const cleanPrompt = `${userPrompt}${LANGUAGE_RETRY_SUFFIX}`;
+    result = await generateComedy<z.infer<typeof RoastSchema>>(
+      {
+        systemPrompt,
+        userPrompt: cleanPrompt,
+        schema: RoastSchema,
+        jsonSchema: ROAST_JSON_SCHEMA,
+        numPredict: ROAST_NUM_PREDICT,
+      },
+      fallback,
+    );
+    // Input-free static line (NOT voicedSafeFallback) — the caller's target may be the non-Latin
+    // source, so interpolating it could re-introduce the code-switch.
+    if (hasLanguageLeak(result.data.roast)) {
+      result.data.roast = STATIC_SAFE_FALLBACK[mood];
+      languageSubstituted = true;
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+        console.error('[sensor-humor] Roast: language leak persisted after retry, using English fallback');
+      }
+    }
+  }
+
   // Terminal safety gate: harsh + comparison + simile are the last word, so a late retry
   // cannot re-introduce a banned pattern an earlier filter already cleared.
   if (
@@ -179,6 +210,13 @@ export async function roast(
       : voicedSafeFallback(mood, target);
     safetySubstituted = true;
     validatorsTriggered.push('terminal-gate');
+  } else if (hasLanguageLeak(result.data.roast)) {
+    // Terminal language gate (runs only when no safety pattern fired — safety wins). Input-free
+    // English static line, attributed 'language', so a code-switch introduced by a late retry
+    // cannot reach the user or the dataset as a clean generation.
+    result.data.roast = STATIC_SAFE_FALLBACK[mood];
+    languageSubstituted = true;
+    validatorsTriggered.push('terminal-gate');
   }
   if (safetySubstituted) recordSafetyFilterFire();
 
@@ -189,7 +227,8 @@ export async function roast(
   // Update session
   session.pushBit(result.data.roast, 'roast');
 
-  const degradedReason = result.fallback_reason ?? (safetySubstituted ? 'safety-filter' : undefined);
+  const degradedReason =
+    result.fallback_reason ?? (safetySubstituted ? 'safety-filter' : languageSubstituted ? 'language' : undefined);
 
   // Record ONE forensic trace entry for this call (ROADMAP v2.0 "Chain Trace Tool"). Light fields
   // always; heavy fields only under SENSOR_HUMOR_FULL_TRACE. gen-metadata fields are optional (a
@@ -199,6 +238,7 @@ export async function roast(
     tool: 'roast',
     mood,
     input: target,
+    output: result.data.roast,
     prompt_fingerprint: result.prompt_fingerprint,
     retries: result.retries,
     validators_triggered: validatorsTriggered,

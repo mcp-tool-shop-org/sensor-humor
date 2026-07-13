@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resetSession, getSession } from '../src/session.js';
 import { MOOD_STYLES, MOOD_DESCRIPTIONS, type MoodStyle } from '../src/types.js';
-import { HARSH_FILTER, SIMILE_PATTERN, STATIC_SAFE_FALLBACK } from '../src/validators.js';
+import { HARSH_FILTER, SIMILE_PATTERN, STATIC_SAFE_FALLBACK, hasLanguageLeak } from '../src/validators.js';
 
 // Local mirror of roast.ts's (non-exported) COMPARISON_LEAK term-list, so a server-003 test can
 // assert a benign comparison word did not survive the terminal gate without importing a private symbol.
@@ -846,6 +846,103 @@ describe('catchphrase tools', () => {
       expect(SIMILE_PATTERN.test(result!.phrase)).toBe(false);
       expect(result!.phrase).not.toMatch(/retard/i);
     });
+  });
+});
+
+describe('language-conformance post-validation (code-switch gate)', () => {
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+    // Safety-fire counter is module-global and not reset by mockGenerate.mockReset(); clear it so
+    // the "not a safety substitution" assertions below are reliable.
+    mockRecordSafetyFire.mockClear();
+  });
+
+  it('comic_timing retries on a code-switch, then accepts clean English (no degrade)', async () => {
+    mockGenerate
+      .mockResolvedValueOnce({
+        data: { rewrite: 'Diagnosis: The周五下午四点五十五分上线。', technique_used: 'understatement' },
+      })
+      .mockResolvedValueOnce({
+        data: { rewrite: 'Diagnosis: Shipped at 4:55 on a Friday. Bold.', technique_used: 'understatement' },
+      });
+
+    const result = await comicTiming('deploying Friday 4:55pm');
+    expect(mockGenerate).toHaveBeenCalledTimes(2); // initial + language retry
+    expect(result.rewrite).toBe('Diagnosis: Shipped at 4:55 on a Friday. Bold.');
+    expect(result.degraded).toBeUndefined();
+    expect(mockRecordSafetyFire).not.toHaveBeenCalled();
+  });
+
+  it('comic_timing substitutes an English line + degraded_reason:"language" on a persistent code-switch', async () => {
+    mockGenerate
+      .mockResolvedValueOnce({ data: { rewrite: 'Diagnosis: The周五下午上线。', technique_used: 'understatement' } })
+      .mockResolvedValueOnce({ data: { rewrite: '又一次失败的部署。', technique_used: 'escalation' } });
+
+    const result = await comicTiming('deploying Friday');
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+    // Output is the input-free English static line, never a code-switched one.
+    expect(hasLanguageLeak(result.rewrite)).toBe(false);
+    expect(result.rewrite).toBe(STATIC_SAFE_FALLBACK.dry);
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('language');
+    // A code-switch is a conformance degrade, NOT a safety substitution.
+    expect(mockRecordSafetyFire).not.toHaveBeenCalled();
+  });
+
+  it('safety WINS when the output carries BOTH a slur and a code-switch', async () => {
+    const slur = HARSH_FILTER.source.match(/[a-z]{4,}/)?.[0] ?? 'retard';
+    // Every attempt returns a slur AND Chinese; the terminal gate must attribute safety, not language.
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: `You absolute ${slur}, 彻底坏了的构建。`, technique_used: 'roast' },
+    });
+
+    const result = await comicTiming('bad build');
+    expect(result.degraded_reason).toBe('safety-filter');
+    expect(result.rewrite).not.toMatch(new RegExp(slur, 'i'));
+    expect(hasLanguageLeak(result.rewrite)).toBe(false);
+    expect(mockRecordSafetyFire).toHaveBeenCalled();
+  });
+
+  it('roast substitutes an English line + degraded_reason:"language" on a persistent code-switch', async () => {
+    mockGenerate.mockResolvedValue({ data: { roast: '这个函数彻底坏了，无法修复。', severity: 4 } });
+
+    const result = await roast('broken function', 'code');
+    expect(hasLanguageLeak(result.roast)).toBe(false);
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('language');
+    expect(mockRecordSafetyFire).not.toHaveBeenCalled();
+  });
+
+  it('heckle substitutes an English line + degraded_reason:"language" on a persistent code-switch', async () => {
+    mockGenerate.mockResolvedValue({ data: { heckle: '完全是技能问题。' } });
+
+    const result = await heckle('using var');
+    expect(hasLanguageLeak(result.heckle)).toBe(false);
+    expect(result.degraded_reason).toBe('language');
+    expect(mockRecordSafetyFire).not.toHaveBeenCalled();
+  });
+
+  it('catchphrase gates a code-switched phrase: substitutes, does NOT store it, flags language', async () => {
+    mockGenerate.mockResolvedValue({ data: { phrase: '上线了，完蛋了' } });
+
+    const result = await catchphraseGenerate('shipping');
+    expect(hasLanguageLeak(result.phrase)).toBe(false);
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('language');
+    // The code-switched phrase must NOT have been stored (never replayed via callback).
+    expect(getSession().catchphrases.has('上线了，完蛋了')).toBe(false);
+    expect(mockRecordSafetyFire).not.toHaveBeenCalled();
+  });
+
+  it('accented-Latin output is never language-gated (no retry, no degrade)', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { rewrite: 'Forty-seven builds. A café-grade résumé of failure.', technique_used: 'understatement' },
+    });
+
+    const result = await comicTiming('build failed 47 times');
+    expect(mockGenerate).toHaveBeenCalledTimes(1); // accented Latin is NOT a code-switch → no retry
+    expect(result.degraded).toBeUndefined();
   });
 });
 

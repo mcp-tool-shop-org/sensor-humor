@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
 import { COMIC_TECHNIQUES, type ComicTechnique, type ComicTimingResult } from '../types.js';
-import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, sanitizeForPrompt, voicedSafeFallback, STATIC_SAFE_FALLBACK } from '../validators.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, hasLanguageLeak, LANGUAGE_RETRY_SUFFIX, sanitizeForPrompt, voicedSafeFallback, STATIC_SAFE_FALLBACK } from '../validators.js';
 import { ROAST_LABEL_PATTERN } from './roast.js';
 
 const ComicTimingSchema = z.object({
@@ -172,6 +172,14 @@ Respond with JSON only.`;
     result = await gen(`${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel. Pure comedy only.`);
   }
 
+  // Language-conformance leak check: retry once in English if the model code-switched out of the
+  // Latin script (observed: qwen2.5:7b continuing a rewrite in Chinese). Detection-only — a
+  // persistent code-switch is substituted by the terminal gate below, not mangled here.
+  if (hasLanguageLeak(result.data.rewrite)) {
+    validatorsTriggered.push('language');
+    result = await gen(`${userPrompt}${LANGUAGE_RETRY_SUFFIX}`);
+  }
+
   // Roast pattern nudge: if roast mood and no verdict/label pattern, retry with hint.
   // Uses the entry-snapshot `mood`, not session.mood, so a concurrent mood_set during an await
   // above cannot flip this decision (tools-002).
@@ -186,6 +194,7 @@ Respond with JSON only.`;
   // the user. META_LEAK is included here (BK-B-02) so a persistent prompt/system-instruction leak
   // is substituted AND flagged degraded, instead of returning verbatim and unflagged.
   let gateFired = false;
+  let languageGateFired = false;
   if (
     hasHarshLeak(result.data.rewrite) ||
     hasSimileLeak(result.data.rewrite) ||
@@ -206,6 +215,20 @@ Respond with JSON only.`;
     recordSafetyFilterFire();
     if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
       console.error('[sensor-humor] ComicTiming: terminal safety gate triggered, using safe fallback');
+    }
+  } else if (hasLanguageLeak(result.data.rewrite)) {
+    // Language-conformance is the terminal word AFTER the safety gate (safety wins if both fire):
+    // a code-switch that survived the retry is substituted with an input-free English static line.
+    // Input-free (STATIC_SAFE_FALLBACK, not voicedSafeFallback) because the caller's OWN text may
+    // be the non-Latin source, so interpolating it could re-introduce the code-switch. This is a
+    // language degrade, NOT a safety substitution: it is attributed degraded_reason:'language' and
+    // deliberately does NOT bump the safety-filter counter (which counts slur/simile/meta only).
+    result.data.rewrite = STATIC_SAFE_FALLBACK[mood];
+    result.data.technique_used = 'understatement';
+    languageGateFired = true;
+    validatorsTriggered.push('terminal-gate');
+    if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+      console.error('[sensor-humor] ComicTiming: terminal language gate triggered, using English fallback');
     }
   }
 
@@ -242,8 +265,10 @@ Respond with JSON only.`;
     }
   }
 
-  // Surface the degradation signal: backend failure (fallback_reason) or a safety substitution.
-  const degradedReason = result.fallback_reason ?? (gateFired ? 'safety-filter' : undefined);
+  // Surface the degradation signal: backend failure (fallback_reason), a safety substitution, or a
+  // language substitution. Backend reason wins (it is the root cause); safety wins over language.
+  const degradedReason =
+    result.fallback_reason ?? (gateFired ? 'safety-filter' : languageGateFired ? 'language' : undefined);
   if (degradedReason) {
     result.data.degraded = true;
     result.data.degraded_reason = degradedReason;
@@ -258,6 +283,7 @@ Respond with JSON only.`;
     tool: 'comic_timing',
     mood,
     input: text,
+    output: result.data.rewrite,
     prompt_fingerprint: result.prompt_fingerprint,
     retries: result.retries,
     validators_triggered: validatorsTriggered,

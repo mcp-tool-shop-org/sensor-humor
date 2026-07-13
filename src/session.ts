@@ -16,6 +16,7 @@ import {
   type TraceEntry,
 } from './types.js';
 import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak } from './validators.js';
+import { captureRow } from './capture.js';
 
 const MAX_RECENT_BITS = 20;
 /**
@@ -278,6 +279,11 @@ export class Session implements SensorHumorSession {
         console.error(`[sensor-humor] Evicted trace from turn ${evicted.turn} (ring full at ${MAX_TRACES})`);
       }
     }
+    // Opt-in dataset capture (SENSOR_HUMOR_CAPTURE): append this generation to the comedic-moods
+    // JSONL dataset. No-op when the flag is unset; best-effort so it can never break a tool call.
+    // Kept OUT of the in-memory trace ring above — capture is a separate, durable dataset sink that
+    // (unlike the trace) IS persisted, so it deliberately does not touch save() or the ring's fields.
+    captureRow(entry);
   }
 
   /**

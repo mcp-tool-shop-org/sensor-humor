@@ -35,6 +35,75 @@ export function hasHarshLeak(text: string): boolean {
 }
 
 /**
+ * Non-Latin-script ratio, exposed for tests/callers: the fraction of the output's LETTERS that are
+ * outside the Latin script (0 when the text has no letters). See hasLanguageLeak for the gate.
+ */
+export const LANGUAGE_NONLATIN_RATIO = 0.3;
+/** Minimum non-Latin letter COUNT before the ratio path fires — one lone stray/borrowed character
+ *  is tolerated as non-degrading noise, so the ratio can't trip on a single symbol in a short line. */
+const LANGUAGE_MIN_NONLATIN = 2;
+/** A contiguous run of this many non-Latin letters is, on its own, a code-switched word/phrase —
+ *  the run path fires regardless of how long the surrounding English is (see hasLanguageLeak). */
+const LANGUAGE_MIN_NONLATIN_RUN = 3;
+/** Single-char (stateless, no /g) script probes. \p{Script=Latin} covers ASCII a–z AND accented
+ *  Latin (café, naïve, résumé, piñata), so legitimate loanwords never count as non-Latin. */
+const LATIN_LETTER = /\p{Script=Latin}/u;
+const ANY_LETTER = /\p{L}/u;
+
+/**
+ * Language-conformance gate (detection-only). sensor-humor's comedy is English — every mood voice,
+ * skeleton, and static fallback is Latin-script English. qwen2.5:7b occasionally code-switches
+ * mid-generation (observed in comedic-moods-v0 capture: a roast-mood comic_timing rewrite continued
+ * in Chinese, "Diagnosis: The<Han run>."), and nothing flagged it, so the line passed as a clean
+ * generation and polluted the opt-in dataset with a valid:true code-switched row.
+ *
+ * Flags output that has code-switched OUT of the Latin script, by two independent triggers computed
+ * over LETTERS only — punctuation, digits, whitespace, emoji, and symbols are script-neutral and
+ * ignored, so "€5, 100%, e.g., :)" and a lone emoji never trip it:
+ *
+ *   1. RUN: a contiguous run of >= LANGUAGE_MIN_NONLATIN_RUN non-Latin letters — an unbroken foreign
+ *      word/phrase. Three consecutive letters from another script is unambiguous in English
+ *      dev-humor and is invariant to how long the English portion is, so it catches the observed
+ *      qwen failure (a long Han run) regardless of the "Diagnosis: The" prefix.
+ *   2. RATIO: non-Latin letters make up >= LANGUAGE_NONLATIN_RATIO of ALL letters (with a
+ *      >= LANGUAGE_MIN_NONLATIN floor), catching heavily code-mixed output that never forms one run.
+ *
+ * A single stray/borrowed non-Latin character is tolerated (still ~all English). Accented Latin is
+ * Latin script and is NOT flagged; combining diacritics are marks (\p{M}), not letters, so "reta´rd"
+ * concerns only the harsh path, never this one.
+ *
+ * DETECTION-ONLY: like hasSimileLeak/hasHarshLeak it returns a verdict and never mutates the display
+ * path. It deliberately does NOT run normalizeConfusables first — that fold turns a Cyrillic
+ * code-switch into ASCII and would hide the very thing we want to see. When it fires, the caller
+ * retries in English once and, if the code-switch persists, substitutes an input-free English static
+ * line (degraded_reason:'language') — a conformance degrade, NOT a safety substitution.
+ */
+export function hasLanguageLeak(text: string): boolean {
+  let latin = 0;
+  let nonLatin = 0;
+  let run = 0;
+  let maxRun = 0;
+  // for-of iterates by code point, so astral CJK / emoji are one step each.
+  for (const ch of text) {
+    if (LATIN_LETTER.test(ch)) {
+      latin++;
+      run = 0;
+    } else if (ANY_LETTER.test(ch)) {
+      nonLatin++;
+      run++;
+      if (run > maxRun) maxRun = run;
+    } else {
+      // punctuation / whitespace / digit / symbol / emoji — script-neutral, and it breaks a run.
+      run = 0;
+    }
+  }
+  const totalLetters = latin + nonLatin;
+  if (totalLetters === 0) return false;
+  if (maxRun >= LANGUAGE_MIN_NONLATIN_RUN) return true;
+  return nonLatin >= LANGUAGE_MIN_NONLATIN && nonLatin / totalLetters >= LANGUAGE_NONLATIN_RATIO;
+}
+
+/**
  * Zero-width, format, and bidi control characters used to break up a slur so HARSH_FILTER's
  * \b boundary no longer holds (e.g. "reta\u200brd"). Stripping these BEFORE filtering closes
  * the boundary-evasion path. Includes variation selectors (U+FE00-FE0F).
@@ -274,6 +343,11 @@ export function sanitizeForPrompt(input: string): string {
 export const SIMILE_RETRY_SUFFIX =
   '\n\nABSOLUTELY NO comparisons, similes, metaphors, or "like/as" phrases. Direct literal observation only.';
 
+/** Negative prompt fragment appended on a language-conformance retry (see hasLanguageLeak): force
+ *  English output in the Latin alphabet so a code-switched generation gets one shot to correct. */
+export const LANGUAGE_RETRY_SUFFIX =
+  '\n\nRespond in ENGLISH ONLY, using the Latin alphabet. Do NOT use Chinese, Japanese, Korean, Cyrillic, Arabic, or any other non-Latin script.';
+
 /**
  * Fully static, input-free safe lines. Used when the caller's OWN input carries a banned
  * token: the voiced fallback interpolates the input, so echoing it would re-emit the slur or
@@ -292,8 +366,9 @@ export const STATIC_SAFE_FALLBACK: Record<MoodStyle, string> = {
 /**
  * Mood-voiced safe fallback for comic_timing and roast, used when retries cannot clear a
  * banned pattern (slur or simile). Stays in the active mood's voice when it safely can; if the
- * caller's input itself carries a slur/comparison, it collapses to a static input-free line so
- * the fallback never echoes a banned token back. heckle keeps its own shorter shape.
+ * caller's input itself carries a slur/comparison — or is non-Latin/code-switched, which the
+ * interpolation would echo — it collapses to a static input-free English line so the fallback
+ * never re-emits a banned token or foreign-script text. heckle keeps its own shorter shape.
  */
 export function voicedSafeFallback(mood: MoodStyle, text: string): string {
   const t = sanitizeForPrompt(text);
@@ -306,7 +381,7 @@ export function voicedSafeFallback(mood: MoodStyle, text: string): string {
     case 'zoomer': candidate = `${t}, absolute state, no cap.`; break;
     default: candidate = `${t}. No further comment.`;
   }
-  if (hasHarshLeak(candidate) || hasSimileLeak(candidate)) {
+  if (hasHarshLeak(candidate) || hasSimileLeak(candidate) || hasLanguageLeak(candidate)) {
     return STATIC_SAFE_FALLBACK[mood];
   }
   return candidate;

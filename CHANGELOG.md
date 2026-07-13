@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Language-conformance gate** — the comedy contract is English, but `qwen2.5:7b` occasionally
+  code-switches out of the Latin script mid-generation (observed: a roast-mood `comic_timing` rewrite
+  that continued in Chinese, which used to pass as a clean, `valid:true` line). `hasLanguageLeak`
+  (a detection-only non-Latin-script gate — a contiguous foreign-word run **or** a high non-Latin
+  letter ratio, computed over letters only) now runs as post-validation on all four comedy tools,
+  mirroring the simile/harsh gates: one English-only retry, then an input-free English fallback if the
+  code-switch persists, flagged `degraded_reason: 'language'`. It is a language-*conformance* degrade
+  distinct from `safety-filter` (it never bumps the safety-filter fire counter), so downstream
+  consumers — including the opt-in comedic-moods dataset capture — can branch on it and exclude
+  code-switched rows. Accented Latin loanwords (`café`, `résumé`), punctuation, digits, and emoji do
+  not trip it.
+
 ## [1.3.0] - 2026-07-07
 
 A comprehensive dogfood swarm: a full health pass (Stage A bug/security + Stage B/C proactive /
