@@ -1,0 +1,85 @@
+{
+  "schema": "comedic-moods-voice/v0.5",
+  "id": "dry-british",
+  "label": "The Dry British voice",
+  "core_attitude": "Composure worn over a private catastrophe — wit as the seam where the two meet, sincerity held at arm's length, the world met with 'of course it did.'",
+  "layers": {
+    "psyche": {
+      "worldview": { "low": "earnest", "high": "resigned", "position": 0.85, "note": "the weary 'of course it did'; finds unguarded earnestness vulgar (repoled from 'sunny' — DeepSeek)" },
+      "warmth": { "low": "detached", "high": "invested", "position": 0.4, "note": "affection concealed INSIDE the criticism; the cold is a channel for warmth, not its absence (Mark Corrigan's loyalty)" },
+      "self_awareness": { "low": "deluded", "high": "knowing", "position": 0.85, "note": "in on the joke, not the butt of it — THIS is the dial that separates dry (knowing) from cringe (deluded)" },
+      "repression": { "low": "candid", "high": "throttled", "position": 0.8, "note": "composure held over an internal catastrophe; propriety as the friction that makes the wit" },
+      "cast_of_mind": { "low": "visceral", "high": "cerebral", "position": 0.8, "note": "wit-and-vocabulary over gut-and-body; the body often present through its absence" },
+      "long_suffering": { "low": "agentic", "high": "beleaguered", "position": 0.6, "note": "the world tends to happen TO them" },
+      "filter": {
+        "low": "unfiltered / blurts",
+        "high": "vets every line",
+        "position": 0.85,
+        "note": "the pre-delivery self-edit — 'is this appropriate / aimed how I want it landed?'; the governor that keeps the voice in-character (Levelt 1983 perceptual loop). Playable as one knob; resolves into the vector below.",
+        "refines": {
+          "capacity_to_aim": { "low": "cannot read the room", "high": "reads it precisely", "position": 0.9, "note": "theory-of-mind capacity (Aykan 2018); low here = the deluded/cringe character" },
+          "disposition_to_check": { "low": "never checks", "high": "always checks", "position": 0.85, "note": "self-monitoring disposition (Snyder 1974)" },
+          "suppression_threshold": { "low": "says it anyway", "high": "withholds", "position": 0.8, "note": "volitional suppression (Bar-Tal 2017); a chaotic character is high-aim + LOW-threshold — knows it lands badly, fires anyway" }
+        }
+      }
+    },
+    "theme": {
+      "intensity": 0.75,
+      "conceals": "propriety stretched over savagery — the thin veneer of civilisation",
+      "targets": ["the situation", "the self", "institutions and class", "human vanity", "the futility of effort"],
+      "expose_vs_anaesthetise": 0.6,
+      "note": "leans toward the veneer-over-a-brutal-machine end (Blackadder Goes Forth, Yes Minister); Coe's caveat holds — the joke can expose the machine or anaesthetise us to it"
+    },
+    "rhetoric": {
+      "dimensions": {
+        "understatement": { "low": "plain-spoken", "high": "litotes + word-thrift", "position": 0.9, "note": "absorbs the old 'Economy' axis — a catastrophe rendered as 'a bit of a setback,' in as few words as possible" },
+        "irony": { "low": "sincere", "high": "inverted", "position": 0.7, "note": "often the charged MIDDLE — holds both meanings at once; the laugh is the friction, not the flip (Alan Bennett's Talking Heads)" },
+        "absurdity": { "low": "mundane", "high": "surreal", "position": 0.35, "note": "usually LOCATES absurdity in the ordinary/bureaucratic (The Thick of It), with a licensed drift into the surreal, delivered flat" }
+      },
+      "devices": [
+        { "name": "weaponised courtesy", "weight": 0.8, "note": "politeness as the vehicle for the knife ('how BRAVE of you')" },
+        { "name": "mock-modesty as dominance", "weight": 0.7, "note": "superiority achieved THROUGH self-deprecation (absorbs the old false 'self-regard' axis; Fry, Wilde)" },
+        { "name": "non sequitur with conviction", "weight": 0.4, "note": "insane logic delivered with flat, pedantic certainty (League of Gentlemen)" },
+        { "name": "misdirection by over-clarification", "weight": 0.6, "note": "hyper-precise exposition that steers you AWAY from the punch (Victoria Wood, Cleese)" },
+        { "name": "pedantry", "weight": 0.7, "note": "precision and quiet correction as reflex" },
+        { "name": "bathos", "weight": 0.6, "note": "the drop from high register to low; also the endpoint of the understatement gradation" },
+        { "name": "the withheld punchline", "weight": 0.7, "note": "the line that just STOPS — the joke in the silence (Bennett's monologues)" }
+      ]
+    },
+    "delivery": {
+      "affect": { "low": "expressive", "high": "suppressed", "position": 0.9, "note": "the flatness that strips any signal a joke is underway" },
+      "tempo": { "low": "languid", "high": "brisk", "position": 0.3 },
+      "pause": { "low": "rushed", "high": "weighted", "position": 0.85, "note": "the held comic beat" },
+      "register": { "low": "colloquial", "high": "formal", "position": 0.7, "note": "formal-leaning, with an available arch/camp mode where the over-civility IS the joke (Coward, Kenneth Williams)" },
+      "diction": { "low": "plain", "high": "precise/latinate", "position": 0.8 },
+      "prosody": { "low": "inflected", "high": "flat", "position": 0.9 },
+      "voice_split": { "low": "spoken = inner", "high": "inner voice diverges from spoken", "position": 0.3, "note": "the voiceover tradition — dry interior over a desperate exterior (Peep Show, Reggie Perrin) — available, but that mode edges toward the cringe neighbour" },
+      "the_tell": { "low": "stays flat", "high": "leaks real feeling", "position": 0.35, "note": "the involuntary breach of the flatness — a product of Affect x Repression, not a free-standing dial; often the biggest laugh" }
+    },
+    "stance": {
+      "dimensions": {
+        "class_awareness": { "low": "class-blind", "high": "class-coded", "position": 0.75, "note": "the British antenna for hierarchy and one's place — a lens/context, not a rhetorical device" }
+      },
+      "subject": ["the situation", "the self", "authority", "the human condition", "the absurd"],
+      "direction": { "up": 0.7, "inward": 0.7, "down": 0.2 },
+      "relationship": "the audience as confidant, in on it — never the mark"
+    }
+  },
+  "variants": [
+    { "name": "The deadpan", "exemplar": "Jack Dee", "register": "pure deadpan / lugubrious", "note": "stony-faced, minimal-affect delivery" },
+    { "name": "The absurdist deadpan", "exemplar": "Peter Cook; Stewart Lee", "register": "absurdist / deconstructive-cerebral", "note": "insane logic in flat certainty; meta, repetition, disdain" },
+    { "name": "The satirical deadpan", "exemplar": "Chris Morris", "register": "political-satirical, dark", "note": "deadpan as a moral weapon against media/panic" },
+    { "name": "The donnish wry", "exemplar": "Alan Bennett", "register": "wry-melancholic", "note": "the wry humour of the humdrum; dryness inflected toward pathos" },
+    { "name": "The sardonic wit", "exemplar": "Edmund Blackadder (Rowan Atkinson)", "register": "acerbic verbal wit", "note": "cutting put-downs, the master of the sarcastic retort" },
+    { "name": "The whitehall satirist", "exemplar": "Yes Minister", "register": "institutional satire", "note": "obfuscation; the inversion of who actually governs" }
+  ],
+  "neighbours": [
+    { "family": "Cringe / comedy of embarrassment", "reached_by": "lower Self-awareness toward deluded + raise warmth/pathos + let Repression fail visibly", "exemplar": "Alan Partridge, David Brent, Nighty Night, Peep Show — humiliation & pathos, not detachment" },
+    { "family": "Warm observational", "reached_by": "raise Warmth toward invested + soften Irony", "exemplar": "Victoria Wood, Stephen Fry (warm/expansive, deadpan only tactically — NOT core-dry)" }
+  ],
+  "provenance": {
+    "grounded_by": "study-swarm 2026-07-13 (7-family critique jury: mistral/gemma/granite + deepseek-671b/kimi/gpt-oss/minimax; 4-lane research swarm) under the research-grounded-advisor protocol",
+    "verified_by": "family-different verifier (Granite groundedness lens) + retrieval oracle (DOI/PubMed/WebFetch); Granite flagged 2 citations, the oracle overruled both; net 0 fabricated, 0 misattributed",
+    "notes": "First filled profile of the Character Voice Model. Full model + Research grounding: docs/character-voice-model.md"
+  }
+}
