@@ -205,7 +205,7 @@ Reset all session state — mood returns to `dry`, gags/bits/catchphrases/traces
 When a tool can't return a genuine model generation it still returns a usable in-voice line, plus a machine-readable signal so a consuming agent never mistakes a fallback for a real one:
 
 - `degraded: true`
-- `degraded_reason` — a **closed enum** a consumer can branch on exhaustively: `safety-filter` (a slur/simile/meta-leak was substituted), `connection`, `timeout`, `model-not-found`, `auth`, `rate-limit`, `server`, `http`, `json-parse`, `validation`, `exhausted`, `unknown`.
+- `degraded_reason` — a **closed enum** a consumer can branch on exhaustively: `safety-filter` (a slur/simile/meta-leak was substituted), `language` (the model code-switched out of the Latin script and an English line was substituted — a conformance degrade, not a safety one), `connection`, `timeout`, `model-not-found`, `auth`, `rate-limit`, `server`, `http`, `json-parse`, `validation`, `exhausted`, `unknown`.
 
 A genuine generation carries **no** `degraded` flag — its absence is the positive signal. All comedy tools carry this, including `catchphrase_callback` (a safety-substituted recall is flagged, never passed off as genuine).
 

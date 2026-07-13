@@ -74,6 +74,31 @@ export function getTemperature(): number {
   return n;
 }
 
+/**
+ * The active sampling settings a generation runs under. `temperature` is env-tunable (getTemperature);
+ * top_p/top_k/mirostat/mirostat_tau are fixed constants — the SAME constants the chat() call below
+ * uses, so the two cannot drift without editing both. Exported so the opt-in dataset capture
+ * (capture.ts) can stamp each row with the exact settings that produced the line (generation
+ * provenance / PIN_PER_STEP).
+ */
+export interface InferenceSettings {
+  temperature: number;
+  top_p: number;
+  top_k: number;
+  mirostat: number;
+  mirostat_tau: number;
+}
+
+export function getInferenceSettings(): InferenceSettings {
+  return {
+    temperature: getTemperature(),
+    top_p: DEFAULT_TOP_P,
+    top_k: DEFAULT_TOP_K,
+    mirostat: DEFAULT_MIROSTAT,
+    mirostat_tau: DEFAULT_MIROSTAT_TAU,
+  };
+}
+
 function classifyError(err: unknown): DegradedReason {
   if (err instanceof SyntaxError) return 'json-parse';
   if (err instanceof Error) {

@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
 import type { HeckleResult, MoodStyle } from '../types.js';
-import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, sanitizeForPrompt } from '../validators.js';
+import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, hasLanguageLeak, LANGUAGE_RETRY_SUFFIX, sanitizeForPrompt } from '../validators.js';
 
 const HeckleSchema = z.object({
   heckle: z.string().max(120),
@@ -54,7 +54,10 @@ function heckleFallback(mood: MoodStyle, target: string): string {
     case 'zoomer': candidate = `${t}, cooked fr.`; break;
     default: candidate = `${t}. That's a choice.`;
   }
-  if (hasHarshLeak(candidate) || hasSimileLeak(candidate)) {
+  // Collapse to the static input-free line if interpolating the caller's target would echo a slur,
+  // a simile, OR non-Latin/code-switched text (the last so a Chinese/Cyrillic target can't leak
+  // through the backend-down fallback path).
+  if (hasHarshLeak(candidate) || hasSimileLeak(candidate) || hasLanguageLeak(candidate)) {
     return HECKLE_STATIC_FALLBACK[mood];
   }
   return candidate;
@@ -128,6 +131,9 @@ export async function heckle(target: string): Promise<HeckleResult> {
   // Track ANY safety substitution (intermediate fallback OR terminal gate) so the degraded signal
   // fires whenever a safe line replaced the model output, not only on the terminal gate.
   let safetySubstituted = false;
+  // Separate flag for a LANGUAGE (code-switch) substitution — degraded_reason:'language', distinct
+  // from safety so it never bumps the safety-filter counter.
+  let languageSubstituted = false;
 
   // Which local safety/pattern gates fired this call — captured best-effort for the forensic trace
   // (ROADMAP v2.0 "Chain Trace Tool"), so debug_chain shows WHY a retry/substitution happened.
@@ -180,11 +186,42 @@ export async function heckle(target: string): Promise<HeckleResult> {
     }
   }
 
+  // Language-conformance filter: retry once in English if the heckle code-switched out of the Latin
+  // script, then substitute an input-free English line if it persists. A conformance degrade
+  // (degraded_reason:'language'), distinct from the safety filters — its own flag, no safety counter.
+  if (hasLanguageLeak(result.data.heckle)) {
+    validatorsTriggered.push('language');
+    const cleanPrompt = `${userPrompt}${LANGUAGE_RETRY_SUFFIX}`;
+    result = await generateComedy<z.infer<typeof HeckleSchema>>(
+      {
+        systemPrompt,
+        userPrompt: cleanPrompt,
+        schema: HeckleSchema,
+        jsonSchema: HECKLE_JSON_SCHEMA,
+        numPredict: HECKLE_NUM_PREDICT,
+      },
+      fallback,
+    );
+    // Input-free static line (NOT heckleFallback) — the caller's target may be the non-Latin source.
+    if (hasLanguageLeak(result.data.heckle)) {
+      result.data.heckle = HECKLE_STATIC_FALLBACK[mood];
+      languageSubstituted = true;
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+        console.error('[sensor-humor] Heckle: language leak persisted after retry, using English fallback');
+      }
+    }
+  }
+
   // Terminal safety gate: harsh + simile are the last word, so a late retry cannot
   // re-introduce a banned pattern an earlier filter already cleared.
   if (hasHarshLeak(result.data.heckle) || hasSimileLeak(result.data.heckle)) {
     result.data.heckle = heckleFallback(mood, target);
     safetySubstituted = true;
+    validatorsTriggered.push('terminal-gate');
+  } else if (hasLanguageLeak(result.data.heckle)) {
+    // Terminal language gate (only when no safety pattern fired — safety wins). Input-free English.
+    result.data.heckle = HECKLE_STATIC_FALLBACK[mood];
+    languageSubstituted = true;
     validatorsTriggered.push('terminal-gate');
   }
   if (safetySubstituted) recordSafetyFilterFire();
@@ -192,7 +229,8 @@ export async function heckle(target: string): Promise<HeckleResult> {
   // Update session
   session.pushBit(result.data.heckle, 'heckle');
 
-  const degradedReason = result.fallback_reason ?? (safetySubstituted ? 'safety-filter' : undefined);
+  const degradedReason =
+    result.fallback_reason ?? (safetySubstituted ? 'safety-filter' : languageSubstituted ? 'language' : undefined);
 
   // Record ONE forensic trace entry for this call (ROADMAP v2.0 "Chain Trace Tool"). Light fields
   // always; heavy fields only under SENSOR_HUMOR_FULL_TRACE. gen-metadata fields are optional (a
@@ -202,6 +240,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
     tool: 'heckle',
     mood,
     input: target,
+    output: result.data.heckle,
     prompt_fingerprint: result.prompt_fingerprint,
     retries: result.retries,
     validators_triggered: validatorsTriggered,

@@ -93,14 +93,19 @@ export interface MoodGetResult {
 }
 
 /**
- * Closed, machine-branchable set of degradation reasons. 'safety-filter' is set by the tool-layer
- * terminal/safety gates (any slur/simile/meta-leak substitution); the rest are the classified
- * Ollama/backend failure codes from classifyError (kept in sync — classifyError returns this type)
- * plus 'exhausted' (retries exhausted with no classified cause). Q4 grounding: a consuming LLM
- * agent must be able to branch on the reason exhaustively, so it is a closed union, not a string.
+ * Closed, machine-branchable set of degradation reasons. Two are set by the tool layer above
+ * generateComedy: 'safety-filter' (a slur/simile/meta-leak was substituted) and 'language' (the
+ * model code-switched out of the expected Latin script — English comedy is the contract — so an
+ * input-free English static line was substituted). 'language' is a language-CONFORMANCE degrade,
+ * NOT a safety substitution: it is attributed distinctly and deliberately does NOT bump the
+ * safety-filter counter. The rest are the classified Ollama/backend failure codes from classifyError
+ * (kept in sync — classifyError returns this type) plus 'exhausted' (retries exhausted with no
+ * classified cause). Q4 grounding: a consuming LLM agent must be able to branch on the reason
+ * exhaustively, so it is a closed union, not a string.
  */
 export type DegradedReason =
   | 'safety-filter'
+  | 'language'
   | 'connection'
   | 'timeout'
   | 'model-not-found'
@@ -116,9 +121,11 @@ export type DegradedReason =
 /**
  * Degradation signal carried on every comedy result. Present (true) only when the output is
  * NOT a genuine model generation: either the Ollama backend failed (degraded_reason is the
- * classified error code) or the safety filter had to substitute a canned line
- * (degraded_reason: 'safety-filter'). Absent on the happy path, so existing callers are
- * unaffected and the absence of the flag is a positive signal of a real generation.
+ * classified error code), the safety filter had to substitute a canned line
+ * (degraded_reason: 'safety-filter'), or the language-conformance gate substituted an English
+ * line because the model code-switched out of the Latin script (degraded_reason: 'language').
+ * Absent on the happy path, so existing callers are unaffected and the absence of the flag is a
+ * positive signal of a real generation.
  */
 export interface Degradable {
   degraded?: boolean;
@@ -179,6 +186,13 @@ export interface TraceEntry {
   mood: MoodStyle;
   /** The caller's input (the raw request text the tool was given). */
   input: string;
+  /**
+   * The final output line the tool returned (post safety-gate). Light field, always populated by the
+   * comedy tools. Distinct from parsed_output (full-trace-only, the whole result object): this is the
+   * single humor line, so the opt-in dataset capture (capture.ts) records a complete row WITHOUT
+   * requiring SENSOR_HUMOR_FULL_TRACE. Optional for back-compat with existing recordTrace callers/tests.
+   */
+  output?: string;
   /**
    * Short stable hash of the ACTIVE prompt (the ROADMAP's prompt_hash). Reuses the fingerprint
    * mechanism generateComedy returns; undefined only if generation metadata was unavailable

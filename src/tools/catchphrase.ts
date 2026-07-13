@@ -9,7 +9,7 @@ import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
 import type { CatchphraseCallbackResult, CatchphraseGenerateResult, Degradable, MoodStyle } from '../types.js';
-import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak } from '../validators.js';
+import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak, hasLanguageLeak } from '../validators.js';
 
 /** Escape regex special characters in a string. */
 function escapeRegex(str: string): string {
@@ -32,13 +32,21 @@ const STATIC_SAFE_CATCHPHRASE: Record<MoodStyle, string> = {
 };
 
 /**
- * Terminal safety gate for catchphrases: a phrase must never reach the user (or get stored for
- * replay via callback / future prompts) if it carries a slur or simile. Substitutes an
- * input-free static catchphrase if it does. Returns the safe phrase and whether the gate fired.
+ * Terminal gate for catchphrases: a phrase must never reach the user (or get stored for replay via
+ * callback / future prompts) if it carries a slur/simile OR has code-switched out of the Latin
+ * script. Substitutes an input-free static catchphrase if it does, and reports WHY — a slur/simile
+ * is a 'safety-filter' substitution, a code-switch is a 'language' conformance degrade — so the
+ * caller can attribute degraded_reason correctly and bump the safety counter only for the former.
  */
-function safeCatchphrase(mood: MoodStyle, phrase: string): { phrase: string; gated: boolean } {
+function safeCatchphrase(
+  mood: MoodStyle,
+  phrase: string,
+): { phrase: string; gated: boolean; reason?: 'safety-filter' | 'language' } {
   if (hasHarshLeak(phrase) || hasSimileLeak(phrase)) {
-    return { phrase: STATIC_SAFE_CATCHPHRASE[mood], gated: true };
+    return { phrase: STATIC_SAFE_CATCHPHRASE[mood], gated: true, reason: 'safety-filter' };
+  }
+  if (hasLanguageLeak(phrase)) {
+    return { phrase: STATIC_SAFE_CATCHPHRASE[mood], gated: true, reason: 'language' };
   }
   return { phrase, gated: false };
 }
@@ -73,9 +81,9 @@ export async function catchphraseGenerate(
   if (context && session.catchphrases.size > 0) {
     const lower = context.toLowerCase();
     for (const [phrase] of session.catchphrases) {
-      // Never reuse a dirty stored phrase (legacy/persisted slur/simile): skip it so we fall
-      // through to a fresh, gated generation instead of replaying a banned token.
-      if (hasHarshLeak(phrase) || hasSimileLeak(phrase)) continue;
+      // Never reuse a dirty stored phrase (legacy/persisted slur/simile/code-switch): skip it so we
+      // fall through to a fresh, gated generation instead of replaying a banned or non-English token.
+      if (hasHarshLeak(phrase) || hasSimileLeak(phrase) || hasLanguageLeak(phrase)) continue;
       // Match against ALL significant words of the stored phrase (mirrors how
       // findCallbackCandidates matches a gag tag), not just the first word — and strip trailing
       // punctuation first so a stored "cooked," still matches the context word "cooked" (tools-003).
@@ -95,6 +103,7 @@ export async function catchphraseGenerate(
           tool: 'catchphrase',
           mood: session.mood,
           input: context ?? '',
+          output: phrase,
           validators_triggered: ['reuse'],
           ...(fullTraceEnabled() ? { parsed_output: { phrase, is_fresh: false } } : {}),
         });
@@ -134,10 +143,12 @@ Respond with JSON only.`;
   // pushBit), so a slur/simile can never be persisted and replayed by callback or future
   // prompts. A gated phrase collapses to a static input-free catchphrase.
   const gate = safeCatchphrase(session.mood, result.data.phrase);
-  if (gate.gated) recordSafetyFilterFire();
+  // Only a SAFETY substitution bumps the safety-filter counter; a language substitution is a
+  // conformance degrade tracked via degraded_reason only.
+  if (gate.gated && gate.reason === 'safety-filter') recordSafetyFilterFire();
   const phrase = gate.phrase;
   const degraded: Degradable = gate.gated
-    ? { degraded: true, degraded_reason: 'safety-filter' }
+    ? { degraded: true, degraded_reason: gate.reason }
     : result.fallback_reason
       ? { degraded: true, degraded_reason: result.fallback_reason }
       : {};
@@ -150,6 +161,7 @@ Respond with JSON only.`;
     tool: 'catchphrase',
     mood: session.mood,
     input: context ?? '',
+    output: phrase,
     prompt_fingerprint: result.prompt_fingerprint,
     retries: result.retries,
     validators_triggered: gate.gated ? ['terminal-gate'] : [],
@@ -193,7 +205,7 @@ export function catchphraseCallback(): CatchphraseCallbackResult | null {
   let bestPhrase = '';
   let bestCount = 0;
   for (const [phrase, count] of session.catchphrases) {
-    if (hasHarshLeak(phrase) || hasSimileLeak(phrase)) continue;
+    if (hasHarshLeak(phrase) || hasSimileLeak(phrase) || hasLanguageLeak(phrase)) continue;
     if (count > bestCount) {
       bestPhrase = phrase;
       bestCount = count;
@@ -217,13 +229,15 @@ export function catchphraseCallback(): CatchphraseCallbackResult | null {
   // gate below cannot fire on it — the gate is retained as defense-in-depth only.
   const newCount = session.useCatchphrase(bestPhrase);
   const gate = safeCatchphrase(session.mood, bestPhrase);
-  if (gate.gated) recordSafetyFilterFire();
+  // bestPhrase was already filtered clean above, so this is defense-in-depth. Attribute by reason
+  // and bump the safety counter only for a genuine safety substitution, not a language one.
+  if (gate.gated && gate.reason === 'safety-filter') recordSafetyFilterFire();
   session.pushBit(gate.phrase, 'catchphrase');
   session.tick();
 
   return {
     phrase: gate.phrase,
     use_count: newCount,
-    ...(gate.gated ? { degraded: true, degraded_reason: 'safety-filter' as const } : {}),
+    ...(gate.gated ? { degraded: true, degraded_reason: gate.reason } : {}),
   };
 }

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   hasSimileLeak,
   hasHarshLeak,
+  hasLanguageLeak,
   SIMILE_PATTERN,
   HARSH_FILTER,
   sanitizeForPrompt,
@@ -498,6 +499,68 @@ describe('validators', () => {
     });
   });
 
+  // Language-conformance gate (comedic-moods-v0 finding #1): qwen2.5:7b occasionally code-switches
+  // out of English mid-generation and the line used to pass as valid. CJK/Cyrillic literals are used
+  // directly (they are not slurs, so no char-code obfuscation is needed).
+  describe('hasLanguageLeak (non-Latin-script gate)', () => {
+    it('flags the observed roast code-switch (English label + Chinese run)', () => {
+      expect(hasLanguageLeak('Diagnosis: The周五下午四点五十五分上线。')).toBe(true);
+    });
+
+    it('flags output that is entirely non-Latin', () => {
+      expect(hasLanguageLeak('这个函数彻底坏了')).toBe(true); // Chinese
+      expect(hasLanguageLeak('안녕하세요 세계')).toBe(true); // Korean
+      expect(hasLanguageLeak('это полный провал')).toBe(true); // Cyrillic
+    });
+
+    it('flags a short code-switched run appended to English (RUN gate, sub-threshold ratio)', () => {
+      // 3-char Han run at the end of an otherwise-English line: the overall non-Latin ratio is well
+      // under the ratio threshold, so ONLY the contiguous-run trigger catches it.
+      expect(hasLanguageLeak('Verdict: this build shipped on 上线了 again')).toBe(true);
+    });
+
+    it('flags heavily code-mixed output even without a long single run (RATIO gate)', () => {
+      // Alternating, so no run reaches 3, but non-Latin letters dominate the letter count.
+      expect(hasLanguageLeak('a 好 b 坏 c 乱')).toBe(true);
+    });
+
+    it('passes plain English comedy output', () => {
+      expect(hasLanguageLeak('Verdict: Monolithic state blob syndrome.')).toBe(false);
+      expect(hasLanguageLeak('nahhh, var in 2026, SKILL ISSUE FR, ratio')).toBe(false);
+      expect(hasLanguageLeak('Forty-seven builds. A new personal record.')).toBe(false);
+    });
+
+    it('does NOT flag accented Latin loanwords (Latin script, not a code-switch)', () => {
+      expect(hasLanguageLeak('A café-grade résumé of naïve piñata façade decisions.')).toBe(false);
+      expect(hasLanguageLeak('Zoë shipped a doppelgänger jalapeño function.')).toBe(false);
+    });
+
+    it('does NOT flag punctuation, digits, currency, or emoji (script-neutral)', () => {
+      expect(hasLanguageLeak('Ship it — €5, 100% cooked… no cap 🤷')).toBe(false);
+      expect(hasLanguageLeak('{"key": 42} // O(n²) and $5')).toBe(false);
+      expect(hasLanguageLeak('literally cooked 💀💀💀')).toBe(false);
+    });
+
+    it('tolerates a single stray non-Latin character (below the count floor)', () => {
+      // One lone CJK char in an otherwise-English line is non-degrading noise, not a code-switch.
+      expect(hasLanguageLeak('peak 卷 energy from this PR')).toBe(false);
+    });
+
+    it('returns false for empty / letterless strings', () => {
+      expect(hasLanguageLeak('')).toBe(false);
+      expect(hasLanguageLeak('   ')).toBe(false);
+      expect(hasLanguageLeak('42 + 8 = 50!')).toBe(false);
+    });
+
+    // Load-bearing invariant: every static safe line the tools substitute for a code-switch must
+    // itself be Latin-script, or the language substitution would be re-flagged as language-degraded.
+    it('never flags any STATIC_SAFE_FALLBACK value (the substitute must be Latin-script)', () => {
+      for (const line of Object.values(STATIC_SAFE_FALLBACK)) {
+        expect(hasLanguageLeak(line)).toBe(false);
+      }
+    });
+  });
+
   describe('sanitizeForPrompt', () => {
     it('strips newlines', () => {
       expect(sanitizeForPrompt('hello\nworld\r\nfoo')).toBe('hello world foo');
@@ -568,6 +631,13 @@ describe('validators', () => {
       const out = voicedSafeFallback('roast', 'global state everywhere');
       expect(out).not.toBe(STATIC_SAFE_FALLBACK.roast);
       expect(out).toContain('global state everywhere');
+    });
+
+    it('collapses a code-switched (non-Latin) input to the static English line', () => {
+      // If the caller's input is non-Latin, interpolating it would echo a code-switch through the
+      // backend-down fallback path — voicedSafeFallback must collapse to the static English line.
+      const out = voicedSafeFallback('roast', '这个函数彻底坏了');
+      expect(out).toBe(STATIC_SAFE_FALLBACK.roast);
     });
   });
 });
