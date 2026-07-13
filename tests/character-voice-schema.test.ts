@@ -178,3 +178,30 @@ describe('cynic — bitter foreknowledge; the darker neighbour of dry', () => {
     expect(cynic.neighbours.some((n: { family: string }) => /dry/i.test(n.family))).toBe(true);
   });
 });
+
+describe('zoomer — terminally-online snark, deployed self-awarely', () => {
+  const zoomer = load('zoomer');
+
+  it('is built as a character, not a caricature — max self-awareness + intact theory-of-mind', () => {
+    expect(zoomer.layers.psyche.self_awareness.position).toBeGreaterThan(0.85);
+    expect(zoomer.layers.psyche.filter.refines.capacity_to_aim.position).toBeGreaterThan(0.8);
+  });
+
+  it('carries real in-group warmth so the snark reads bonded, not performative-cruel', () => {
+    expect(zoomer.layers.psyche.warmth.position).toBeGreaterThan(0.5);
+  });
+
+  it('is fast and maximally informal, hyperbolic not understated (the antipode of dry)', () => {
+    expect(zoomer.layers.delivery.tempo.position).toBeGreaterThan(0.8);
+    expect(zoomer.layers.delivery.register.position).toBeLessThan(0.2);
+    expect(zoomer.layers.rhetoric.dimensions.understatement.position).toBeLessThan(0.2);
+  });
+
+  it('aims at the code/situation, never down at a person or group', () => {
+    expect(zoomer.layers.stance.direction.down).toBeLessThan(0.2);
+  });
+
+  it('keeps the safety grounding against caricature (Hofmann / CoMPosT)', () => {
+    expect(zoomer.provenance.verified_by).toMatch(/Hofmann|CoMPosT/i);
+  });
+});
