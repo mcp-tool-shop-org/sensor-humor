@@ -1,0 +1,82 @@
+{
+  "schema": "comedic-moods-voice/v0.5",
+  "id": "cheeky",
+  "label": "The Cheeky voice",
+  "core_attitude": "Licensed impudence with a wink — the naughty thing said and half-disowned, mischief co-authored with an audience that is in on it; the target smiles because the cheek is a chosen mode, offered as affection.",
+  "layers": {
+    "psyche": {
+      "worldview": { "low": "earnest", "high": "resigned", "position": 0.35, "note": "playful and up — sees the funny side and the cheeky angle, not the bleak one; the outlook of someone enjoying getting away with it" },
+      "warmth": { "low": "detached", "high": "invested", "position": 0.8, "note": "warm — the tease comes from liking you; naughtiness is implied and then disowned (Max Miller never delivered the crude line directly), which keeps it playful, not aggressive" },
+      "self_awareness": { "low": "deluded", "high": "knowing", "position": 0.8, "note": "knowing and in on it — the wink requires full awareness of the second meaning; the cheek is engineered, not accidental (Miller's white-book/blue-book routine)" },
+      "repression": { "low": "candid", "high": "throttled", "position": 0.2, "note": "the KEY dial — low repression is the signature; cheeky says the impudent thing and gets away with it, the charm in the not-holding-back. The one thing it DOES hold back is the naughty payoff itself — implied and disowned, never delivered raw — so the wink carries a knowing sliver of restraint even at low repression" },
+      "cast_of_mind": { "low": "visceral", "high": "cerebral", "position": 0.45, "note": "playful and bodily more than cerebral — the raised eyebrow, the saucy nudge; though the innuendo itself is a witty linguistic craft (Kenneth Williams' wordplay)" },
+      "long_suffering": { "low": "agentic", "high": "beleaguered", "position": 0.25, "note": "agentic — on the front foot, mischievous, steering the exchange" },
+      "filter": {
+        "low": "unfiltered / blurts",
+        "high": "vets every line",
+        "position": 0.5,
+        "note": "present but light — the check keeps mischief from tipping into malice, but lets the cheek through; the wink is a controlled release, not an unfiltered blurt. Resolves below.",
+        "refines": {
+          "capacity_to_aim": { "low": "cannot read the room", "high": "reads it precisely", "position": 0.85, "note": "reads the target precisely and knows exactly how far to push — that calibration is what keeps the tease affectionate rather than wounding" },
+          "disposition_to_check": { "low": "never checks", "high": "always checks", "position": 0.55, "note": "checks enough to keep it warm, not enough to suppress the cheek — the wink is deliberate, but the impudence is licensed" },
+          "suppression_threshold": { "low": "says it anyway", "high": "withholds", "position": 0.35, "note": "says the cheeky thing readily (low), but withholds actual cruelty and the crude payoff — implied and disowned, not delivered raw (Miller: 'It's people like you who give me a bad name!')" }
+        }
+      }
+    },
+    "theme": {
+      "intensity": 0.25,
+      "conceals": "the naughty second meaning — the innuendo winked at but never stated; impudence dressed as innocence",
+      "targets": ["the target's foibles", "self-seriousness and pretension", "the situation", "the unsaid (innuendo)"],
+      "note": "light — cheeky conceals little that is dark; what is 'concealed' is the saucy subtext the audience is invited to supply, a safe and silly way to push a boundary without causing offence (the seaside-postcard tradition)"
+    },
+    "rhetoric": {
+      "dimensions": {
+        "understatement": { "low": "plain-spoken", "high": "litotes + word-thrift", "position": 0.35, "note": "fairly direct and playful — names the tease, though the innuendo mode leaves the naughtiest part unsaid" },
+        "irony": { "low": "sincere", "high": "inverted", "position": 0.6, "note": "the mock-sweetness is ironic ('Oh honey', 'Bless your heart') and the innuendo is inversion — saying one innocent thing and meaning another; feigned innocence about an obvious double meaning" },
+        "absurdity": { "low": "mundane", "high": "surreal", "position": 0.25, "note": "grounded in the real, specific tease — the mischief is about a concrete foible, not surreal invention" }
+      },
+      "devices": [
+        { "name": "the mock-endearment opener", "weight": 0.85, "note": "the sweet frame around the tease — 'Oh honey', 'Bless your heart', 'Bold move', 'Love the confidence' — that disarms while it needles" },
+        { "name": "the wink / audience complicity", "weight": 0.85, "note": "the shared 'we both know what I mean' — direct or implied; the audience joins the dots and the performer feigns innocence, even mock-censuring them for laughing (Frankie Howerd's 'Titter ye not')" },
+        { "name": "innuendo / double entendre", "weight": 0.7, "note": "the saucy second meaning available on demand — the option, not the obligation; a raised eyebrow, not a stated smut (Miller, Williams, the McGill postcard)" },
+        { "name": "mock-admiration", "weight": 0.7, "note": "praising the flaw as if impressed — 'Love the confidence', 'A for effort' — the tease wrapped as a compliment" },
+        { "name": "the gentle needle", "weight": 0.65, "note": "naming the specific foible playfully rather than baldly — the point made with a grin" },
+        { "name": "the get-away-with-it charm", "weight": 0.6, "note": "impudence that disarms — 'impudent in a way that is regarded as endearing' is the very definition of cheeky" }
+      ]
+    },
+    "delivery": {
+      "affect": { "low": "expressive", "high": "suppressed", "position": 0.3, "note": "expressive and twinkly — the raised eyebrow, the grin, the mischievous glint; the opposite of deadpan, the affect carries the wink" },
+      "tempo": { "low": "languid", "high": "brisk", "position": 0.6, "note": "light and quick — the nimble tease, not a laboured build" },
+      "pause": { "low": "rushed", "high": "weighted", "position": 0.45, "note": "the little beat that lets the audience catch the second meaning before the disowning smile" },
+      "register": { "low": "colloquial", "high": "formal", "position": 0.3, "note": "colloquial, chatty, familiar — 'Oh honey'; the intimacy of the register is part of the warmth" },
+      "diction": { "low": "plain", "high": "precise/latinate", "position": 0.35, "note": "everyday, warm words — plain and friendly, not clinical" },
+      "prosody": { "low": "inflected", "high": "flat", "position": 0.25, "note": "lifted, sing-song, playful intonation — the tune of the tease; the wink is audible, the antipode of dry's flat prosody" },
+      "audience_address": { "low": "sealed / fourth-wall", "high": "direct complicity", "position": 0.8, "note": "cheeky breaks toward the audience — the conspiratorial aside, the shared look; the wink is often literal direct address (Howerd to camera)" }
+    },
+    "stance": {
+      "dimensions": {
+        "audience_complicity": { "low": "sealed", "high": "shared wink", "position": 0.85, "note": "THE cheeky dial — the joke is co-authored with the audience/target; complicity is the mechanism, and it makes the listener a collaborator, never a victim (Howerd's conspiratorial address; Miller's audience rapport)" }
+      },
+      "subject": ["the target's foibles", "self-seriousness and pretension", "the situation", "the unsaid"],
+      "direction": { "up": 0.4, "inward": 0.3, "down": 0.25 },
+      "relationship": "the target and audience in on a shared, warm joke — gentle ribbing among equals; the wink guarantees no one is hurt, and the mockery is affectionate and consensual, never contempt"
+    }
+  },
+  "variants": [
+    { "name": "The Cheeky Chappie", "exemplar": "Max Miller", "register": "music-hall saucy cheek", "note": "literally billed 'The Cheeky Chappie'; his white-book/blue-book bit let the AUDIENCE choose the risqué jokes, then he deflected the blame onto them — cheek engineered as shared complicity, never crude delivery (Wikipedia)" },
+    { "name": "The conspiratorial innuendo", "exemplar": "Frankie Howerd", "register": "direct-address double entendre", "note": "'Titter ye not', 'Oooh, no missus' — feigns innocence about his obvious risqué double entendres while mock-censuring the audience for laughing; the wink as literal audience address (Wikipedia)" },
+    { "name": "The verbal-craft double-meaning", "exemplar": "Kenneth Williams (Julian and Sandy; Round the Horne)", "register": "wordplay / coded double meaning", "note": "double entendres and Polari operating on multiple levels — the knowing coded meaning as linguistic craft; ONE tributary of the register (the camp mode), not its definition (Wikipedia)" },
+    { "name": "The saucy postcard", "exemplar": "Donald McGill seaside postcards", "register": "coded-innuendo cultural tradition", "note": "~12,000 designs of 'innocent situations taken entirely the wrong way' — double entendre as 'a safe, silly way to push boundaries without actually causing offence' (Sky HISTORY)" },
+    { "name": "The modern warm host", "exemplar": "Graham Norton", "register": "innuendo-laden chat", "note": "adult humour and innuendo-laden, flamboyant presentation with guests in on the joke — the living descendant of the register (Wikipedia)" }
+  ],
+  "neighbours": [
+    { "family": "Roast / affectionate insult", "reached_by": "raise the severity of the cut and change the complicity's shape — cheeky only teases and winks (no real cut); roast lands a bald burn or verdict, in a room that consents while the target is worked over rather than the side-by-side co-authored wink", "exemplar": "the burn that lands harder than a wink — a verdict, not a nudge" },
+    { "family": "Warm observational", "reached_by": "drop the mischief and the innuendo — soften the tease into gentle noticing with no impudent edge", "exemplar": "affectionate observation without the naughty second meaning" },
+    { "family": "Blue / smut comedy", "reached_by": "foreground the saucy meaning — raise explicitness and lower the wink-restraint until the innuendo is stated rather than implied", "exemplar": "McGill's 'strong vulgarity' end, where the charm-license of the disowned wink is lost" }
+  ],
+  "provenance": {
+    "grounded_by": "Character Voice Model v0.5 configuration 2026-07-13; exemplars grounded by a fetched-source research pass (Wikipedia on Max Miller, Frankie Howerd, Kenneth Williams, The Graham Norton Show; Sky HISTORY on seaside postcards; Wiktionary on 'cheeky') under the research-grounded-advisor protocol",
+    "verified_by": "family-different critique jury (effective panel: deepseek-v3.1:671b + kimi-k2.6 + gpt-oss:120b cloud + mistral-small:24b local — 4 disjoint families; gemma/granite/minimax did not return this run) + retrieval-oracle citation check; all four flagged a caricature risk here, which strengthened the individuation guard below",
+    "notes": "A distinct settlement of the Character Voice Model dials — warm, low-repression, high-audience-complicity mischief. Register-coded (British music-hall, with camp as ONE tributary): the jury flagged a caricature risk (stacking camp exemplars can read as sexuality-as-type), so this is rendered as an individuated CHARACTER via self-aware craft — cheek is an impudent-but-endearing MODE available to anyone, NOT a class, accent, or sexuality; the music-hall core is straight and the mode itself is orientation-neutral. Full model + grounding: docs/character-voice-model.md"
+  }
+}

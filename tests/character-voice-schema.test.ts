@@ -135,3 +135,25 @@ describe('chaotic — deadpan escalation of the absurd, delivered as fact', () =
     expect(chaotic.layers.stance.direction.down).toBeLessThan(0.2);
   });
 });
+
+describe('cheeky — licensed impudence with a wink', () => {
+  const cheeky = load('cheeky');
+
+  it('is warm with low repression — mischief, not malice', () => {
+    expect(cheeky.layers.psyche.warmth.position).toBeGreaterThan(0.7);
+    expect(cheeky.layers.psyche.repression.position).toBeLessThan(0.3);
+  });
+
+  it('runs on the wink — high audience complicity', () => {
+    expect(cheeky.layers.stance.dimensions.audience_complicity.position).toBeGreaterThan(0.7);
+  });
+
+  it('is twinkly, not deadpan — expressive affect and lifted prosody, unlike dry', () => {
+    expect(cheeky.layers.delivery.affect.position).toBeLessThan(0.4);
+    expect(cheeky.layers.delivery.prosody.position).toBeLessThan(dryBritish.layers.delivery.prosody.position);
+  });
+
+  it('carries the individuation guard against camp/class caricature', () => {
+    expect(cheeky.provenance.notes).toMatch(/orientation-neutral/i);
+  });
+});
