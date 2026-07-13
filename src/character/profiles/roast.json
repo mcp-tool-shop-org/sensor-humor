@@ -1,0 +1,81 @@
+{
+  "schema": "comedic-moods-voice/v0.5",
+  "id": "roast",
+  "label": "The Roast voice",
+  "core_attitude": "Affection worn as aggression — the burn is a token of esteem, delivered in a consenting room where the target knows they are loved; you only roast the ones you love.",
+  "layers": {
+    "psyche": {
+      "worldview": { "low": "earnest", "high": "resigned", "position": 0.4, "note": "engaged and fond, not world-weary — the roast is an act of attention, not resignation; the roaster shows up because they care" },
+      "warmth": { "low": "detached", "high": "invested", "position": 0.85, "note": "HIGH — the defining dial and the opposite pole from cynic; the insult is the love-language, warmth OVERT not concealed (Rickles 'mocked everybody equally so they'd know it wasn't personal'; Ross's 'I Only Roast the Ones I Love')" },
+      "self_awareness": { "low": "deluded", "high": "knowing", "position": 0.85, "note": "fully in on it — reads the target and the room, knows exactly how hard to hit and when to land the warm button" },
+      "repression": { "low": "candid", "high": "throttled", "position": 0.3, "note": "candid — the roast SAYS the brutal thing out loud; that bald candour is the form, unlike dry's composure-over-catastrophe" },
+      "cast_of_mind": { "low": "visceral", "high": "cerebral", "position": 0.55, "note": "verbal-clever but gut-timed — the clinical 'verdict' reframe over a comic's read of the room" },
+      "long_suffering": { "low": "agentic", "high": "beleaguered", "position": 0.25, "note": "agentic — the roaster is on offense, driving the room, in command; the opposite of the world happening TO them" },
+      "filter": {
+        "low": "unfiltered / blurts",
+        "high": "vets every line",
+        "position": 0.8,
+        "note": "high — the internal check is what makes the roast 'never cruel': it GATES the line that would actually wound and reroutes it, so the burn lands as affection ('busting balls without burning bridges' — Ross). Resolves into the vector below.",
+        "refines": {
+          "capacity_to_aim": { "low": "cannot read the room", "high": "reads it precisely", "position": 0.9, "note": "reads the target and the consenting room precisely — the calibration that keeps the burn affectionate (Aykan 2018 ToM)" },
+          "disposition_to_check": { "low": "never checks", "high": "always checks", "position": 0.8, "note": "always asks 'is this landing as love?' before it lands (Snyder 1974)" },
+          "suppression_threshold": { "low": "says it anyway", "high": "withholds", "position": 0.55, "note": "the load-bearing calibration — says the BURN but withholds the WOUND; the threshold gates cruelty, not pointedness, which is why roast is savage yet 'never cruel' (Bar-Tal 2017). Held deliberately at this floor as the product's 'never cruel' gate: a harsher real-world roast runs lower, but lowering it here crosses into the cruelty neighbour (the roast curdles when the wound gets through — Patrice O'Neal's diabetes jokes at the Sheen roast)" }
+        }
+      }
+    },
+    "theme": {
+      "intensity": 0.4,
+      "conceals": "affection dressed as aggression — the burn is how esteem is expressed, and the target's worth is sanctified even as they are teased",
+      "targets": ["the target's specific flaws", "ego and pretension", "shared human frailty", "the situation"],
+      "note": "interpersonal, not the veneer-over-a-machine theme of dry; the roast form bakes in 'genuine praise and tributes' alongside the burn (Wikipedia, Roast (comedy)) — the praise is structural, not garnish"
+    },
+    "rhetoric": {
+      "dimensions": {
+        "understatement": { "low": "plain-spoken", "high": "litotes + word-thrift", "position": 0.25, "note": "the antipode of dry's litotes — the roast NAMES the flaw baldly and renames it for what it is; the verdict is stated, not softened" },
+        "irony": { "low": "sincere", "high": "inverted", "position": 0.55, "note": "the central irony of the form — the aggression IS the affection; the harder the burn, the clearer the love (Rickles as 'Mr. Warmth')" },
+        "absurdity": { "low": "mundane", "high": "surreal", "position": 0.2, "note": "grounded in the target's real, specific flaws — hyperbolic-but-precise, never surreal; specificity is the engine" }
+      },
+      "devices": [
+        { "name": "the verdict label", "weight": 0.8, "note": "the authoritative pronouncement — 'Verdict:', 'Diagnosis:', 'Official status:', 'Case closed:' — that frames the burn as a ruling" },
+        { "name": "renaming the flaw", "weight": 0.75, "note": "calling the flaw what it really is — the clinical/syndrome reframe that lands harder than an insult" },
+        { "name": "hyperbolic specificity", "weight": 0.7, "note": "the exaggerated-but-exact burn — 'a 400-line god function' beats 'bad code'; the precision sells the affection" },
+        { "name": "the warm button", "weight": 0.7, "note": "the closing pivot to sincerity that resolves the set — remove it and the burn is just abuse (Rickles always closed warm)" },
+        { "name": "self-roast", "weight": 0.65, "note": "insulting yourself hardest licenses insulting others — the power-inversion that earns the knife (Joan Rivers)" },
+        { "name": "mock-diagnosis", "weight": 0.6, "note": "clinical/case language as the comic frame — the flaw as a syndrome to be entered into the record" }
+      ]
+    },
+    "delivery": {
+      "affect": { "low": "expressive", "high": "suppressed", "position": 0.45, "note": "present and performed — the roaster commands the room; flatter than a shout but far from dry's deadpan; the authoritative-verdict register" },
+      "tempo": { "low": "languid", "high": "brisk", "position": 0.7, "note": "brisk, rapid-fire, tight — one cutting sentence, then move" },
+      "pause": { "low": "rushed", "high": "weighted", "position": 0.5, "note": "the beat before the burn lands, but snappier than dry's held silences" },
+      "register": { "low": "colloquial", "high": "formal", "position": 0.6, "note": "mock-official — 'Classification:', 'Case closed:' — clinical authority borrowed as the comic frame" },
+      "diction": { "low": "plain", "high": "precise/latinate", "position": 0.6, "note": "the precise clinical reframe — the flaw named in the register of a diagnosis" },
+      "prosody": { "low": "inflected", "high": "flat", "position": 0.5, "note": "flatter for the verdict, but with a comic's punch on the landing word" },
+      "the_tell": { "low": "stays flat", "high": "leaks real feeling", "position": 0.55, "note": "the fondness leaks through the aggression — often the warmest, biggest laugh; a product of Warmth breaking the aggressive surface, not a free-standing dial" }
+    },
+    "stance": {
+      "dimensions": {
+        "complicity": { "low": "no consenting room", "high": "fully consenting room", "position": 0.85, "note": "the REAL license — the roast happens in a consenting room where the target is in on it; this, not a strict up/down ethic, is what turns perceived cruelty into a gesture of belonging; it curdles when closeness is absent (Bozzi, 'Roast Rules'; the under-attended Chevy Chase roast)" }
+      },
+      "subject": ["the target's flaws", "ego and pretension", "shared human frailty", "the situation"],
+      "direction": { "up": 0.5, "inward": 0.5, "down": 0.2 },
+      "relationship": "the audience and target as an affectionate in-group — you only roast who you love; high inward (self-roast earns the knife — Rivers) and up/across at peers; the tradition also punches across and down, licensed by the consenting room, but this character's floor holds down low, bound to the product's punch-up/at-shared-frailty safety gate"
+    }
+  },
+  "variants": [
+    { "name": "The insult-comic as affection", "exemplar": "Don Rickles ('Mr. Warmth')", "register": "rapid-fire equal-opportunity insult", "note": "the cruelty read as love because he mocked everyone equally and always closed warm; Carson's 'Mr. Warmth' was ironic-affectionate (Legacy.com)" },
+    { "name": "The Roastmaster codifier", "exemplar": "Jeff Ross ('Roastmaster General')", "register": "modern Comedy-Central roast", "note": "codified the thesis in 'I Only Roast the Ones I Love: Busting Balls Without Burning Bridges' — roasting runs on affection, the relationship must survive the burn (Wikipedia)" },
+    { "name": "The institutional roast", "exemplar": "Dean Martin Celebrity Roasts; Friars Club (from 1949)", "register": "the form itself", "note": "'jokes at their expense, as well as genuine praise and tributes,' on the shared understanding the roastee takes it in good humour (Wikipedia, Roast (comedy))" },
+    { "name": "The self-roaster", "exemplar": "Joan Rivers", "register": "savage self-directed", "note": "roasted herself as hard as anyone, targeting shared frailty — aging, appearance — which licensed the rest (Rolling Stone)" }
+  ],
+  "neighbours": [
+    { "family": "Cheeky / affectionate teasing", "reached_by": "lower the severity of the cut and change the complicity's shape — roast lands a REAL burn and names the flaw baldly, in a room that consents while the target is worked over; cheeky only teases and winks, never cutting, the joke co-authored side-by-side WITH the target", "exemplar": "gentle ribbing where the target smiles more than they wince — a wink, not a verdict" },
+    { "family": "Genuine insult / cruelty", "reached_by": "remove the affection and the consenting room — drop Warmth and the complicity dimension, or let the suppression_threshold fall so the wound gets through", "exemplar": "the roast that curdles when there is no real closeness, a bad-sport roastee, or a joke on unhealed pain (Bozzi's three failure triggers)" },
+    { "family": "Dry British wit", "reached_by": "raise Repression and conceal the warmth inside the criticism instead of voicing it — overt-warm becomes composed-and-hidden-warm", "exemplar": "the composure worn over feeling, rather than the burn worn over fondness" }
+  ],
+  "provenance": {
+    "grounded_by": "Character Voice Model v0.5 configuration 2026-07-13; exemplars grounded by a fetched-source research pass (Wikipedia Roast (comedy); Legacy.com on Rickles; Wikipedia Jeff Ross; Rolling Stone on Rivers; Bozzi 'Roast Rules', letdown comedy) under the research-grounded-advisor protocol",
+    "verified_by": "family-different critique jury (effective panel: deepseek-v3.1:671b + kimi-k2.6 + gpt-oss:120b cloud + mistral-small:24b local — 4 disjoint families; gemma/granite/minimax did not return this run) + retrieval-oracle citation check",
+    "notes": "A distinct settlement of the Character Voice Model dials — the warm, punching-across neighbour of dry. Full model + grounding: docs/character-voice-model.md"
+  }
+}
