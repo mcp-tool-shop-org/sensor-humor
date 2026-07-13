@@ -35,8 +35,12 @@ export const InferenceSettingsSchema = z
  * key is rejected, so schema drift or a hand-edited row can't smuggle fields past the validator.
  * Optional fields (`degraded_reason`, `prompt_fingerprint`, `retries`, `latency_ms`) may be absent —
  * the sink omits them on the reuse / degraded paths.
+ *
+ * Exported (as the ZodObject, before `.refine`) so the Slice-2 enriched-record contract can
+ * `.extend()` it with the `provenance` block: the enriched schema is the same row plus provenance,
+ * built ON this one definition so the raw and enriched contracts can't drift (see provenance-schema.ts).
  */
-const BaseCaptureRowSchema = z
+export const BaseCaptureRowSchema = z
   .object({
     schema: z.literal(CAPTURE_SCHEMA),
     ts: z.number().int().nonnegative(),
@@ -58,15 +62,26 @@ const BaseCaptureRowSchema = z
   .strict();
 
 /**
- * The full row contract, including the cross-field invariant `valid === (degraded_reason ===
- * undefined)`: a row is a genuine model generation iff it was not degraded (backend fallback or
- * safety substitution). Downstream training filters on `valid`, so an internally-inconsistent row
- * (valid:true carrying a degraded_reason, or vice versa) is rejected rather than mislabeled.
+ * The cross-field invariant: a row is a genuine model generation iff it was not degraded (backend
+ * fallback or safety/language substitution). Extracted as a named predicate + issue so BOTH the row
+ * contract AND the Slice-2 enriched-record contract (which embeds the whole row) enforce the SAME
+ * rule — the invariant lives once and can't drift between the two schemas. Typed loosely (only the two
+ * fields it reads) so it applies to the base row and the enriched row alike.
  */
-export const CaptureRowSchema = BaseCaptureRowSchema.refine(
-  (r) => r.valid === (r.degraded_reason === undefined),
-  { message: 'valid must equal (degraded_reason === undefined)', path: ['valid'] },
-);
+export function validMatchesDegraded(r: { valid: boolean; degraded_reason?: string }): boolean {
+  return r.valid === (r.degraded_reason === undefined);
+}
+export const VALID_DEGRADED_ISSUE = {
+  message: 'valid must equal (degraded_reason === undefined)',
+  path: ['valid'],
+};
+
+/**
+ * The full row contract, including the cross-field invariant (see `validMatchesDegraded`). Downstream
+ * training filters on `valid`, so an internally-inconsistent row (valid:true carrying a
+ * degraded_reason, or vice versa) is rejected rather than mislabeled.
+ */
+export const CaptureRowSchema = BaseCaptureRowSchema.refine(validMatchesDegraded, VALID_DEGRADED_ISSUE);
 
 /** The row type — inferred from the schema, so it cannot drift from what the validator enforces. */
 export type CaptureRow = z.infer<typeof BaseCaptureRowSchema>;
