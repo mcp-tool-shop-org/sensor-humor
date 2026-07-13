@@ -8,7 +8,15 @@ import {
   MOODS,
   type MoodJudge,
 } from '../src/dataset/eval/judge.js';
-import { evaluate, shuffledMood, interPoolAgreement, type EvalRow, type DegradedLine } from '../src/dataset/eval/controls.js';
+import {
+  evaluate,
+  shuffledMood,
+  interPoolAgreement,
+  majorityBool,
+  majorityMood,
+  type EvalRow,
+  type DegradedLine,
+} from '../src/dataset/eval/controls.js';
 import type { MoodStyle } from '../src/types.js';
 
 // --- pure prompt / parse / counterbalance -----------------------------------
@@ -105,34 +113,66 @@ function degradedCorpus(): DegradedLine[] {
   return MOODS.map((mood) => ({ mood, input: 'a real situation', line: `[${mood}] CANNED generic fallback` }));
 }
 
-describe('evaluate — the three controls falsify correctly', () => {
-  it('a valid, discriminating judge PASSES every gate', async () => {
+describe('majority aggregation', () => {
+  it('majorityBool: strict majority, tie/empty -> null', () => {
+    expect(majorityBool([true, true, false])).toBe(true);
+    expect(majorityBool([false, false, true])).toBe(false);
+    expect(majorityBool([true, false])).toBeNull(); // even split
+    expect(majorityBool([null, null])).toBeNull(); // nothing decided
+    expect(majorityBool([true, null, true])).toBe(true); // nulls ignored
+  });
+
+  it('majorityMood: plurality winner, tie -> null', () => {
+    expect(majorityMood(['dry', 'dry', 'roast'])).toBe('dry');
+    expect(majorityMood(['dry', 'roast'])).toBeNull(); // tie
+    expect(majorityMood([null, 'cynic', null])).toBe('cynic');
+    expect(majorityMood([])).toBeNull();
+  });
+});
+
+describe('evaluate — cross-family panel + the three controls falsify', () => {
+  it('a single valid judge (panel of 1) passes every gate', async () => {
     const res = await evaluate([oracleJudge()], corpus(), degradedCorpus());
     expect(res.pass).toBe(true);
-    const p = res.pools[0];
-    expect(p.real_conformance).toBe(1);
-    expect(p.blind_accuracy).toBe(1);
-    expect(p.shuffled_conformance).toBe(0);
-    expect(p.degraded_conformance).toBe(0);
+    expect(res.panel.n_pools).toBe(1);
+    expect(res.panel.real_conformance).toBe(1);
   });
 
-  it('a rubber-stamp judge FAILS mood-blind, mood-shuffled, and degraded-line', async () => {
-    const res = await evaluate([rubberStampJudge()], corpus(), degradedCorpus());
+  it('a valid discriminating PANEL passes; panel numbers are clean', async () => {
+    const res = await evaluate([oracleJudge('a'), oracleJudge('b'), oracleJudge('c')], corpus(), degradedCorpus());
+    expect(res.pass).toBe(true);
+    expect(res.panel.real_conformance).toBe(1);
+    expect(res.panel.blind_accuracy).toBe(1);
+    expect(res.panel.shuffled_conformance).toBe(0);
+    expect(res.panel.degraded_conformance).toBe(0);
+  });
+
+  it('an all-rubber-stamp panel FAILS mood-blind, mood-shuffled, and degraded-line', async () => {
+    const res = await evaluate(
+      [rubberStampJudge('a'), rubberStampJudge('b'), rubberStampJudge('c')],
+      corpus(),
+      degradedCorpus(),
+    );
     expect(res.pass).toBe(false);
-    const g = res.gates[0];
-    expect(g.blind.pass).toBe(false); // ~chance after counterbalancing
-    expect(g.shuffled.pass).toBe(false); // real == shuffled → no gap
-    expect(g.degraded.pass).toBe(false); // canned lines all "conform"
-    expect(g.conformanceFloor.pass).toBe(true); // it does say yes to real lines
+    expect(res.panelGates.blind.pass).toBe(false); // ~chance after counterbalancing
+    expect(res.panelGates.shuffled.pass).toBe(false); // real == shuffled → no gap
+    expect(res.panelGates.degraded.pass).toBe(false); // canned lines all "conform"
+    expect(res.panelGates.conformanceFloor.pass).toBe(true); // it does say yes to real lines
   });
 
-  it('requires ALL pools to pass — one rubber-stamp pool sinks the verdict', async () => {
-    const res = await evaluate([oracleJudge('a'), rubberStampJudge('b')], corpus(), degradedCorpus());
-    expect(res.pass).toBe(false);
+  it('the panel OUTVOTES a single rogue judge (Verga PoLL robustness), and the diagnostic still flags it', async () => {
+    const res = await evaluate(
+      [oracleJudge('a'), oracleJudge('b'), rubberStampJudge('c')],
+      corpus(),
+      degradedCorpus(),
+    );
+    expect(res.pass).toBe(true); // two oracles outvote the one rubber-stamp per line
+    const rogue = res.gates.find((g) => g.judge === 'c');
+    expect(rogue?.pass).toBe(false); // the rogue pool still fails its OWN diagnostic gate
   });
 
-  it('reports inter-pool agreement (two oracles agree fully)', async () => {
-    const res = await evaluate([oracleJudge('a'), oracleJudge('b')], corpus(), degradedCorpus());
+  it('reports inter-pool agreement (oracles agree fully)', async () => {
+    const res = await evaluate([oracleJudge('a'), oracleJudge('b'), oracleJudge('c')], corpus(), degradedCorpus());
     expect(res.agreement).toBe(1);
     expect(interPoolAgreement(res.pools)).toBe(1);
   });

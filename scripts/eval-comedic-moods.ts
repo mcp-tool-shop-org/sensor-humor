@@ -7,11 +7,13 @@
  *
  * Usage:
  *   npx tsx scripts/eval-comedic-moods.ts <capture-or-enriched.jsonl>
- *        [--judges mistral-small:24b,gemma4:31b]   cross-family judge pools (NEVER a qwen* model)
- *        [--limit N]                               cap real rows (quick smoke run)
+ *        [--judges mistral-small:24b,gemma4:31b,granite4.1:30b]   cross-family panel (NEVER a qwen* model)
+ *        [--limit N]                                              cap real rows (quick smoke run)
  *
  * The generator is qwen2.5:7b, so judges MUST be a different family — the CLI refuses any qwen* model.
- * Judges run sequentially on the local GPU; a full 96-row × 2-pool run is many 24–31B calls (minutes).
+ * The primary verdict is the per-line MAJORITY across the panel (Verga PoLL); per-family numbers are
+ * reported as diagnostics. Judges run sequentially on the local GPU; a full 96-row × 3-family run is
+ * many 24–31B calls (minutes).
  */
 import { readFileSync } from 'node:fs';
 import { MOOD_STYLES, type MoodStyle } from '../src/types.js';
@@ -28,7 +30,9 @@ function die(msg: string, code = 2): never {
 // --- argv ------------------------------------------------------------------
 const args = process.argv.slice(2);
 let input: string | undefined;
-let judgeModels = ['mistral-small:24b', 'gemma4:31b'];
+// Default: a 3-family cross-family PANEL (Verga PoLL — a decorrelated panel beats any single judge and
+// halves self-preference). All non-qwen (the generator's family). ≥3 avoids majority-vote ties.
+let judgeModels = ['mistral-small:24b', 'gemma4:31b', 'granite4.1:30b'];
 let limit = Infinity;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -83,25 +87,31 @@ console.error(`[eval] ${rows.length} real rows · judges: ${judgeModels.join(', 
 console.error('[eval] running cross-family judges sequentially (this can take minutes on 24–31B models)…');
 const judges = judgeModels.map(ollamaJudge);
 
+const pct = (x: number): string => `${(x * 100).toFixed(1)}%`;
 evaluate(judges, rows, degraded)
   .then((res) => {
-    console.log('\n=== comedic-moods-v0 eval ===');
+    const P = res.panel;
+    console.log('\n=== comedic-moods-v0 eval — cross-family panel ===');
+    console.log(`panel of ${P.n_pools}: ${P.judges.join(', ')}`);
+    console.log(`  real mood-conformance : ${pct(P.real_conformance)}  (n=${P.n_real})`);
+    console.log(`  mood-blind accuracy   : ${pct(P.blind_accuracy)}  (${P.blind_correct}/${P.blind_n}, chance 16.7%)`);
+    console.log(`  mood-shuffled conform : ${pct(P.shuffled_conformance)}`);
+    console.log(`  degraded-line conform : ${pct(P.degraded_conformance)}  (n=${P.degraded_n})`);
+
+    console.log('\npanel gates (pre-registered) — the PRIMARY verdict:');
+    for (const gate of [res.panelGates.conformanceFloor, res.panelGates.blind, res.panelGates.shuffled, res.panelGates.degraded]) {
+      console.log(`  [${gate.pass ? 'PASS' : 'FAIL'}] ${gate.detail}`);
+    }
+    if (res.agreement !== null) console.log(`\ninter-pool agreement (reliability): ${pct(res.agreement)}`);
+
+    console.log('\n--- per-family diagnostics (a rogue judge the panel absorbs shows here) ---');
     for (const p of res.pools) {
-      console.log(`\npool ${p.judge}`);
-      console.log(`  real mood-conformance : ${(p.real_conformance * 100).toFixed(1)}%  (n=${p.n_real})`);
-      console.log(`  mood-blind accuracy   : ${(p.blind_accuracy * 100).toFixed(1)}%  (${p.blind_correct}/${p.blind_n}, chance 16.7%)`);
-      console.log(`  mood-shuffled conform : ${(p.shuffled_conformance * 100).toFixed(1)}%`);
-      console.log(`  degraded-line conform : ${(p.degraded_conformance * 100).toFixed(1)}%  (n=${p.degraded_n})`);
+      const g = res.gates.find((x) => x.judge === p.judge);
+      console.log(
+        `  ${p.judge} — ${g?.pass ? 'pass' : 'FAIL'}: conform ${pct(p.real_conformance)}, blind ${pct(p.blind_accuracy)}, shuffled ${pct(p.shuffled_conformance)}, degraded ${pct(p.degraded_conformance)}`,
+      );
     }
-    console.log('\ngates (pre-registered):');
-    for (const g of res.gates) {
-      console.log(`\n  pool ${g.judge} — ${g.pass ? 'PASS' : 'FAIL'}`);
-      for (const gate of [g.conformanceFloor, g.blind, g.shuffled, g.degraded]) {
-        console.log(`    [${gate.pass ? 'PASS' : 'FAIL'}] ${gate.detail}`);
-      }
-    }
-    if (res.agreement !== null) console.log(`\ninter-pool agreement (primary conformance): ${(res.agreement * 100).toFixed(1)}%`);
-    console.log(`\n=== v0 VERDICT: ${res.pass ? 'PASS' : 'FAIL'} ===`);
+    console.log(`\n=== v0 VERDICT (panel): ${res.pass ? 'PASS' : 'FAIL'} ===`);
     process.exit(res.pass ? 0 : 1);
   })
   .catch((e) => die(`[eval] failed: ${(e as Error).message}`, 2));
