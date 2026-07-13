@@ -7,16 +7,16 @@
  *
  * Usage:
  *   npx tsx scripts/enrich-comedic-moods.ts <capture.jsonl> [--out <enriched.jsonl>]
- *                                           [--source synthetic|user_input] [--consent n/a|opted_in|unknown|withdrawn]
+ *                                           [--source synthetic|user_input] [--consent n/a|opted_in|unknown|withdrawn] [--scrub]
  *
- * Defaults: --source synthetic (the internal-seed sweep). PII scrubbing is not applied here (Slice 2.2
- * adds the scrub pass); an opted-in user_input row therefore stays `internal` ("not yet PII-scrubbed"),
- * which is the correct fail-safe verdict until a scrub result is threaded in.
+ * Defaults: --source synthetic (the internal-seed sweep), no PII scrub. `--scrub` runs the regex-floor
+ * PII scrub on user_input rows (over input + generated line); a detected entity excludes the row. Without
+ * it, an opted-in user_input row stays `internal` ("not yet PII-scrubbed") — the correct fail-safe verdict.
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { enrichCaptureJsonl } from '../src/dataset/enrich.js';
-import type { SourceType, ConsentStatus, VerdictContext } from '../src/dataset/provenance.js';
+import { enrichCaptureJsonl, type EnrichOptions } from '../src/dataset/enrich.js';
+import type { SourceType, ConsentStatus } from '../src/dataset/provenance.js';
 
 const SOURCES: readonly SourceType[] = ['synthetic', 'user_input'];
 const CONSENTS: readonly ConsentStatus[] = ['n/a', 'opted_in', 'unknown', 'withdrawn'];
@@ -24,7 +24,7 @@ const CONSENTS: readonly ConsentStatus[] = ['n/a', 'opted_in', 'unknown', 'withd
 function usage(msg: string): never {
   console.error(msg);
   console.error(
-    'usage: tsx scripts/enrich-comedic-moods.ts <capture.jsonl> [--out <file>] [--source synthetic|user_input] [--consent n/a|opted_in|unknown|withdrawn]',
+    'usage: tsx scripts/enrich-comedic-moods.ts <capture.jsonl> [--out <file>] [--source synthetic|user_input] [--consent n/a|opted_in|unknown|withdrawn] [--scrub]',
   );
   process.exit(2);
 }
@@ -35,10 +35,12 @@ let input: string | undefined;
 let out: string | undefined;
 let source: SourceType = 'synthetic';
 let consent: ConsentStatus | undefined;
+let scrub = false;
 
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') out = args[++i];
+  else if (a === '--scrub') scrub = true;
   else if (a === '--source') {
     const v = args[++i];
     if (!SOURCES.includes(v as SourceType)) usage(`invalid --source '${v}' (expected: ${SOURCES.join(' | ')})`);
@@ -65,8 +67,11 @@ try {
 }
 
 // --- enrich ----------------------------------------------------------------
-const ctx: VerdictContext = { source_type: source, ...(consent ? { consent_status: consent } : {}) };
-const { records, summary } = enrichCaptureJsonl(text, ctx);
+if (scrub && source !== 'user_input') {
+  console.error(`  note: --scrub only applies to --source user_input (rows are ${source}; PII is n/a) — no scrub performed`);
+}
+const opts: EnrichOptions = { source_type: source, scrub, ...(consent ? { consent_status: consent } : {}) };
+const { records, summary } = enrichCaptureJsonl(text, opts);
 
 // --- write -----------------------------------------------------------------
 try {

@@ -14,8 +14,31 @@
  */
 import { CaptureRowSchema } from './schema.js';
 import { EnrichedRecordSchema } from './provenance-schema.js';
-import { assignVerdict, type EnrichedRecord, type RecordVerdict, type VerdictContext } from './provenance.js';
+import {
+  assignVerdict,
+  type EnrichedRecord,
+  type RecordVerdict,
+  type VerdictContext,
+  type SourceType,
+  type ConsentStatus,
+} from './provenance.js';
+import { scrubPii } from './pii-scrub.js';
 import type { RowError } from './validate.js';
+
+/** Options for a batch enrichment. Applied uniformly to every row in the file (the internal-seed sweep
+ *  is uniformly synthetic; a live-capture wrapper passes user_input + consent + scrub). */
+export interface EnrichOptions {
+  /** Where every row's input came from. Defaults to 'synthetic' (internal-seed). */
+  source_type?: SourceType;
+  /** Consent for user_input rows. Ignored for synthetic rows. */
+  consent_status?: ConsentStatus;
+  /**
+   * Run the regex-floor PII scrub on each user_input row (over its input + generated line) and feed the
+   * per-entity result into the verdict. Synthetic rows are never scrubbed (PII n/a). Off by default —
+   * without it, an opted-in user_input row correctly stays `internal` ("not yet PII-scrubbed").
+   */
+  scrub?: boolean;
+}
 
 /** Zero-initialised verdict tally — every RecordVerdict is a key so the summary shape is stable. */
 function emptyVerdictTally(): Record<RecordVerdict, number> {
@@ -41,12 +64,13 @@ export interface EnrichResult {
 }
 
 /**
- * Enrich JSONL capture text into records + a verdict summary. `ctx` is applied to every row (the
+ * Enrich JSONL capture text into records + a verdict summary. `options` is applied to every row (the
  * internal-seed sweep is uniformly synthetic; a live-capture wrapper passes user_input + consent).
- * PII scrubbing is not performed here — pass a `pii_scrub` result in `ctx` once a scrub has run
- * (Slice 2.2); absent it, an opted-in user_input row correctly stays `internal` ("not yet scrubbed").
+ * With `scrub: true`, each user_input row is PII-scrubbed (regex floor) over its input + generated line
+ * and the per-entity result feeds the verdict; a failing entity excludes the row.
  */
-export function enrichCaptureJsonl(text: string, ctx: VerdictContext = {}): EnrichResult {
+export function enrichCaptureJsonl(text: string, options: EnrichOptions = {}): EnrichResult {
+  const { source_type = 'synthetic', consent_status, scrub = false } = options;
   const lines = text.split(/\r?\n/);
   const records: EnrichedRecord[] = [];
   const errors: RowError[] = [];
@@ -72,7 +96,13 @@ export function enrichCaptureJsonl(text: string, ctx: VerdictContext = {}): Enri
       return;
     }
 
-    const enriched = assignVerdict(res.data, ctx);
+    // Build this row's verdict context. Synthetic rows are never scrubbed (PII n/a); a user_input row
+    // is scrubbed when `scrub` is on, and the per-entity result gates its verdict (a fail → excluded).
+    const rowCtx: VerdictContext = { source_type, ...(consent_status ? { consent_status } : {}) };
+    if (scrub && source_type === 'user_input') {
+      rowCtx.pii_scrub = scrubPii(`${res.data.input}\n${res.data.output}`).result;
+    }
+    const enriched = assignVerdict(res.data, rowCtx);
 
     // Defensive boundary: assignVerdict is typed to return an EnrichedRecord, but re-checking the
     // actual object against the enriched contract means the writer can never emit a record that would
