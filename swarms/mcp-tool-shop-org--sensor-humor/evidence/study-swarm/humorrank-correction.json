@@ -1,0 +1,3 @@
+[
+  {"claim": "HumorRank ranks LLM humor generation via theory-grounded (General Theory of Verbal Humor) Bradley-Terry pairwise preference tournaments, and its rankings are cross-judge stable, with independent Llama and Qwen LLM judges reaching Kendall tau = 0.889 on both benchmarks.", "authors": "Ajayi et al.", "year": 2026, "identifier": "arXiv:2604.19786"}
+]

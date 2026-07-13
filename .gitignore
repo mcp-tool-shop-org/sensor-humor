@@ -9,3 +9,9 @@ site/node_modules/
 
 # Local voice demo artifacts (large .wav binaries; regenerate with scripts/voice-demo.py)
 voice-demos/
+
+# Swarm runner scratch — machine-local manifests (carry an absolute local_path + save-point tags,
+# not portable). The durable study-swarm EVIDENCE (evidence/, the dispatch) IS committed as provenance;
+# only the runner state files are ignored.
+swarms/**/manifest.json
+swarms/**/manifest.*.json
