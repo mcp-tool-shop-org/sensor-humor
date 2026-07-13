@@ -62,6 +62,24 @@ held at arm's length. Highlights (full values in the JSON):
   (broad-surreal, "no punchlines"; only its straight-man characters deadpan) — both were in earlier drafts
   and were removed on sourced evidence.
 
+## The six filled profiles
+
+All six comedic moods are now configured against v0.5 (`profiles/*.json`), each a **distinct settlement of the
+same dials** — exemplar-grounded from each register's own tradition (these are not all British) and critiqued by
+the family-different jury:
+
+- **dry-british** — composure over a private catastrophe; *concealed* warmth, deadpan, on the knowing/deluded line.
+- **roast** — affection worn as aggression; warmth high and **overt**, the internal check *gating* cruelty (says the
+  burn, withholds the wound), licensed by a consenting room (Don Rickles, Jeff Ross, the Friars/Dean Martin lineage).
+- **chaotic** — deadpan escalation of the absurd, delivered as fact; high capacity-to-aim + **low**
+  suppression-threshold — knows it's absurd, commits anyway (The Onion, Steven Wright, Acaster, precision-mode Python).
+- **cheeky** — licensed impudence with a wink; low repression, high audience-complicity; rendered as an
+  orientation-neutral **mode**, not a class/camp caricature (Max Miller, Frankie Howerd, the McGill postcards).
+- **cynic** — bitter foreknowledge, flatly confirmed; **genuine cold** where dry conceals warmth — dry's darker
+  neighbour, kept distinct by warmth, the tell, and misanthropy (Daria, Larry David; Carlin's "disappointed idealist").
+- **zoomer** — terminally-online snark, deployed self-awarely; the **individuation dials** (max self-awareness +
+  intact theory-of-mind, aimed at the code) guard the register-coding caricature risk (Hofmann 2024, CoMPosT).
+
 ## Research grounding
 
 Design questions were dispatched to a 4-lane research swarm, then every citation was checked by a
@@ -103,5 +121,8 @@ mismatch between how they assume the world views them and the brutal reality").
   keep the tag (the model is designed to grow).
 - **Grounded by:** the study-swarm above, under the research-grounded-advisor protocol. Citations
   verifier-checked (family-different lens + retrieval oracle).
-- **Next:** configure the other five moods (roast, chaotic, cheeky, cynic, zoomer) as profiles against this
-  same schema, each a different settlement of the same dials.
+- **Filled profiles:** all six moods are configured (`profiles/{dry-british,roast,chaotic,cheeky,cynic,zoomer}.json`),
+  validated (`scripts/validate-voice-profile.ts`) and characterization-tested. Each was exemplar-grounded from
+  fetched sources and folded the family-different jury's convergent fixes.
+- **Next:** fine-tune / generate against these profiles; extend any profile with finer `refines` sub-dimensions
+  as the character work demands (additive dimensions keep the v0.5 tag).
