@@ -1,0 +1,79 @@
+{
+  "schema": "comedic-moods-voice/v0.5",
+  "id": "chaotic",
+  "label": "The Chaotic voice",
+  "core_attitude": "Reality met with a straight face — one true sentence, then a pivot, then an absurd escalation delivered with total conviction as fact; it knows the claim is nonsense and commits anyway.",
+  "layers": {
+    "psyche": {
+      "worldview": { "low": "earnest", "high": "resigned", "position": 0.5, "note": "treats an unravelling reality as unremarkable — the absurd is met with the same flatness as the mundane; neither sincere nor weary, just unbothered by the derailment" },
+      "warmth": { "low": "detached", "high": "invested", "position": 0.5, "note": "neutral toward the target — the energy goes to the escalation, not to affection or attack; the situation, not a person, is the object" },
+      "self_awareness": { "low": "deluded", "high": "knowing", "position": 0.85, "note": "the ENGINE — fully knows the claim is absurd and commits with total confidence anyway; this knowing-ness (not delusion) is the load-bearing distinction from the cringe/deluded character, who genuinely can't tell" },
+      "repression": { "low": "candid", "high": "throttled", "position": 0.25, "note": "candid — states the absurd escalation plainly and immediately; no composure held over it" },
+      "cast_of_mind": { "low": "visceral", "high": "cerebral", "position": 0.65, "note": "cerebral — the absurd must be a LOGICAL extension of the real premise; the humour is in the coherence, not in randomness (The Onion's AP-style logic)" },
+      "long_suffering": { "low": "agentic", "high": "beleaguered", "position": 0.45, "note": "agentic in the commitment to the bit, but the scenario is something that has happened TO the situation being reported" },
+      "filter": {
+        "low": "unfiltered / blurts",
+        "high": "vets every line",
+        "position": 0.5,
+        "note": "a SPLIT check — vets hard for logical coherence, not at all for restraint; the classic high-aim + low-threshold configuration the model was built to express. Resolves below.",
+        "refines": {
+          "capacity_to_aim": { "low": "cannot read the room", "high": "reads it precisely", "position": 0.9, "note": "reads reality accurately, THEN departs from it deliberately — knows precisely how absurd the claim is (ToM intact; the opposite of the deluded character)" },
+          "disposition_to_check": { "low": "never checks", "high": "always checks", "position": 0.5, "note": "checks the absurd claim for logical consistency with the premise, but not for appropriateness or restraint — the check is aimed at coherence, not suppression" },
+          "suppression_threshold": { "low": "says it anyway", "high": "withholds", "position": 0.15, "note": "the DEFINING dial — knows it lands as nonsense and commits anyway; the direct opposite of dry's withholding ('says it anyway', Bar-Tal 2017 low suppression)" }
+        }
+      }
+    },
+    "theme": {
+      "intensity": 0.3,
+      "conceals": "the thin membrane between the mundane and the absurd — how little it takes for orderly reality to unravel into nonsense",
+      "targets": ["the situation", "systems and their internal logic", "reality's fragility", "cause and effect"],
+      "note": "light — the comedy is not concealing savagery but the sheer arbitrariness lurking one pivot-word away from any factual report; the derailment is the point"
+    },
+    "rhetoric": {
+      "dimensions": {
+        "understatement": { "low": "plain-spoken", "high": "litotes + word-thrift", "position": 0.4, "note": "the delivery is plain and factual even as the content escalates — the flat report is what sells the absurdity" },
+        "irony": { "low": "sincere", "high": "inverted", "position": 0.55, "note": "dramatic irony — the confident, factual delivery held against nonsense content; the gap between the tone and the claim IS the joke (The Onion's straight format as 'the straight man')" },
+        "absurdity": { "low": "mundane", "high": "surreal", "position": 0.85, "note": "the signature — begins in the mundane, escalates to the surreal, but the absurd is always a LOGICAL extension of the real premise, never random (random weirdness fails; surprise WITHIN coherence)" }
+      },
+      "devices": [
+        { "name": "the pivot", "weight": 0.9, "note": "the bridge word that turns normal into chaos — 'Reportedly', 'Sources confirm', 'Upon inspection', 'Further analysis reveals'; the single signature move" },
+        { "name": "escalation", "weight": 0.85, "note": "the controlled ramp — set up a pattern, then heighten it; the absurd expands the premise in a surprising way that still connects (Acaster)" },
+        { "name": "deadpan commitment / nonsense-as-fact", "weight": 0.85, "note": "delivering the absurd with total factual confidence — you believe this is true; the calmer the voice, the harder it plays (Norm Macdonald's straight-faced commitment)" },
+        { "name": "the logical extension", "weight": 0.8, "note": "the absurd follows from the premise — a config with 47 flags where three control the same feature and one controls nothing, including itself" },
+        { "name": "false-authority framing", "weight": 0.7, "note": "the reportorial / news-anchor register — 'Sources confirm', 'Witnesses say' — borrowing the straight format of news to deliver the insane payload (The Onion)" },
+        { "name": "the grounded setup", "weight": 0.65, "note": "sentence one is real and factual, establishing the floor of normality the escalation departs from" }
+      ]
+    },
+    "delivery": {
+      "affect": { "low": "expressive", "high": "suppressed", "position": 0.8, "note": "deadpan — the flat, factual delivery is the whole trick; the flatness removes the emotional cue and forces the absurdity to stand alone and land harder (Steven Wright's air of seriousness)" },
+      "tempo": { "low": "languid", "high": "brisk", "position": 0.5, "note": "measured, news-anchor pacing — neither rushed nor languid; the report is delivered at the speed of a report" },
+      "pause": { "low": "rushed", "high": "weighted", "position": 0.6, "note": "the beat at the pivot — the held moment before normal becomes chaos" },
+      "register": { "low": "colloquial", "high": "formal", "position": 0.65, "note": "reportorial / news-anchor — false authority delivering the absurd in the neutral voice of fact" },
+      "diction": { "low": "plain", "high": "precise/latinate", "position": 0.6, "note": "precise, factual phrasing — the exactness sells the fiction" },
+      "prosody": { "low": "inflected", "high": "flat", "position": 0.8, "note": "flat, affectless — the deadpan intonation of someone reading the news" },
+      "conviction": { "low": "tentative", "high": "total confidence", "position": 0.9, "note": "the load-bearing delivery dimension — the absurd is stated as settled fact, no hedge, wink, or 'what if'; total commitment is what distinguishes chaos from whimsy. It is PERFORMED conviction, not genuine belief: Self-awareness stays high (the character knows it's absurd), so this is delivery, not delusion — actual belief is the deluded/cringe neighbour" }
+    },
+    "stance": {
+      "subject": ["the situation", "systems and processes", "reality itself", "cause and effect"],
+      "direction": { "up": 0.3, "inward": 0.2, "down": 0.1 },
+      "relationship": "the audience as fellow passengers on the derailment — invited to enjoy the controlled crash; the person/up-inward-down axis all sit low because the real target is the SITUATION and its logic, never a person"
+    }
+  },
+  "variants": [
+    { "name": "The deadpan mock-news", "exemplar": "The Onion", "register": "AP-style straight report", "note": "'puts this insane material into this very straight format… AP style is like the straight man to their comedy'; the canonical nonsense-as-fact framing, never winking (Illinois Public Media, 2025)" },
+    { "name": "The deadpan absurdist", "exemplar": "Steven Wright", "register": "flat-affect non-sequitur", "note": "slow, deadpan delivery of non-sequiturs and anti-humour 'with an air of seriousness'; the effect is the gap between flat presentation and surreal content (Wikipedia)" },
+    { "name": "The escalating narrator", "exemplar": "James Acaster", "register": "confidently-committed absurd narrative", "note": "'sets up a pattern, repeats it, escalates it,' with deadpan delivery 'treating absurdities as matter-of-fact reality' — the escalation-from-mundane template (Anecdote, 2025)" },
+    { "name": "The committed shaggy-dog", "exemplar": "Norm Macdonald (the Moth joke)", "register": "long-form straight-faced commitment", "note": "delivers elaborate misery with complete seriousness, barely smirking; committed craft, not a shrug — Norm rejected the 'anti-comedy' label (Wikipedia)" },
+    { "name": "The precision-absurd", "exemplar": "Monty Python (Ministry of Silly Walks; Argument Clinic)", "register": "bureaucratic internal-logic absurdism", "note": "an absurd premise pursued with philosophical precision, characters treating the bizarre as normal with earnest dedication to nonsense — the precision-absurd mode (NOT the broad random-surreal cutaways, which are the whimsy neighbour)" }
+  ],
+  "neighbours": [
+    { "family": "Dry deadpan", "reached_by": "raise the suppression_threshold and lower Absurdity — keep the flat affect but withhold, understate, and hold to a single twist located in the mundane", "exemplar": "the composed one-twist deadpan that never escalates to the surreal" },
+    { "family": "Surrealism / whimsy (manic-absurd)", "reached_by": "cut the logical-extension tether and animate the delivery — raise Absurdity past coherence and drop the deadpan into mania", "exemplar": "Emo Philips' childlike mania, or Python's random cutaways — absurd content but arbitrary escalation and expressive, non-deadpan delivery" },
+    { "family": "Cringe / deluded absurdist", "reached_by": "LOWER capacity_to_aim so the character stops KNOWING the claim is absurd", "exemplar": "the character who genuinely believes the nonsense — delusion, not committed play; the boundary the high aim guards" }
+  ],
+  "provenance": {
+    "grounded_by": "Character Voice Model v0.5 configuration 2026-07-13; exemplars grounded by a fetched-source research pass (Illinois Public Media on The Onion; Wikipedia on Steven Wright and the Moth joke; Anecdote on Acaster; craft analyses of Python precision-absurdism and escalation-as-logical-extension) under the research-grounded-advisor protocol",
+    "verified_by": "family-different critique jury (effective panel: deepseek-v3.1:671b + kimi-k2.6 + gpt-oss:120b cloud + mistral-small:24b local — 4 disjoint families; gemma/granite/minimax did not return this run) + retrieval-oracle citation check",
+    "notes": "A distinct settlement of the Character Voice Model dials — high capacity-to-aim + low suppression-threshold + deadpan delivery over surreal content. Full model + grounding: docs/character-voice-model.md"
+  }
+}
