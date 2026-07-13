@@ -157,3 +157,24 @@ describe('cheeky — licensed impudence with a wink', () => {
     expect(cheeky.provenance.notes).toMatch(/orientation-neutral/i);
   });
 });
+
+describe('cynic — bitter foreknowledge; the darker neighbour of dry', () => {
+  const cynic = load('cynic');
+
+  it('is genuinely cold — colder than dry, whose warmth is merely concealed', () => {
+    expect(cynic.layers.psyche.warmth.position).toBeLessThan(0.25);
+    expect(cynic.layers.psyche.warmth.position).toBeLessThan(dryBritish.layers.psyche.warmth.position);
+  });
+
+  it('leaks only more cold — the tell sits below dry (which leaks hidden warmth)', () => {
+    expect(cynic.layers.delivery.the_tell.position).toBeLessThan(dryBritish.layers.delivery.the_tell.position);
+  });
+
+  it('carries real contempt — the misanthropy stance dimension, absent in dry', () => {
+    expect(cynic.layers.stance.dimensions.misanthropy.position).toBeGreaterThan(0.6);
+  });
+
+  it('names dry as its neighbour — the boundary that keeps them distinct', () => {
+    expect(cynic.neighbours.some((n: { family: string }) => /dry/i.test(n.family))).toBe(true);
+  });
+});
