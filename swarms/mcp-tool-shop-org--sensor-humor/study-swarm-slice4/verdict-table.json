@@ -1,0 +1,276 @@
+{
+  "top_verdict": "revise",
+  "receipt_id": "prism-01kxcwchks7x57eg3er6vjd21g",
+  "verifier_models": [
+    "mistral-small:24b"
+  ],
+  "note": "14 unresolvable = transient arXiv-429/DOI-prefix, re-retrieved out-of-band (all HTTP 200, titles match); Mir via ACL. 38/38 exist, 0 fabricated, 0 misattributed.",
+  "citations": [
+    {
+      "id": null,
+      "identifier": "arXiv:2511.09133",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2401.01275",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2109.04817",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2502.04718",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2306.00539",
+      "existence": "resolved",
+      "finding_match": "supported",
+      "verdict": "accept"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2204.04907",
+      "existence": "resolved",
+      "finding_match": "supported",
+      "verdict": "accept"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2510.13898",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:1811.00671",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2306.05685",
+      "existence": "resolved",
+      "finding_match": "contradicted",
+      "verdict": "revise"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2304.13462",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2508.10014",
+      "existence": "resolved",
+      "finding_match": "supported",
+      "verdict": "accept"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2404.13076",
+      "existence": "resolved",
+      "finding_match": "supported",
+      "verdict": "accept"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2410.21819",
+      "existence": "resolved",
+      "finding_match": "supported",
+      "verdict": "accept"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2404.18796",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2305.17926",
+      "existence": "resolved",
+      "finding_match": "supported",
+      "verdict": "accept"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2509.26072",
+      "existence": "resolved",
+      "finding_match": "supported",
+      "verdict": "accept"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:1712.01765",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2307.07889",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "DOI:10.18653/v1/N19-1049",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:1909.12335",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2004.05691",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2502.14074",
+      "existence": "resolved",
+      "finding_match": "supported",
+      "verdict": "accept"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2401.12474",
+      "existence": "resolved",
+      "finding_match": "supported",
+      "verdict": "accept"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2503.17662",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2601.01060",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2504.07448",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2406.10882",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2305.11206",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2412.00804",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2408.16673",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2304.05335",
+      "existence": "resolved",
+      "finding_match": "supported",
+      "verdict": "accept"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2311.04892",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2310.11501",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2305.18189",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2403.00742",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2402.10962",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2309.05196",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    },
+    {
+      "id": null,
+      "identifier": "arXiv:2310.06452",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate"
+    }
+  ]
+}
