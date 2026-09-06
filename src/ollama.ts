@@ -204,6 +204,8 @@ function getAbortableClient(signal: AbortSignal): Ollama {
 const RECENT_WINDOW = 20;
 /** How many consecutive fallbacks before we escalate ONCE to stderr (degrade loudly, not per-call). */
 const CONSECUTIVE_FALLBACK_ALERT = 5;
+/** After the circuit opens, wait this long before probeOllama may try to close it. */
+const CIRCUIT_COOLDOWN_MS = 10_000;
 
 /** Lightweight in-process generation stats, surfaced by the debug_status tool. */
 export interface OllamaStats {
@@ -251,6 +253,10 @@ const _recentOutcomes: boolean[] = [];
  *  Latches so we warn once on crossing the threshold, not on every subsequent fallback (no spam);
  *  cleared on the next success. */
 let _consecutiveAlertFired = false;
+/** Epoch ms when the fail-fast circuit last refused a live generate (0 = closed). */
+let _circuitOpenedAt = 0;
+/** Latch for the one-shot auth / model-not-found stderr line (reset on success). */
+let _terminalLogged = false;
 
 function pushOutcome(fellBack: boolean): void {
   _recentOutcomes.push(fellBack);
@@ -269,9 +275,11 @@ function recordFallback(reason: DegradedReason): void {
     _consecutiveAlertFired = true;
     console.error(
       `[sensor-humor] DEGRADED: ${_stats.consecutive_fallbacks} consecutive Ollama fallbacks ` +
-        `(last reason: ${reason}). Comedy tools are serving canned fallbacks — check the backend ` +
-        `(model pulled? OLLAMA_HOST reachable?). Set SENSOR_HUMOR_DEBUG=true for per-call detail.`,
+        `(last reason: ${reason}). Comedy tools are serving canned fallbacks and will skip Ollama ` +
+        `until a cooldown probe succeeds. Check the backend (model pulled? OLLAMA_HOST reachable? ` +
+        `OLLAMA_API_KEY set for a remote host?). Set SENSOR_HUMOR_DEBUG=true for per-call detail.`,
     );
+    _circuitOpenedAt = Date.now();
   }
 }
 
@@ -281,7 +289,43 @@ function recordSuccess(latencyMs: number): void {
   _stats.last_success_ts = Date.now();
   _stats.consecutive_fallbacks = 0;
   _consecutiveAlertFired = false;
+  _circuitOpenedAt = 0;
+  _terminalLogged = false;
   pushOutcome(false);
+}
+
+/** One-shot operator line for terminal backend errors (auth / missing model). */
+function logTerminalBackendError(reason: DegradedReason): void {
+  if (_terminalLogged) return;
+  _terminalLogged = true;
+  if (reason === 'auth') {
+    console.error(
+      `[sensor-humor] Ollama at ${getOllamaHost()} rejected the request (auth). ` +
+        `Set OLLAMA_API_KEY for this remote/cloud host. Serving a canned fallback; will not retry.`,
+    );
+  } else if (reason === 'model-not-found') {
+    const model = getModel();
+    console.error(
+      `[sensor-humor] Model "${model}" is not pulled at ${getOllamaHost()}. ` +
+        `Run: ollama pull ${model}. Serving a canned fallback; will not retry.`,
+    );
+  }
+}
+
+/** Return the canned fallback without hitting Ollama (circuit is open). */
+function circuitFallback<T>(
+  fallback: T,
+  reason: DegradedReason,
+  fingerprint: string,
+): GenerateComedyResult<T> {
+  _stats.total_calls++;
+  recordFallback(reason);
+  return {
+    data: fallback,
+    fallback_reason: reason,
+    retries: 0,
+    prompt_fingerprint: fingerprint,
+  };
 }
 
 /** Read a snapshot of generation stats (does not perform any live Ollama call). */
@@ -316,6 +360,8 @@ export function resetOllamaStats(): void {
   _stats.last_latency_ms = undefined;
   _recentOutcomes.length = 0;
   _consecutiveAlertFired = false;
+  _circuitOpenedAt = 0;
+  _terminalLogged = false;
 }
 
 /**
@@ -412,7 +458,10 @@ export interface GenerateComedyResult<T> {
 
 /**
  * Call Ollama with structured JSON output.
- * Retries once on parse/validation failure, then falls back to a safe default.
+ * Retries on parse/validation/connection failure (budget via getMaxRetries()), then falls back
+ * to a safe default. Auth and model-not-found are terminal on the first attempt. Once
+ * consecutive_fallbacks is at the alert threshold, returns the canned fallback immediately
+ * (cooldown probe may close the circuit).
  */
 export async function generateComedy<T>(
   options: GenerateComedyOptions<T>,
@@ -428,6 +477,26 @@ export async function generateComedy<T>(
   // this call), and is the trace's prompt_hash. Always computed (cheap, and the light trace fields
   // are always populated). (ROADMAP v2.0 "Chain Trace Tool")
   const fingerprint = promptFingerprint(systemPrompt);
+
+  // Fail-fast: the backend is already known-dead. Skip the retry budget (and a hung timeout)
+  // unless a cooldown probe shows the daemon recovered.
+  if (_stats.consecutive_fallbacks >= CONSECUTIVE_FALLBACK_ALERT) {
+    const lastReason: DegradedReason = _stats.last_fallback_reason ?? 'exhausted';
+    const now = Date.now();
+    const onCooldown = _circuitOpenedAt > 0 && now - _circuitOpenedAt < CIRCUIT_COOLDOWN_MS;
+    if (!onCooldown) {
+      const probe = await probeOllama(1000);
+      if (probe.reachable && probe.model_available) {
+        _circuitOpenedAt = 0;
+      } else {
+        _circuitOpenedAt = now;
+        return circuitFallback(fallback, lastReason, fingerprint);
+      }
+    } else {
+      return circuitFallback(fallback, lastReason, fingerprint);
+    }
+  }
+
   _stats.total_calls++;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -546,8 +615,12 @@ export async function generateComedy<T>(
       if (debug) {
         console.error(`[sensor-humor] Attempt ${attempt + 1} failed [${errType}]:`, (err as Error).message);
       }
-      if (attempt === maxRetries) {
-        if (debug) {
+      // Auth and a missing model will not recover on retry — fail closed on the first attempt.
+      const terminal = errType === 'auth' || errType === 'model-not-found';
+      if (terminal || attempt === maxRetries) {
+        if (terminal) {
+          logTerminalBackendError(errType);
+        } else if (debug) {
           console.error(`[sensor-humor] All retries exhausted (last: ${errType}), returning fallback`);
         }
         recordFallback(errType);

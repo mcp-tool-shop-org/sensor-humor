@@ -15,12 +15,12 @@ import { roast } from './tools/roast.js';
 import { heckle } from './tools/heckle.js';
 import { catchphraseGenerate, catchphraseCallback } from './tools/catchphrase.js';
 import { runningGag } from './tools/running_gag.js';
-import { getSession, resetSession } from './session.js';
+import { getSession, resetSession, persistEnabled, sessionFilePath, getGagMinDistance, getGagMaxFires, fullTraceEnabled } from './session.js';
 import { MOOD_DESCRIPTIONS } from './types.js';
 import { createHash } from 'node:crypto';
 import { baseSystemPrefix } from './prompts/base.js';
 import { getMoodVoiceNotes, getMoodSystemPrompt, getPromptVersion, getActivePromptKey } from './prompts/loader.js';
-import { getModel, getOllamaHost, getTimeoutMs, getTemperature, getOllamaStats, isDebug, probeOllama, hasApiKey } from './ollama.js';
+import { getModel, getOllamaHost, getTimeoutMs, getTemperature, getMaxRetries, getOllamaStats, isDebug, probeOllama, hasApiKey } from './ollama.js';
 
 const server = new McpServer({
   name: 'sensor-humor',
@@ -224,7 +224,7 @@ server.tool(
 // call, never a silent auto-write.
 server.tool(
   'running_gag',
-  'Plant a running gag for later callbacks. Provide a setup (the bit) and a short tag (the trigger word comic_timing watches for). Stored for the session; comic_timing can call it back once a couple of turns have passed, and it retires after a few fires so it never gets stale. A gag whose setup or tag trips the safety filter is refused, not stored.',
+  'Plant a running gag for later callbacks. Provide a setup (the bit) and a short tag (the trigger word comic_timing watches for). Stored for the session; comic_timing can call it back once a couple of turns have passed, and it retires after a few fires so it never gets stale. A gag whose setup or tag trips the safety filter or is not English (non-Latin script) is refused, not stored.',
   {
     setup: z.string().describe('The gag itself — the recurring bit to reference later (e.g. "the deadbeef pointer that keeps haunting this build")'),
     tag: z.string().describe('A short trigger word/phrase comic_timing watches for to fire the callback (e.g. "deadbeef")'),
@@ -281,6 +281,13 @@ server.tool(
         ollama_host: getOllamaHost(),
         ollama_api_key_set: hasApiKey(),
         timeout_ms: getTimeoutMs(),
+        temperature: getTemperature(),
+        max_retries: getMaxRetries(),
+        persist: persistEnabled(),
+        session_path: sessionFilePath(),
+        gag_min_distance: getGagMinDistance(),
+        gag_max_fires: getGagMaxFires(),
+        full_trace: fullTraceEnabled(),
         prompt_version: getPromptVersion(),
         active_prompt_key: activePromptKey,
         prompt_fingerprint: promptFingerprint,

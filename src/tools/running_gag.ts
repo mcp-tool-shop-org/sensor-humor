@@ -15,15 +15,15 @@
  *     over-reliance. So planting a gag is a chosen tool call, never an inferred side effect.
  *   - Store-time safety gate. A gag is STORED and later REPLAYED verbatim to the user on callback,
  *     so a dirty gag must never be plantable in the first place. The terminal safety gate
- *     (hasHarshLeak/hasSimileLeak, McGraw & Warren 2010 benign-violation floor) runs on
- *     setup+tag here and REFUSES a dirty gag — closing the store-time hole rather than relying only
- *     on the output gates downstream (defense-in-depth, mirroring how fromSnapshot drops dirty
- *     persisted gags on load).
+ *     (hasHarshLeak/hasSimileLeak/hasLanguageLeak, McGraw & Warren 2010 benign-violation floor)
+ *     runs on setup+tag here and REFUSES a dirty gag — closing the store-time hole rather than
+ *     relying only on the output gates downstream (defense-in-depth, mirroring how fromSnapshot
+ *     drops dirty persisted gags on load).
  */
 
 import { getSession } from '../session.js';
 import type { RunningGagResult } from '../types.js';
-import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak } from '../validators.js';
+import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak, hasLanguageLeak } from '../validators.js';
 
 /**
  * A dirty gag is UNPLANTABLE. We refuse (throw) rather than substitute a safe line the way the
@@ -61,16 +61,22 @@ export function runningGag(setup: string, tag: string): RunningGagResult {
     );
   }
 
-  // Terminal safety gate: a gag is stored and later REPLAYED verbatim on callback, so a dirty gag
-  // must never be plantable. Check setup and tag together and REFUSE if either leaks (C1 / C5).
-  if (
+  // Terminal safety + language gate: a gag is stored and later REPLAYED verbatim on callback, so a
+  // dirty or non-English gag must never be plantable. Check setup and tag together and REFUSE if
+  // either leaks (C1 / C5). Safety (slur/simile) wins the message when both fire.
+  const harshOrSimile =
     hasHarshLeak(cleanSetup) ||
     hasHarshLeak(cleanTag) ||
     hasSimileLeak(cleanSetup) ||
-    hasSimileLeak(cleanTag)
-  ) {
+    hasSimileLeak(cleanTag);
+  if (harshOrSimile) {
     throw new DirtyGagError(
       "I won't plant that gag — its setup or tag trips the safety filter (a slur or a simile). Rephrase it clean and I'll store it for callbacks.",
+    );
+  }
+  if (hasLanguageLeak(cleanSetup) || hasLanguageLeak(cleanTag)) {
+    throw new DirtyGagError(
+      "I won't plant that gag — its setup or tag isn't English (non-Latin script). Rephrase it in English and I'll store it for callbacks.",
     );
   }
 

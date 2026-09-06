@@ -140,7 +140,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
   const validatorsTriggered: string[] = [];
 
   // Simile/comparison leak check: retry once with negative prompt
-  if (hasSimileLeak(result.data.heckle)) {
+  if (!result.fallback_reason && hasSimileLeak(result.data.heckle)) {
     validatorsTriggered.push('simile');
     const simileRetryPrompt = `${userPrompt}${SIMILE_RETRY_SUFFIX}`;
     result = await generateComedy<z.infer<typeof HeckleSchema>>(
@@ -163,7 +163,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
   }
 
   // Harshness filter: reject slurs/extreme insults and retry once
-  if (hasHarshLeak(result.data.heckle)) {
+  if (!result.fallback_reason && hasHarshLeak(result.data.heckle)) {
     validatorsTriggered.push('harsh');
     const cleanPrompt = `${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel.`;
     result = await generateComedy<z.infer<typeof HeckleSchema>>(
@@ -189,7 +189,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
   // Language-conformance filter: retry once in English if the heckle code-switched out of the Latin
   // script, then substitute an input-free English line if it persists. A conformance degrade
   // (degraded_reason:'language'), distinct from the safety filters — its own flag, no safety counter.
-  if (hasLanguageLeak(result.data.heckle)) {
+  if (!result.fallback_reason && hasLanguageLeak(result.data.heckle)) {
     validatorsTriggered.push('language');
     const cleanPrompt = `${userPrompt}${LANGUAGE_RETRY_SUFFIX}`;
     result = await generateComedy<z.infer<typeof HeckleSchema>>(
