@@ -1,7 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { resetSession, getSession, getGagMinDistance, getGagMaxFires } from '../src/session.js';
 import { runningGag, DirtyGagError } from '../src/tools/running_gag.js';
 import { HARSH_FILTER, SIMILE_PATTERN, hasHarshLeak } from '../src/validators.js';
+import { isolatePersistEnv, restorePersistEnv, snapshotPersistEnv } from './setup.js';
+
+const ORIG_PERSIST_ENV = snapshotPersistEnv();
+isolatePersistEnv();
+beforeAll(() => isolatePersistEnv());
+afterAll(() => restorePersistEnv(ORIG_PERSIST_ENV));
 
 // The running-gag/callback mechanic was DEAD: running_gags was never seeded at runtime, so
 // findCallbackCandidates always returned [] and no callback could ever fire. These tests prove the

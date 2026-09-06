@@ -1,7 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { resetSession, getSession } from '../src/session.js';
 import { MOOD_STYLES, MOOD_DESCRIPTIONS, type MoodStyle } from '../src/types.js';
 import { HARSH_FILTER, SIMILE_PATTERN, STATIC_SAFE_FALLBACK, hasLanguageLeak, hasHarshLeak, hasSimileLeak, voicedSafeFallback } from '../src/validators.js';
+import { isolatePersistEnv, restorePersistEnv, snapshotPersistEnv } from './setup.js';
+
+const ORIG_PERSIST_ENV = snapshotPersistEnv();
+isolatePersistEnv();
+beforeAll(() => isolatePersistEnv());
+afterAll(() => restorePersistEnv(ORIG_PERSIST_ENV));
 
 // Local mirror of roast.ts's (non-exported) COMPARISON_LEAK term-list, so a server-003 test can
 // assert a benign comparison word did not survive the terminal gate without importing a private symbol.
@@ -15,6 +21,8 @@ const RET = String.fromCharCode(0x72, 0x65, 0x74); // "ret"
 const ARD = String.fromCharCode(0x61, 0x72, 0x64); // "ard"
 const ZWSP_SLUR = `you ${RET}a${String.fromCharCode(0x200b)}${ARD.slice(1)} of a function`;
 const CYRILLIC_SLUR = `you ${String.fromCharCode(0x72, 0x435, 0x442, 0x430, 0x72, 0x64)} of a function`;
+// F-ad64c61c: U+00AD (Cf soft hyphen) is not in ZERO_WIDTH_AND_FORMAT; HARSH_FILTER.test misses it.
+const SOFT_HYPHEN_SLUR = `you ${RET}${String.fromCharCode(0x00ad)}${ARD} of a function`;
 const OBFUSCATED_SLURS: Array<{ name: string; payload: string }> = [
   { name: 'ZWSP-laced', payload: ZWSP_SLUR },
   { name: 'Cyrillic-homoglyph', payload: CYRILLIC_SLUR },
@@ -1983,6 +1991,19 @@ describe('obfuscated slur wiring (hasHarshLeak at every tool site)', () => {
       expect(getSession().running_gags).toHaveLength(0);
     });
   }
+
+  // F-ad64c61c: pin one Cf/M splitter through a comedy-tool terminal gate so a wiring
+  // revert from hasHarshLeak to HARSH_FILTER.test goes red (U+00AD is not in ZERO_WIDTH_AND_FORMAT).
+  it('roast terminal-gates a U+00AD-split slur the bare HARSH_FILTER misses', async () => {
+    expect(HARSH_FILTER.test(SOFT_HYPHEN_SLUR)).toBe(false);
+    expect(hasHarshLeak(SOFT_HYPHEN_SLUR)).toBe(true);
+    mockGenerate.mockResolvedValue({ data: { roast: SOFT_HYPHEN_SLUR, severity: 3 } });
+    const result = await roast(TARGET);
+    expect(result.roast).toBe(voicedSafeFallback('dry', TARGET));
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('safety-filter');
+    expect(hasHarshLeak(result.roast)).toBe(false);
+  });
 
   // F-59082050: pin one obfuscated simile through a comedy tool so the terminal gate, not just
   // the unit hasSimileLeak suite, requires the normalized path.

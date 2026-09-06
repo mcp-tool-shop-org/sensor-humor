@@ -1,9 +1,20 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Session, resetSession, getSession, snapshotIsFresh, type SessionSnapshot } from '../src/session.js';
 import { MOOD_STYLES, DEFAULT_MOOD } from '../src/types.js';
+import {
+  isolatePersistEnv,
+  restoreEnvVar,
+  restorePersistEnv,
+  snapshotPersistEnv,
+} from './setup.js';
+
+const ORIG_PERSIST_ENV = snapshotPersistEnv();
+isolatePersistEnv();
+beforeAll(() => isolatePersistEnv());
+afterAll(() => restorePersistEnv(ORIG_PERSIST_ENV));
 
 function makeSnapshot(over: Partial<SessionSnapshot> = {}): SessionSnapshot {
   return {
@@ -440,17 +451,24 @@ describe('Session persistence (serialize / snapshot)', () => {
 });
 
 describe('Session file persistence (SENSOR_HUMOR_PERSIST)', () => {
-  const dir = join(tmpdir(), `sensor-humor-test-${process.pid}`);
+  // Sole persist opt-in. File-level setup.ts already deleted the knobs; snapshot those
+  // isolated values here (not the calling env) so afterEach cannot re-enable homedir writes.
+  let dir: string;
+  let origPersist: string | undefined;
+  let origSessionDir: string | undefined;
 
   beforeEach(() => {
+    origPersist = process.env.SENSOR_HUMOR_PERSIST;
+    origSessionDir = process.env.SENSOR_HUMOR_SESSION_DIR;
+    dir = mkdtempSync(join(tmpdir(), 'sensor-humor-persist-'));
     process.env.SENSOR_HUMOR_PERSIST = 'true';
     process.env.SENSOR_HUMOR_SESSION_DIR = dir;
     resetSession();
   });
 
   afterEach(() => {
-    delete process.env.SENSOR_HUMOR_PERSIST;
-    delete process.env.SENSOR_HUMOR_SESSION_DIR;
+    restoreEnvVar('SENSOR_HUMOR_PERSIST', origPersist);
+    restoreEnvVar('SENSOR_HUMOR_SESSION_DIR', origSessionDir);
     rmSync(dir, { recursive: true, force: true });
   });
 
