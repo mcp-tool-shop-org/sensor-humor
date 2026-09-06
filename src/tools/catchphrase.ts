@@ -76,6 +76,9 @@ export async function catchphraseGenerate(
 ): Promise<CatchphraseGenerateResult> {
   const session = getSession();
   session.tick();
+  // Snapshot mood at entry (matches roast/comic_timing) so the canned fallback and the
+  // terminal-gate substitute stay in the voice that started this call.
+  const mood = session.mood;
 
   // Check if we have an existing catchphrase that fits the context
   if (context && session.catchphrases.size > 0) {
@@ -101,7 +104,7 @@ export async function catchphraseGenerate(
         session.recordTrace({
           turn: session.turn_counter,
           tool: 'catchphrase',
-          mood: session.mood,
+          mood,
           input: context ?? '',
           output: phrase,
           validators_triggered: ['reuse'],
@@ -114,7 +117,7 @@ export async function catchphraseGenerate(
 
   const systemPrompt = [
     baseSystemPrefix(),
-    getMoodSystemPrompt(session.mood),
+    getMoodSystemPrompt(mood),
     `\nCATCHPHRASE MODE: Generate a short, reusable catchphrase or recurring bit. 3-8 words. Make it punchy, memorable, and repeatable. It should work as a running gag that gets funnier with repetition.`,
     `\nSESSION CONTEXT:\n${session.stateSummary()}`,
   ].join('\n\n');
@@ -125,7 +128,7 @@ export async function catchphraseGenerate(
 Respond with JSON only.`;
 
   const fallback: z.infer<typeof CatchphraseSchema> = {
-    phrase: 'Ship it and pray.',
+    phrase: STATIC_SAFE_CATCHPHRASE[mood],
   };
 
   const result = await generateComedy<z.infer<typeof CatchphraseSchema>>(
@@ -141,8 +144,9 @@ Respond with JSON only.`;
 
   // Terminal safety gate: re-check the generated phrase BEFORE it is stored (useCatchphrase /
   // pushBit), so a slur/simile can never be persisted and replayed by callback or future
-  // prompts. A gated phrase collapses to a static input-free catchphrase.
-  const gate = safeCatchphrase(session.mood, result.data.phrase);
+  // prompts. A gated phrase collapses to a static input-free catchphrase. Backend-down results
+  // skip validator retries (none exist here) and go straight to this gate.
+  const gate = safeCatchphrase(mood, result.data.phrase);
   // Only a SAFETY substitution bumps the safety-filter counter; a language substitution is a
   // conformance degrade tracked via degraded_reason only.
   if (gate.gated && gate.reason === 'safety-filter') recordSafetyFilterFire();
@@ -159,7 +163,7 @@ Respond with JSON only.`;
   session.recordTrace({
     turn: session.turn_counter,
     tool: 'catchphrase',
-    mood: session.mood,
+    mood,
     input: context ?? '',
     output: phrase,
     prompt_fingerprint: result.prompt_fingerprint,
@@ -176,14 +180,19 @@ Respond with JSON only.`;
       : {}),
   });
 
-  // If Ollama returned a phrase we already have, treat as reuse not fresh
+  // Canned lines (backend fallback or a terminal-gate substitute) stay out of the recall map
+  // so catchphrase_callback cannot treat "Ship it and pray." / STATIC_SAFE_CATCHPHRASE as a
+  // genuine most-used line. pushBit still records the turn in recent_bits.
+  session.pushBit(phrase, 'catchphrase');
+  const recallable = !result.fallback_reason && !gate.gated;
+  if (!recallable) {
+    return { phrase, is_fresh: true, ...degraded };
+  }
   if (session.catchphrases.has(phrase)) {
     session.useCatchphrase(phrase);
-    session.pushBit(phrase, 'catchphrase');
     return { phrase, is_fresh: false, ...degraded };
   }
   session.useCatchphrase(phrase);
-  session.pushBit(phrase, 'catchphrase');
 
   return { phrase, is_fresh: true, ...degraded };
 }
@@ -197,15 +206,21 @@ export function catchphraseCallback(): CatchphraseCallbackResult | null {
 
   if (session.catchphrases.size === 0) return null;
 
-  // Find the most-used CLEAN catchphrase. Dirty phrases (persisted/legacy slur/simile) are skipped
-  // during the max scan (mirrors how catchphraseGenerate skips dirty stored phrases). This closes a
-  // session-long livelock (tools-001): if a dirty phrase were selected, useCatchphrase would bump
-  // ITS count every call, keeping it the map maximum forever, so the user would never recall a real
-  // phrase again. Skipping it here means its count is never mutated and a clean phrase surfaces.
+  // Find the most-used CLEAN catchphrase. Dirty phrases (persisted/legacy slur/simile/code-switch)
+  // are skipped during the max scan (mirrors how catchphraseGenerate skips dirty stored phrases).
+  // This closes a session-long livelock (tools-001): if a dirty phrase were selected, useCatchphrase
+  // would bump ITS count every call, keeping it the map maximum forever, so the user would never
+  // recall a real phrase again. Skipping it here means its count is never mutated and a clean
+  // phrase surfaces.
   let bestPhrase = '';
   let bestCount = 0;
+  let skippedSafety = false;
   for (const [phrase, count] of session.catchphrases) {
-    if (hasHarshLeak(phrase) || hasSimileLeak(phrase) || hasLanguageLeak(phrase)) continue;
+    if (hasHarshLeak(phrase) || hasSimileLeak(phrase)) {
+      skippedSafety = true;
+      continue;
+    }
+    if (hasLanguageLeak(phrase)) continue;
     if (count > bestCount) {
       bestPhrase = phrase;
       bestCount = count;
@@ -214,14 +229,15 @@ export function catchphraseCallback(): CatchphraseCallbackResult | null {
 
   // No clean phrase exists (every stored phrase is dirty): return an input-free static safe line
   // WITHOUT mutating any count — do not call useCatchphrase, so no dirty phrase's count is bumped.
-  // Signal degraded:'safety-filter' so the substitution is machine-visible and never reads as a
-  // genuine recall (Q4 / BK-B-01).
+  // Language-only stores are a conformance degrade ('language'), not a slur hit — do not bump the
+  // safety-filter counter. Mixed or safety-only stores stay 'safety-filter'.
   if (bestPhrase === '') {
-    recordSafetyFilterFire();
+    const reason: 'safety-filter' | 'language' = skippedSafety ? 'safety-filter' : 'language';
+    if (reason === 'safety-filter') recordSafetyFilterFire();
     const safe = STATIC_SAFE_CATCHPHRASE[session.mood];
     session.pushBit(safe, 'catchphrase');
     session.tick();
-    return { phrase: safe, use_count: 0, degraded: true, degraded_reason: 'safety-filter' as const };
+    return { phrase: safe, use_count: 0, degraded: true, degraded_reason: reason };
   }
 
   // Only mutate the phrase we ACTUALLY return, so use_count always describes the returned phrase

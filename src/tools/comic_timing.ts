@@ -155,19 +155,19 @@ Respond with JSON only.`;
   const validatorsTriggered: string[] = [];
 
   // Post-validation: reject meta-commentary leaks and retry once
-  if (META_LEAK_PATTERN.test(result.data.rewrite)) {
+  if (!result.fallback_reason && META_LEAK_PATTERN.test(result.data.rewrite)) {
     validatorsTriggered.push('meta-leak');
     result = await gen(`${userPrompt}\n\nOutput ONLY the comedic rewrite. No rules, no comments, no meta text. Pure comedy only.`);
   }
 
   // Simile/comparison leak check: retry once with negative prompt
-  if (hasSimileLeak(result.data.rewrite)) {
+  if (!result.fallback_reason && hasSimileLeak(result.data.rewrite)) {
     validatorsTriggered.push('simile');
     result = await gen(`${userPrompt}${SIMILE_RETRY_SUFFIX}`);
   }
 
   // Harshness filter: reject slurs/extreme insults and retry once
-  if (hasHarshLeak(result.data.rewrite)) {
+  if (!result.fallback_reason && hasHarshLeak(result.data.rewrite)) {
     validatorsTriggered.push('harsh');
     result = await gen(`${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel. Pure comedy only.`);
   }
@@ -175,7 +175,7 @@ Respond with JSON only.`;
   // Language-conformance leak check: retry once in English if the model code-switched out of the
   // Latin script (observed: qwen2.5:7b continuing a rewrite in Chinese). Detection-only — a
   // persistent code-switch is substituted by the terminal gate below, not mangled here.
-  if (hasLanguageLeak(result.data.rewrite)) {
+  if (!result.fallback_reason && hasLanguageLeak(result.data.rewrite)) {
     validatorsTriggered.push('language');
     result = await gen(`${userPrompt}${LANGUAGE_RETRY_SUFFIX}`);
   }
@@ -183,7 +183,7 @@ Respond with JSON only.`;
   // Roast pattern nudge: if roast mood and no verdict/label pattern, retry with hint.
   // Uses the entry-snapshot `mood`, not session.mood, so a concurrent mood_set during an await
   // above cannot flip this decision (tools-002).
-  if (mood === 'roast' && !ROAST_LABEL_PATTERN.test(result.data.rewrite)) {
+  if (!result.fallback_reason && mood === 'roast' && !ROAST_LABEL_PATTERN.test(result.data.rewrite)) {
     validatorsTriggered.push('roast-label');
     result = await gen(`${userPrompt}\n\nStart with a label like "Verdict:", "Diagnosis:", or "Classification:" followed by 1 tight sentence.`);
   }

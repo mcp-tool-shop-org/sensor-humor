@@ -93,8 +93,10 @@ export async function roast(
   // (ROADMAP v2.0 "Chain Trace Tool"), so debug_chain shows WHY a retry/substitution happened.
   const validatorsTriggered: string[] = [];
 
-  // Label pattern enforcement: ONLY in roast mood
-  if (mood === 'roast' && !ROAST_LABEL_PATTERN.test(result.data.roast)) {
+  // Label pattern enforcement: ONLY in roast mood. Skip when the backend already fell back —
+  // another generateComedy would just re-hit a dead daemon (the unlabeled canned line is already
+  // the terminal output).
+  if (!result.fallback_reason && mood === 'roast' && !ROAST_LABEL_PATTERN.test(result.data.roast)) {
     validatorsTriggered.push('roast-label');
     const retryPrompt = `${userPrompt}\n\nStart with a label like "Verdict:", "Diagnosis:", or "Classification:" followed by 1 tight sentence.`;
     result = await generateComedy<z.infer<typeof RoastSchema>>(
@@ -118,7 +120,7 @@ export async function roast(
   let languageSubstituted = false;
 
   // Comparison/metaphor/simile leak check: retry once with negative prompt
-  if (COMPARISON_LEAK.test(result.data.roast) || hasSimileLeak(result.data.roast)) {
+  if (!result.fallback_reason && (COMPARISON_LEAK.test(result.data.roast) || hasSimileLeak(result.data.roast))) {
     validatorsTriggered.push('simile');
     const cleanPrompt = `${userPrompt}${SIMILE_RETRY_SUFFIX}`;
     result = await generateComedy<z.infer<typeof RoastSchema>>(
@@ -142,7 +144,7 @@ export async function roast(
   }
 
   // Harshness filter: reject slurs/extreme insults and retry once
-  if (hasHarshLeak(result.data.roast)) {
+  if (!result.fallback_reason && hasHarshLeak(result.data.roast)) {
     validatorsTriggered.push('harsh');
     const cleanPrompt = `${userPrompt}\n\nNever use slurs, extreme insults, or derogatory terms. Keep savage but not cruel.`;
     result = await generateComedy<z.infer<typeof RoastSchema>>(
@@ -169,7 +171,7 @@ export async function roast(
   // script, then substitute an input-free English line if it persists. Distinct from the safety
   // filters — a code-switch is a conformance degrade, not a slur/simile — so it uses its own flag
   // and is attributed degraded_reason:'language' (and never bumps the safety-filter counter).
-  if (hasLanguageLeak(result.data.roast)) {
+  if (!result.fallback_reason && hasLanguageLeak(result.data.roast)) {
     validatorsTriggered.push('language');
     const cleanPrompt = `${userPrompt}${LANGUAGE_RETRY_SUFFIX}`;
     result = await generateComedy<z.infer<typeof RoastSchema>>(

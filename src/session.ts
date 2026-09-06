@@ -15,7 +15,7 @@ import {
   type SensorHumorSession,
   type TraceEntry,
 } from './types.js';
-import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak } from './validators.js';
+import { sanitizeForPrompt, hasHarshLeak, hasSimileLeak, hasLanguageLeak } from './validators.js';
 import { captureRow } from './capture.js';
 
 const MAX_RECENT_BITS = 20;
@@ -43,7 +43,7 @@ function isFiniteNumber(n: unknown): n is number {
   return typeof n === 'number' && Number.isFinite(n);
 }
 
-function persistEnabled(): boolean {
+export function persistEnabled(): boolean {
   return process.env.SENSOR_HUMOR_PERSIST === 'true';
 }
 
@@ -115,7 +115,7 @@ export function getGagMaxFires(): number {
 }
 
 /** Session file path, resolved lazily so SENSOR_HUMOR_SESSION_DIR can override it. */
-function sessionFilePath(): string {
+export function sessionFilePath(): string {
   const dir = process.env.SENSOR_HUMOR_SESSION_DIR ?? join(homedir(), '.sensor-humor');
   return join(dir, 'session.json');
 }
@@ -452,12 +452,12 @@ export class Session implements SensorHumorSession {
         }
         return sess;
       }
-      // Defense-in-depth: a tampered or legacy persist file could carry a slur/simile in a stored
-      // gag, bit, or catchphrase. Drop dirty content on LOAD so it never enters the live session,
-      // reaches a prompt (stateSummary), or is replayed to the user (callback). This complements
-      // the terminal output gates — fail-closed at the door.
+      // Defense-in-depth: a tampered or legacy persist file could carry a slur/simile/code-switch
+      // in a stored gag, bit, or catchphrase. Drop dirty content on LOAD so it never enters the
+      // live session, reaches a prompt (stateSummary), or is replayed to the user (callback).
+      // This complements the terminal output gates — fail-closed at the door.
       const isDirty = (t: unknown): boolean =>
-        typeof t === 'string' && (hasHarshLeak(t) || hasSimileLeak(t));
+        typeof t === 'string' && (hasHarshLeak(t) || hasSimileLeak(t) || hasLanguageLeak(t));
       sess.mood = (MOOD_STYLES as readonly string[]).includes(s.mood) ? s.mood : DEFAULT_MOOD;
       sess.running_gags = Array.isArray(s.running_gags)
         ? s.running_gags
@@ -516,13 +516,13 @@ export class Session implements SensorHumorSession {
   }
 
   /**
-   * Persist to disk when SENSOR_HUMOR_PERSIST=true. Best-effort: an I/O failure is logged in
-   * debug mode but never thrown into a tool call (degrade to in-memory, don't crash).
+   * Persist to disk when SENSOR_HUMOR_PERSIST=true. Best-effort: an I/O failure is logged
+   * unconditionally but never thrown into a tool call (degrade to in-memory, don't crash).
    */
   save(): void {
     if (!persistEnabled()) return;
+    const file = sessionFilePath();
     try {
-      const file = sessionFilePath();
       mkdirSync(join(file, '..'), { recursive: true });
       // Atomic write: write to a temp file then rename into place, so an interrupted
       // write cannot clobber a good prior session.json.
@@ -530,9 +530,10 @@ export class Session implements SensorHumorSession {
       writeFileSync(tmp, JSON.stringify(this.serialize()), 'utf-8');
       renameSync(tmp, file);
     } catch (err) {
-      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
-        console.error('[sensor-humor] Failed to persist session:', (err as Error).message);
-      }
+      console.error(
+        `[sensor-humor] Failed to persist session to ${file}: ${(err as Error).message}. ` +
+          `Session stays in-memory only — check that path is writable (disk full, permissions, or a leftover .tmp).`,
+      );
     }
   }
 }
@@ -540,8 +541,8 @@ export class Session implements SensorHumorSession {
 /** Load a persisted session if enabled, present, and fresh (<24h); otherwise null. */
 function loadPersisted(): Session | null {
   if (!persistEnabled()) return null;
+  const file = sessionFilePath();
   try {
-    const file = sessionFilePath();
     if (!existsSync(file)) return null;
     const snapshot = JSON.parse(readFileSync(file, 'utf-8')) as SessionSnapshot;
     if (!snapshotIsFresh(snapshot, Date.now())) {
@@ -552,9 +553,10 @@ function loadPersisted(): Session | null {
     }
     return Session.fromSnapshot(snapshot);
   } catch (err) {
-    if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
-      console.error('[sensor-humor] Failed to load persisted session:', (err as Error).message);
-    }
+    console.error(
+      `[sensor-humor] Failed to load persisted session from ${file}: ${(err as Error).message}. ` +
+        `Starting a fresh in-memory session. Delete a corrupt session.json / leftover .tmp, or fix file permissions.`,
+    );
     return null;
   }
 }
