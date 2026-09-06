@@ -32,6 +32,19 @@ export { CAPTURE_SCHEMA };
 export type { CaptureRow };
 
 /**
+ * Source stamp written onto every captured row. Live tool capture is user_input (fail-closed:
+ * enrich must not treat a SENSOR_HUMOR_CAPTURE file as synthetic). The internal-seed sweep
+ * sets SENSOR_HUMOR_CAPTURE_SOURCE=synthetic. Unknown / unset → user_input.
+ */
+export function captureSourceType(): 'synthetic' | 'user_input' {
+  const env = process.env.SENSOR_HUMOR_CAPTURE_SOURCE;
+  if (env === undefined) return 'user_input';
+  const trimmed = env.trim();
+  if (trimmed === 'synthetic' || trimmed === 'user_input') return trimmed;
+  return 'user_input';
+}
+
+/**
  * The capture target file, or null when capture is disabled. Resolved lazily from
  * SENSOR_HUMOR_CAPTURE on each call (like sessionFilePath / getModel read their env each time) so a
  * wrapper or test can toggle it per-run. An unset OR whitespace-only value disables capture.
@@ -62,6 +75,7 @@ export function buildCaptureRow(entry: TraceEntry, now: number): CaptureRow {
     mood: entry.mood,
     input: entry.input,
     output: entry.output ?? '',
+    source_type: captureSourceType(),
     valid: entry.degraded_reason === undefined,
     ...(entry.degraded_reason ? { degraded_reason: entry.degraded_reason } : {}),
     validators_triggered: entry.validators_triggered ?? [],

@@ -9,9 +9,11 @@
  *   npx tsx scripts/enrich-comedic-moods.ts <capture.jsonl> [--out <enriched.jsonl>]
  *                                           [--source synthetic|user_input] [--consent n/a|opted_in|unknown|withdrawn] [--scrub]
  *
- * Defaults: --source synthetic (the internal-seed sweep), no PII scrub. `--scrub` runs the regex-floor
- * PII scrub on user_input rows (over input + generated line); a detected entity excludes the row. Without
- * it, an opted-in user_input row stays `internal` ("not yet PII-scrubbed") — the correct fail-safe verdict.
+ * Defaults: no `--source` override (each row's capture-time stamp is used; unstamped rows are
+ * `user_input`, fail-closed). `--scrub` runs the regex-floor PII scrub on user_input rows; synthetic
+ * rows are always floor-scrubbed so a public_candidate cannot issue without a scrub result. Without
+ * `--scrub`, an opted-in user_input row stays `internal` ("not yet PII-scrubbed") — the correct
+ * fail-safe verdict.
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -33,7 +35,7 @@ function usage(msg: string): never {
 const args = process.argv.slice(2);
 let input: string | undefined;
 let out: string | undefined;
-let source: SourceType = 'synthetic';
+let source: SourceType | undefined;
 let consent: ConsentStatus | undefined;
 let scrub = false;
 
@@ -67,10 +69,7 @@ try {
 }
 
 // --- enrich ----------------------------------------------------------------
-if (scrub && source !== 'user_input') {
-  console.error(`  note: --scrub only applies to --source user_input (rows are ${source}; PII is n/a) — no scrub performed`);
-}
-const opts: EnrichOptions = { source_type: source, scrub, ...(consent ? { consent_status: consent } : {}) };
+const opts: EnrichOptions = { scrub, ...(source ? { source_type: source } : {}), ...(consent ? { consent_status: consent } : {}) };
 const { records, summary } = enrichCaptureJsonl(text, opts);
 
 // --- write -----------------------------------------------------------------

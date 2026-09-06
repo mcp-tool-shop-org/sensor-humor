@@ -84,8 +84,17 @@ export function moodBlindGate(idCorrect: number, nLines: number): GateResult {
   };
 }
 
-/** mood-shuffled gate: real-mood conformance must exceed wrong-mood conformance by SHUFFLE_MARGIN. */
-export function moodShuffledGate(realRate: number, shuffledRate: number): GateResult {
+/** mood-shuffled gate: real-mood conformance must exceed wrong-mood conformance by SHUFFLE_MARGIN.
+ *  An empty decided set (shuffledN === 0) is INCONCLUSIVE and refuses pass — 0% of nothing is not
+ *  a discriminating negative control. */
+export function moodShuffledGate(realRate: number, shuffledRate: number, shuffledN?: number): GateResult {
+  if (shuffledN === 0) {
+    return {
+      pass: false,
+      detail:
+        'mood-shuffled: INCONCLUSIVE — 0 decided shuffled verdicts (empty denominator is not 0% conformance; refuse pass)',
+    };
+  }
   const gap = realRate - shuffledRate;
   return {
     pass: gap >= SHUFFLE_MARGIN,
@@ -93,8 +102,17 @@ export function moodShuffledGate(realRate: number, shuffledRate: number): GateRe
   };
 }
 
-/** degraded-line gate: canned/degraded lines must conform at or below the pre-registered floor. */
-export function degradedLineGate(degradedRate: number): GateResult {
+/** degraded-line gate: canned/degraded lines must conform at or below the pre-registered floor.
+ *  An empty decided set (degradedN === 0) is INCONCLUSIVE and refuses pass — 0% of nothing is not
+ *  a floor-passing negative control. */
+export function degradedLineGate(degradedRate: number, degradedN?: number): GateResult {
+  if (degradedN === 0) {
+    return {
+      pass: false,
+      detail:
+        'degraded-line: INCONCLUSIVE — 0 decided degraded verdicts (empty denominator is not a 0% floor; refuse pass)',
+    };
+  }
   return {
     pass: degradedRate <= DEGRADED_FLOOR,
     detail: `degraded-line: ${(degradedRate * 100).toFixed(1)}% conform (need ≤ ${(DEGRADED_FLOOR * 100).toFixed(0)}% floor)`,

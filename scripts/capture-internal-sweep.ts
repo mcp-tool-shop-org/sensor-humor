@@ -67,6 +67,9 @@ async function main(): Promise<void> {
     console.error('[sweep] SENSOR_HUMOR_CAPTURE is not set — nothing would be captured. Aborting.');
     process.exit(1);
   }
+  // This script is the internal-seed sweep: stamp rows synthetic so enrich does not fail-close them
+  // to user_input (live SENSOR_HUMOR_CAPTURE files stamp user_input from capture.ts).
+  process.env.SENSOR_HUMOR_CAPTURE_SOURCE = 'synthetic';
   const cap = process.env.SWEEP_INPUTS ? Math.max(1, parseInt(process.env.SWEEP_INPUTS, 10) || 1) : Infinity;
   const take = <T>(xs: readonly T[]) => xs.slice(0, cap);
 
