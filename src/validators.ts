@@ -302,7 +302,8 @@ export function slurAlphabet(): ReadonlySet<string> {
  * Aggressive normalization for the HARSH DETECTION path ONLY (hasHarshLeak). On top of
  * normalizeConfusables it folds the three most common real-world slur obfuscations so the
  * \b term-list still catches them:
- *   - combining diacritics (NFKD + strip U+0300-U+036F): "retárd" / accented look-alikes -> ASCII
+ *   - format chars + combining marks (NFKD + strip \p{Cf}+\p{M}): "retárd", U+00AD/U+2061–2064
+ *     splits, and marks outside U+0300–036F (U+20DD, U+0483) collapse so HARSH_FILTER's \b holds
  *   - leetspeak digit/symbol substitution: r3tard / b1tch / f@ggot -> retard / bitch / faggot
  *   - intra-word separators (. - _): "re-tard" / "r.e.t.a.r.d" -> "retard"
  *   - residual-letter homoglyphs (DETECTION_CONFUSABLE_MAP): Cyrillic/Greek/Armenian/Latin
@@ -315,11 +316,15 @@ export function slurAlphabet(): ReadonlySet<string> {
  * Floor, not ceiling: spaced-out letters ("r e t a r d") and out-of-list slur variants remain a
  * documented limitation (see SECURITY.md).
  */
+// Detection-only: after NFKC/NFKD, delete EVERY format char and EVERY combining mark (`\p{Cf}` +
+// `\p{M}`), not a hand-listed subset. Display path (ZERO_WIDTH_AND_FORMAT) stays conservative.
+const FORMAT_AND_MARKS = /[\p{Cf}\p{M}]+/gu;
+
 export function normalizeForDetection(input: string): string {
   return normalizeConfusables(input)
     .replace(DETECTION_CAPITAL_PATTERN, (ch) => DETECTION_CAPITAL_MAP[ch] ?? ch) // mismatched-lowercase capitals (Cyrillic Н->h, Greek Ν->n), exact codepoint, BEFORE lowercasing
     .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')           // strip combining diacritical marks
+    .replace(FORMAT_AND_MARKS, '')             // strip ALL format chars + combining marks
     .toLowerCase()
     .replace(DETECTION_FOLD_PATTERN, (ch) => DETECTION_FOLD_MAP[ch] ?? ch) // re-fold homoglyphs post-lowercase — catches UPPERCASE look-alikes too (detection-only)
     .replace(LEET_PATTERN, (ch) => LEET_MAP[ch] ?? ch)   // fold leetspeak

@@ -38,6 +38,11 @@ const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000; // stale gags aren't funny
 // (plus whatever migration fromSnapshot needs). An unknown version is discarded, not force-fit.
 const SUPPORTED_SNAPSHOT_VERSIONS = new Set<number>([1]);
 
+/** True for a real finite number (rejects NaN/Infinity and non-numbers). Snapshot fields use this. */
+function isFiniteNumber(n: unknown): n is number {
+  return typeof n === 'number' && Number.isFinite(n);
+}
+
 function persistEnabled(): boolean {
   return process.env.SENSOR_HUMOR_PERSIST === 'true';
 }
@@ -433,46 +438,81 @@ export class Session implements SensorHumorSession {
 
   /** Rebuild a Session from a snapshot, defensively (the file may be corrupt or tampered). */
   static fromSnapshot(s: SessionSnapshot): Session {
-    const sess = new Session();
-    // Version guard: serialize() stamps a schema version, but older builds never read it on load —
-    // an unknown-versioned (future or tampered) file would be force-fit through the v1 field logic
-    // below. If the version isn't one we support, discard the snapshot and start fresh rather than
-    // run unknown-shaped data through v1 parsing.
-    if (!SUPPORTED_SNAPSHOT_VERSIONS.has((s as { version?: number })?.version as number)) {
-      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
-        console.error(
-          `[sensor-humor] persisted snapshot version ${(s as { version?: number })?.version} not supported, starting fresh`
-        );
+    try {
+      const sess = new Session();
+      // Version guard: serialize() stamps a schema version, but older builds never read it on load —
+      // an unknown-versioned (future or tampered) file would be force-fit through the v1 field logic
+      // below. If the version isn't one we support, discard the snapshot and start fresh rather than
+      // run unknown-shaped data through v1 parsing.
+      if (!SUPPORTED_SNAPSHOT_VERSIONS.has((s as { version?: number })?.version as number)) {
+        if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+          console.error(
+            `[sensor-humor] persisted snapshot version ${(s as { version?: number })?.version} not supported, starting fresh`
+          );
+        }
+        return sess;
       }
+      // Defense-in-depth: a tampered or legacy persist file could carry a slur/simile in a stored
+      // gag, bit, or catchphrase. Drop dirty content on LOAD so it never enters the live session,
+      // reaches a prompt (stateSummary), or is replayed to the user (callback). This complements
+      // the terminal output gates — fail-closed at the door.
+      const isDirty = (t: unknown): boolean =>
+        typeof t === 'string' && (hasHarshLeak(t) || hasSimileLeak(t));
+      sess.mood = (MOOD_STYLES as readonly string[]).includes(s.mood) ? s.mood : DEFAULT_MOOD;
+      sess.running_gags = Array.isArray(s.running_gags)
+        ? s.running_gags
+            .filter((g): g is RunningGag => {
+              if (g === null || typeof g !== 'object') return false;
+              const gag = g as RunningGag;
+              return (
+                typeof gag.setup === 'string' &&
+                typeof gag.tag === 'string' &&
+                isFiniteNumber(gag.used) &&
+                isFiniteNumber(gag.last_turn) &&
+                !isDirty(gag.setup) &&
+                !isDirty(gag.tag)
+              );
+            })
+            .map((g) => ({
+              setup: g.setup,
+              tag: g.tag,
+              used: g.used,
+              last_turn: g.last_turn,
+              created_turn: isFiniteNumber(g.created_turn) ? g.created_turn : g.last_turn,
+            }))
+            .slice(-MAX_RUNNING_GAGS)
+        : [];
+      sess.recent_bits = Array.isArray(s.recent_bits)
+        ? s.recent_bits
+            .filter((b): b is RecentBit => {
+              if (b === null || typeof b !== 'object') return false;
+              const bit = b as RecentBit;
+              return (
+                typeof bit.text === 'string' &&
+                typeof bit.technique === 'string' &&
+                isFiniteNumber(bit.turn) &&
+                !isDirty(bit.text)
+              );
+            })
+            .map((b) => ({ text: b.text, turn: b.turn, technique: b.technique }))
+            .slice(-MAX_RECENT_BITS)
+        : [];
+      sess.catchphrases = new Map(
+        (Array.isArray(s.catchphrases) ? s.catchphrases : [])
+          .filter(
+            (e): e is [string, number] =>
+              Array.isArray(e) && typeof e[0] === 'string' && isFiniteNumber(e[1]) && !isDirty(e[0]),
+          )
+          .slice(-MAX_CATCHPHRASES),
+      );
+      sess.turn_counter = isFiniteNumber(s.turn_counter) && s.turn_counter >= 0 ? s.turn_counter : 0;
       return sess;
+    } catch (err) {
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+        console.error('[sensor-humor] fromSnapshot threw; starting fresh:', (err as Error).message);
+      }
+      return new Session();
     }
-    // Defense-in-depth: a tampered or legacy persist file could carry a slur/simile in a stored
-    // gag, bit, or catchphrase. Drop dirty content on LOAD so it never enters the live session,
-    // reaches a prompt (stateSummary), or is replayed to the user (callback). This complements
-    // the terminal output gates — fail-closed at the door.
-    const isDirty = (t: unknown): boolean =>
-      typeof t === 'string' && (hasHarshLeak(t) || hasSimileLeak(t));
-    sess.mood = (MOOD_STYLES as readonly string[]).includes(s.mood) ? s.mood : DEFAULT_MOOD;
-    sess.running_gags = Array.isArray(s.running_gags)
-      ? s.running_gags.filter(
-          (g): g is RunningGag =>
-            !!g &&
-            typeof (g as RunningGag).setup === 'string' &&
-            typeof (g as RunningGag).tag === 'string' &&
-            !isDirty((g as RunningGag).setup) &&
-            !isDirty((g as RunningGag).tag)
-        )
-      : [];
-    sess.recent_bits = Array.isArray(s.recent_bits)
-      ? s.recent_bits.slice(-MAX_RECENT_BITS).filter((b) => !isDirty((b as RecentBit)?.text))
-      : [];
-    sess.catchphrases = new Map(
-      (Array.isArray(s.catchphrases) ? s.catchphrases : []).filter(
-        (e): e is [string, number] => Array.isArray(e) && typeof e[0] === 'string' && !isDirty(e[0])
-      )
-    );
-    sess.turn_counter = typeof s.turn_counter === 'number' && s.turn_counter >= 0 ? s.turn_counter : 0;
-    return sess;
   }
 
   /**
