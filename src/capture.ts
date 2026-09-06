@@ -4,8 +4,10 @@
  * When SENSOR_HUMOR_CAPTURE names a file, every comedy generation is appended there as one
  * JSON-Lines row, building a durable training/eval dataset over time. OFF by default (env var unset
  * or empty ⇒ no-op), mirroring the SENSOR_HUMOR_PERSIST opt-in. Best-effort like Session.save(): an
- * I/O error is logged only under SENSOR_HUMOR_DEBUG and never thrown into a comedy tool call —
- * capture must never degrade or slow the product.
+ * I/O error is never thrown into a comedy tool call — capture must never crash the product. The first
+ * failure (and sampled repeats) always goes to stderr so the operator learns the opted-in sink is
+ * dead without SENSOR_HUMOR_DEBUG. lastError/failedCount live on captureStatus() for debug_status
+ * to wire later.
  *
  * Deliberately SEPARATE from the in-memory forensic trace ring (session.recordTrace): the trace is a
  * small, transient live-debugging aid that is never persisted (its full-trace fields carry raw
@@ -62,6 +64,51 @@ export function captureEnabled(): boolean {
 }
 
 /**
+ * In-process snapshot of the capture sink. debug_status lives in engine/index.ts (out of this
+ * domain) — export the snapshot so the coordinator can wire it later without this module throwing
+ * into a comedy tool.
+ */
+export interface CaptureStatus {
+  enabled: boolean;
+  target: string | null;
+  failedCount: number;
+  lastError: string | null;
+  lastFailedAt: number | null;
+}
+
+let failedCount = 0;
+let lastError: string | null = null;
+let lastFailedAt: number | null = null;
+
+export function captureStatus(): CaptureStatus {
+  return {
+    enabled: captureEnabled(),
+    target: captureTarget(),
+    failedCount,
+    lastError,
+    lastFailedAt,
+  };
+}
+
+/** First failure plus power-of-two repeats (1, 2, 4, 8, …) — visible without flooding stderr. */
+function shouldLogCaptureFailure(count: number): boolean {
+  return count > 0 && (count & (count - 1)) === 0;
+}
+
+function recordCaptureFailure(target: string, err: unknown): void {
+  failedCount += 1;
+  lastError = err instanceof Error ? err.message : String(err);
+  lastFailedAt = Date.now();
+  if (!shouldLogCaptureFailure(failedCount)) return;
+  console.error(
+    `[sensor-humor] capture failed (${failedCount}×) writing "${target}": ${lastError}. ` +
+      'SENSOR_HUMOR_CAPTURE is on but the sink is dead — comedy still returned; this row was not saved. ' +
+      `Operator: check that "${target}" is a writable file (not a directory), with free disk space and ` +
+      'permissions (ENOSPC/EACCES).',
+  );
+}
+
+/**
  * Build the dataset row for a trace entry, stamping the provenance the entry itself doesn't carry
  * (resolved prompt version, model, sampling settings, capture time). Pure — `now` is passed in
  * rather than read here — so a test can assert the row shape without touching the clock or disk.
@@ -91,8 +138,10 @@ export function buildCaptureRow(entry: TraceEntry, now: number): CaptureRow {
 /**
  * Append one dataset row for a comedy generation, when capture is enabled. No-op when disabled or
  * when the entry has no final output line (nothing to learn from). Best-effort: any I/O error is
- * swallowed (debug-logged only) so capture can never crash or slow a tool call. Called once per
- * generation from session.recordTrace — the single per-call record site.
+ * swallowed so capture can never crash a tool call. Failures are logged (first + sampled repeats)
+ * regardless of SENSOR_HUMOR_DEBUG and stashed on captureStatus(). Called once per generation from
+ * session.recordTrace — the single per-call record site. The write stays synchronous so a captured
+ * row is durable before the tool returns (an async fire-and-forget can drop the last rows on exit).
  */
 export function captureRow(entry: TraceEntry): void {
   const target = captureTarget();
@@ -109,8 +158,6 @@ export function captureRow(entry: TraceEntry): void {
     // rather than clobbering a shared file the way session.json's whole-file write would.
     appendFileSync(target, `${JSON.stringify(row)}\n`, 'utf-8');
   } catch (err) {
-    if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
-      console.error('[sensor-humor] Failed to capture dataset row:', (err as Error).message);
-    }
+    recordCaptureFailure(target, err);
   }
 }

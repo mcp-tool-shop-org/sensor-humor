@@ -2,8 +2,9 @@
  * CLI: run the comedic-moods-v0 falsifiable eval over a capture/enriched JSONL, with cross-family
  * Ollama judge pools, and print the pre-registered gate verdict.
  *
- * Exit 0 when v0 PASSES every gate on every pool, 1 when a gate FAILS (the eval is falsifiable — a
- * failing control is a real, reportable result, not an error), 2 on usage/IO error.
+ * Exit 0 when v0 PASSES every gate on the surviving panel, 1 when a gate FAILS (the eval is
+ * falsifiable — a failing control is a real, reportable result, not an error), 2 on usage/IO error
+ * (including every judge family missing/dead), 75 SKIP when Ollama itself is unreachable.
  *
  * Usage:
  *   npx tsx scripts/eval-comedic-moods.ts <capture-or-enriched.jsonl>
@@ -18,9 +19,12 @@
 import { readFileSync } from 'node:fs';
 import { MOOD_STYLES, type MoodStyle } from '../src/types.js';
 import { STATIC_SAFE_FALLBACK } from '../src/validators.js';
-import { ollamaJudge } from '../src/dataset/eval/ollama-judge.js';
+import { ollamaJudge, probeJudgeModels } from '../src/dataset/eval/ollama-judge.js';
 import { evaluate, type EvalRow, type DegradedLine } from '../src/dataset/eval/controls.js';
 import { scoreCorpus } from '../src/dataset/eval/rubric.js';
+
+/** Distinct from PASS (0) / FAIL (1) / usage (2): backend missing, same as regression-scorecard. */
+const SKIP_EXIT = 75;
 
 function die(msg: string, code = 2): never {
   console.error(msg);
@@ -85,48 +89,74 @@ const degraded: DegradedLine[] = MOOD_STYLES.map((mood, i) => ({
 
 // --- run -------------------------------------------------------------------
 console.error(`[eval] ${rows.length} real rows · judges: ${judgeModels.join(', ')} · degraded: ${degraded.length}`);
-console.error('[eval] running cross-family judges sequentially (this can take minutes on 24–31B models)…');
-const judges = judgeModels.map(ollamaJudge);
+console.error('[eval] probing judge families (a missing model is skipped, never hung)…');
 
 const pct = (x: number): string => `${(x * 100).toFixed(1)}%`;
-evaluate(judges, rows, degraded)
-  .then((res) => {
-    const P = res.panel;
-    console.log('\n=== comedic-moods-v0 eval — cross-family panel ===');
-    console.log(`panel of ${P.n_pools}: ${P.judges.join(', ')}`);
-    console.log(`  real mood-conformance : ${pct(P.real_conformance)}  (n=${P.n_real})`);
-    console.log(`  mood-blind accuracy   : ${pct(P.blind_accuracy)}  (${P.blind_correct}/${P.blind_n}, chance 16.7%)`);
-    console.log(`  mood-shuffled conform : ${pct(P.shuffled_conformance)}`);
-    console.log(`  degraded-line conform : ${pct(P.degraded_conformance)}  (n=${P.degraded_n})`);
 
-    console.log('\npanel gates (pre-registered) — the PRIMARY verdict:');
-    for (const gate of [res.panelGates.conformanceFloor, res.panelGates.blind, res.panelGates.shuffled, res.panelGates.degraded]) {
-      console.log(`  [${gate.pass ? 'PASS' : 'FAIL'}] ${gate.detail}`);
-    }
-    if (res.agreement !== null) console.log(`\ninter-pool agreement (reliability): ${pct(res.agreement)}`);
-
-    console.log('\n--- per-family diagnostics (a rogue judge the panel absorbs shows here) ---');
-    for (const p of res.pools) {
-      const g = res.gates.find((x) => x.judge === p.judge);
-      console.log(
-        `  ${p.judge} — ${g?.pass ? 'pass' : 'FAIL'}: conform ${pct(p.real_conformance)}, blind ${pct(p.blind_accuracy)}, shuffled ${pct(p.shuffled_conformance)}, degraded ${pct(p.degraded_conformance)}`,
-      );
-    }
-
-    // Deterministic dimensions (no model) — includes the Slice-4 caricature/stereotype safety floor.
-    const det = scoreCorpus(rows);
-    console.log('\n--- deterministic dimensions (no model) ---');
-    console.log(
-      `  safety ${pct(det.safety_rate)} · language ${pct(det.language_rate)} · form ${pct(det.form_rate)} · caricature-clean ${pct(det.caricature_rate)}`,
+void (async () => {
+  const probe = await probeJudgeModels(judgeModels, 5000);
+  if (!probe.reachable) {
+    console.error(
+      `[eval] SKIP — Ollama not reachable at ${probe.host} (${probe.reason ?? 'unknown'}). ` +
+        'Operator: start Ollama (`ollama serve`) and retry. Not a FAIL.',
     );
-    if (det.caricature_flags.length > 0) {
-      console.log(`  ⚠ ${det.caricature_flags.length} line(s) tripped the caricature floor — REVIEW:`);
-      for (const f of det.caricature_flags.slice(0, 10)) {
-        console.log(`    [${f.mood}] ${f.signals.join(',')}: ${f.output.slice(0, 70)}`);
-      }
-    }
+    process.exit(SKIP_EXIT);
+  }
+  for (const m of probe.missing) {
+    console.error(
+      `[eval] skipping judge "${m}" — model is not pulled. Operator: \`ollama pull ${m}\`. Remaining families still run.`,
+    );
+  }
+  if (probe.available.length === 0) {
+    die(
+      `[eval] no judge models available of: ${judgeModels.join(', ')}. ` +
+        'Operator: pull at least one (`ollama pull <model>`) and retry.',
+      2,
+    );
+  }
 
-    console.log(`\n=== v0 VERDICT (panel): ${res.pass ? 'PASS' : 'FAIL'} ===`);
-    process.exit(res.pass ? 0 : 1);
-  })
-  .catch((e) => die(`[eval] failed: ${(e as Error).message}`, 2));
+  console.error(
+    `[eval] running ${probe.available.length} family(ies) sequentially: ${probe.available.join(', ')} ` +
+      '(this can take minutes on 24–31B models)…',
+  );
+  const judges = probe.available.map(ollamaJudge);
+  const res = await evaluate(judges, rows, degraded, (msg) => console.error(msg));
+
+  const P = res.panel;
+  console.log('\n=== comedic-moods-v0 eval — cross-family panel ===');
+  console.log(`panel of ${P.n_pools}: ${P.judges.join(', ')}`);
+  console.log(`  real mood-conformance : ${pct(P.real_conformance)}  (n=${P.n_real})`);
+  console.log(`  mood-blind accuracy   : ${pct(P.blind_accuracy)}  (${P.blind_correct}/${P.blind_n}, chance 16.7%)`);
+  console.log(`  mood-shuffled conform : ${pct(P.shuffled_conformance)}`);
+  console.log(`  degraded-line conform : ${pct(P.degraded_conformance)}  (n=${P.degraded_n})`);
+
+  console.log('\npanel gates (pre-registered) — the PRIMARY verdict:');
+  for (const gate of [res.panelGates.conformanceFloor, res.panelGates.blind, res.panelGates.shuffled, res.panelGates.degraded]) {
+    console.log(`  [${gate.pass ? 'PASS' : 'FAIL'}] ${gate.detail}`);
+  }
+  if (res.agreement !== null) console.log(`\ninter-pool agreement (reliability): ${pct(res.agreement)}`);
+
+  console.log('\n--- per-family diagnostics (a rogue judge the panel absorbs shows here) ---');
+  for (const p of res.pools) {
+    const g = res.gates.find((x) => x.judge === p.judge);
+    console.log(
+      `  ${p.judge} — ${g?.pass ? 'pass' : 'FAIL'}: conform ${pct(p.real_conformance)}, blind ${pct(p.blind_accuracy)}, shuffled ${pct(p.shuffled_conformance)}, degraded ${pct(p.degraded_conformance)}`,
+    );
+  }
+
+  // Deterministic dimensions (no model) — includes the Slice-4 caricature/stereotype safety floor.
+  const det = scoreCorpus(rows);
+  console.log('\n--- deterministic dimensions (no model) ---');
+  console.log(
+    `  safety ${pct(det.safety_rate)} · language ${pct(det.language_rate)} · form ${pct(det.form_rate)} · caricature-clean ${pct(det.caricature_rate)}`,
+  );
+  if (det.caricature_flags.length > 0) {
+    console.log(`  ⚠ ${det.caricature_flags.length} line(s) tripped the caricature floor — REVIEW:`);
+    for (const f of det.caricature_flags.slice(0, 10)) {
+      console.log(`    [${f.mood}] ${f.signals.join(',')}: ${f.output.slice(0, 70)}`);
+    }
+  }
+
+  console.log(`\n=== v0 VERDICT (panel): ${res.pass ? 'PASS' : 'FAIL'} ===`);
+  process.exit(res.pass ? 0 : 1);
+})().catch((e) => die(`[eval] failed: ${(e as Error).message}`, 2));
