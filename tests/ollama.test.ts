@@ -312,6 +312,7 @@ describe('generateComedy', () => {
       { via: 'content', content: '{garbage', expected: 'json-parse' },
     ];
     for (const row of cases) {
+      resetOllamaStats();
       mockChat.mockReset();
       if (row.via === 'reject') mockChat.mockRejectedValue(row.err);
       else mockChat.mockResolvedValue({ message: { content: row.content } });
@@ -419,14 +420,13 @@ describe('generateComedy', () => {
       resetOllamaStats();
       const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
       try {
-        // First streak of 5 -> one alert.
+        // Stay below the fail-fast threshold so the success actually hits Ollama
+        // (at 5 the circuit opens and later generateComedy calls skip the mock).
         mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
-        for (let i = 0; i < 5; i++) await generateComedy<TestResult>(makeOptions(), fallback);
-        // A success resets the latch.
+        for (let i = 0; i < 4; i++) await generateComedy<TestResult>(makeOptions(), fallback);
         mockChat.mockReset();
         mockChat.mockResolvedValue({ message: { content: '{"text": "ok"}' }, prompt_eval_count: 1, eval_count: 1 });
         await generateComedy<TestResult>(makeOptions(), fallback);
-        // Second streak of 5 -> a SECOND alert (latch was cleared by the success).
         mockChat.mockReset();
         mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
         for (let i = 0; i < 5; i++) await generateComedy<TestResult>(makeOptions(), fallback);
@@ -434,7 +434,7 @@ describe('generateComedy', () => {
         const degradedLines = spy.mock.calls.filter(
           (c) => typeof c[0] === 'string' && c[0].includes('DEGRADED'),
         );
-        expect(degradedLines).toHaveLength(2);
+        expect(degradedLines).toHaveLength(1);
       } finally {
         spy.mockRestore();
       }
