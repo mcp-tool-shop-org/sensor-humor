@@ -15,3 +15,4 @@ voice-demos/
 # only the runner state files are ignored.
 swarms/**/manifest.json
 swarms/**/manifest.*.json
+.swarm/

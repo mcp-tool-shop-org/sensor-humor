@@ -36,8 +36,18 @@ describe('scrubPii — the regex floor', () => {
 
   it('detects secret/key material (several formats)', () => {
     expect(scrubPii('token sk-ABCDEFGHIJKLMNOP1234 leaked').result.per_entity.key).toBe('fail');
+    expect(scrubPii('sk-proj-abcdefghijklmnopqrstuvwxyz leaked').result.per_entity.key).toBe('fail');
+    expect(scrubPii('sk-ant-abcdefghijklmnopqrstuvwxyz leaked').result.per_entity.key).toBe('fail');
+    expect(scrubPii('PLACEHOLDER_NEVER_MATCHES leaked').result.per_entity.key).toBe('fail');
+    expect(scrubPii('github_pat_abcdefghijklmnopqrstuvwxyz leaked').result.per_entity.key).toBe('fail');
+    expect(scrubPii('-----BEGIN PRIVATE KEY----- leaked').result.per_entity.key).toBe('fail');
     expect(scrubPii('AKIAIOSFODNN7EXAMPLE in the log').result.per_entity.key).toBe('fail');
     expect(scrubPii('hash 5f4dcc3b5aa765d61d8327deb882cf99 stored').result.per_entity.key).toBe('fail');
+  });
+
+  it('detects IPv6 as well as IPv4', () => {
+    expect(scrubPii('the box at 2001:0db8:85a3:0000:0000:8a2e:0370:7334 is down').result.per_entity.ip).toBe('fail');
+    expect(scrubPii('loopback ::1 refused').result.per_entity.ip).toBe('fail');
   });
 
   it('redacts detected entities to [CLASS] placeholders', () => {
@@ -111,12 +121,12 @@ describe('enrich + PII scrub integration', () => {
     expect(records[0].provenance.verdict_reason).toContain('scrub');
   });
 
-  it('synthetic rows are never scrubbed even with --scrub (PII n/a)', () => {
+  it('synthetic rows are always floor-scrubbed so public_candidate cannot issue without a result', () => {
     const { records } = enrichCaptureJsonl(rowWith('a 3000-line file with zero comments'), {
       source_type: 'synthetic',
-      scrub: true,
     });
-    expect(records[0].provenance.pii_scrub).toBeNull();
+    expect(records[0].provenance.pii_scrub).not.toBeNull();
+    expect(records[0].provenance.pii_scrub?.clean).toBe(true);
     expect(records[0].provenance.record_verdict).toBe('public_candidate');
   });
 });

@@ -62,8 +62,15 @@ describe('assignVerdict — the distribution gate', () => {
     expect(r.provenance.verdict_reason).toContain('language');
   });
 
-  it('a synthetic (internal-seed) valid row is a public_candidate pending review', () => {
+  it('a synthetic (internal-seed) valid row without a scrub stays internal', () => {
     const r = assignVerdict(makeRow(), { source_type: 'synthetic' });
+    expect(r.provenance.record_verdict).toBe('internal');
+    expect(r.provenance.consent_status).toBe('n/a');
+    expect(r.provenance.verdict_reason).toContain('scrub');
+  });
+
+  it('a synthetic valid row with a clean scrub is a public_candidate pending review', () => {
+    const r = assignVerdict(makeRow(), { source_type: 'synthetic', pii_scrub: cleanScrub });
     expect(r.provenance.record_verdict).toBe('public_candidate');
     expect(r.provenance.consent_status).toBe('n/a');
   });
@@ -78,8 +85,18 @@ describe('assignVerdict — the distribution gate', () => {
     expect(r.provenance.record_verdict).toBe('excluded');
   });
 
-  it('user input without opt-in consent stays internal', () => {
+  it('user input without a scrub stays internal (scrub before consent)', () => {
     const r = assignVerdict(makeRow(), { source_type: 'user_input', consent_status: 'unknown' });
+    expect(r.provenance.record_verdict).toBe('internal');
+    expect(r.provenance.verdict_reason).toContain('scrub');
+  });
+
+  it('user input with a clean scrub but without opt-in consent stays internal', () => {
+    const r = assignVerdict(makeRow(), {
+      source_type: 'user_input',
+      consent_status: 'unknown',
+      pii_scrub: cleanScrub,
+    });
     expect(r.provenance.record_verdict).toBe('internal');
     expect(r.provenance.verdict_reason).toContain('opt-in');
   });
@@ -113,10 +130,10 @@ describe('assignVerdict — the distribution gate', () => {
     expect(r.provenance.record_verdict).toBe('public_candidate');
   });
 
-  it('defaults source_type to synthetic and preserves the row fields', () => {
+  it('defaults unstamped source_type to user_input (fail-closed) and preserves the row fields', () => {
     const row = makeRow();
     const r = assignVerdict(row);
-    expect(r.provenance.source_type).toBe('synthetic');
+    expect(r.provenance.source_type).toBe('user_input');
     expect(r.output).toBe(row.output);
     expect(r.mood).toBe(row.mood);
   });

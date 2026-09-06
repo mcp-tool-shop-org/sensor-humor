@@ -35,18 +35,22 @@ describe('judge prompt builders + parsers', () => {
     expect(p).toMatch(/1\. dry[\s\S]*2\. roast[\s\S]*3\. zoomer/);
   });
 
-  it('parseYesNo reads the first standalone yes/no, tolerating prose', () => {
+  it('parseYesNo reads the last standalone yes/no, tolerating prose', () => {
     expect(parseYesNo('YES')).toBe(true);
     expect(parseYesNo('no.')).toBe(false);
     expect(parseYesNo('No, because it ignores the situation')).toBe(false);
     expect(parseYesNo('Not in the voice, so NO')).toBe(false); // "not"/"cannot" must not match \bno\b
     expect(parseYesNo('Yes! clearly')).toBe(true);
+    expect(parseYesNo('YES or NO? I will go with NO')).toBe(false);
+    expect(parseYesNo('The answer is not yes')).toBeNull(); // negated mention is a non-vote
     expect(parseYesNo('maybe?')).toBeNull();
   });
 
-  it('parseMoodChoice returns the earliest-mentioned option, or null', () => {
+  it('parseMoodChoice returns the last whole-word option, treating negations as non-votes', () => {
     expect(parseMoodChoice('zoomer', MOODS)).toBe('zoomer');
     expect(parseMoodChoice('this is clearly the roast voice', MOODS)).toBe('roast');
+    expect(parseMoodChoice('not roast, it is cynic', MOODS)).toBe('cynic');
+    expect(parseMoodChoice('a sundry remark', MOODS)).toBeNull();
     expect(parseMoodChoice('banana', MOODS)).toBeNull();
   });
 });

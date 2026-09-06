@@ -156,13 +156,17 @@ describe('enrichCaptureJsonl', () => {
 
   it('user_input without opt-in consent stays internal', () => {
     const jsonl = JSON.stringify({ ...validRow, input: 'just some plain feedback' });
-    const { records, summary } = enrichCaptureJsonl(jsonl, { source_type: 'user_input', consent_status: 'unknown' });
+    const { records, summary } = enrichCaptureJsonl(jsonl, {
+      source_type: 'user_input',
+      consent_status: 'unknown',
+      scrub: true,
+    });
     expect(summary.by_verdict.internal).toBe(1);
     expect(records[0].provenance.verdict_reason).toContain('opt-in');
   });
 
-  it('defaults source_type to synthetic when no context is given', () => {
+  it('defaults unstamped source_type to user_input (fail-closed)', () => {
     const { records } = enrichCaptureJsonl(JSON.stringify(validRow));
-    expect(records[0].provenance.source_type).toBe('synthetic');
+    expect(records[0].provenance.source_type).toBe('user_input');
   });
 });
