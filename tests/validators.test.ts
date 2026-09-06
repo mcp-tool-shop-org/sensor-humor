@@ -141,6 +141,34 @@ describe('validators', () => {
       expect(hasHarshLeak(CYRILLIC_SLUR)).toBe(true);
     });
 
+    // F-ad64c61c: format/mark crash-paths the old ZERO_WIDTH_AND_FORMAT + U+0300–036F strip
+    // misses. Built from char codes; slur never spelled. Bare HARSH_FILTER misses; hasHarshLeak
+    // catches only because normalizeForDetection strips \p{Cf}+\p{M} after NFKD.
+    const AD_SLUR = `${RET}${String.fromCharCode(0x00ad)}${ARD}`;       // U+00AD Cf soft hyphen
+    const FA_SLUR = `${RET}${String.fromCharCode(0x2061)}${ARD}`;       // U+2061 Cf function application
+    const DD_SLUR = `${RET}${String.fromCharCode(0x20dd)}${ARD}`;       // U+20DD Me enclosing circle
+    const TITLO_SLUR = `${RET}${String.fromCharCode(0x0483)}${ARD}`;    // U+0483 Mn Cyrillic titlo
+
+    it('catches a U+00AD (soft hyphen) splitter the bare HARSH_FILTER regex misses', () => {
+      expect(HARSH_FILTER.test(AD_SLUR)).toBe(false);
+      expect(hasHarshLeak(AD_SLUR)).toBe(true);
+    });
+
+    it('catches a U+2061 (invisible math) splitter the bare HARSH_FILTER regex misses', () => {
+      expect(HARSH_FILTER.test(FA_SLUR)).toBe(false);
+      expect(hasHarshLeak(FA_SLUR)).toBe(true);
+    });
+
+    it('catches a U+20DD (combining enclosing circle) splitter the bare HARSH_FILTER regex misses', () => {
+      expect(HARSH_FILTER.test(DD_SLUR)).toBe(false);
+      expect(hasHarshLeak(DD_SLUR)).toBe(true);
+    });
+
+    it('catches a U+0483 (combining Cyrillic titlo) splitter the bare HARSH_FILTER regex misses', () => {
+      expect(HARSH_FILTER.test(TITLO_SLUR)).toBe(false);
+      expect(hasHarshLeak(TITLO_SLUR)).toBe(true);
+    });
+
     // The three most COMMON real-world obfuscations (caught by the adversarial verifier):
     // leetspeak, intra-word separators, and combining diacritics. Built from char codes so the
     // slur is never spelled plainly. Bare HARSH_FILTER misses all of these; hasHarshLeak catches.

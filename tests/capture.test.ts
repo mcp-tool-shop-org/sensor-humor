@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,6 +12,12 @@ import {
 } from '../src/capture.js';
 import { getSession, resetSession } from '../src/session.js';
 import type { TraceEntry } from '../src/types.js';
+import { isolatePersistEnv, restorePersistEnv, snapshotPersistEnv } from './setup.js';
+
+const ORIG_PERSIST_ENV = snapshotPersistEnv();
+isolatePersistEnv();
+beforeAll(() => isolatePersistEnv());
+afterAll(() => restorePersistEnv(ORIG_PERSIST_ENV));
 
 const CAPTURE_ENV = 'SENSOR_HUMOR_CAPTURE';
 
