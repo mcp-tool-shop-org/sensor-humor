@@ -122,12 +122,22 @@ export function majorityMood(choices: (MoodStyle | null)[]): MoodStyle | null {
   return tie ? null : best;
 }
 
+/** Optional stderr/progress sink so a hang names the model and row. Tests leave this unset (silent). */
+export type EvalProgress = (msg: string) => void;
+const silentProgress: EvalProgress = () => {};
+
 /**
  * Run every measurement for a single judge pool. Calls are SEQUENTIAL — a 24–31B local judge should not
  * be run concurrently on one GPU — so this is intentionally not parallelised. All per-line verdicts are
- * retained so the panel can aggregate them.
+ * retained so the panel can aggregate them. Progress is printed before each row so a hang names the
+ * model and the row it is stuck on.
  */
-export async function runPool(judge: MoodJudge, rows: EvalRow[], degraded: DegradedLine[]): Promise<PoolReport> {
+export async function runPool(
+  judge: MoodJudge,
+  rows: EvalRow[],
+  degraded: DegradedLine[],
+  progress: EvalProgress = silentProgress,
+): Promise<PoolReport> {
   const realVerdicts: (boolean | null)[] = [];
   const shuffledVerdicts: (boolean | null)[] = [];
   const blindChoices: (MoodStyle | null)[] = [];
@@ -136,6 +146,7 @@ export async function runPool(judge: MoodJudge, rows: EvalRow[], degraded: Degra
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
+    progress(`[eval] ${judge.name} · row ${i + 1}/${rows.length} (conforms / shuffled / identify)`);
     // PRIMARY: conformance against the TRUE mood.
     realVerdicts.push(await judge.conforms({ input: row.input, line: row.output, mood: row.mood }));
     // mood-shuffled: conformance against a WRONG mood.
@@ -150,7 +161,9 @@ export async function runPool(judge: MoodJudge, rows: EvalRow[], degraded: Degra
   }
 
   const degradedVerdicts: (boolean | null)[] = [];
-  for (const d of degraded) {
+  for (let k = 0; k < degraded.length; k++) {
+    const d = degraded[k];
+    progress(`[eval] ${judge.name} · degraded ${k + 1}/${degraded.length}`);
     degradedVerdicts.push(await judge.conforms({ input: d.input, line: d.line, mood: d.mood }));
   }
 
@@ -296,10 +309,41 @@ export interface EvalResult {
   pass: boolean;
 }
 
-/** Run the full eval across all judge pools and assemble the panel verdict + per-pool diagnostics. */
-export async function evaluate(judges: MoodJudge[], rows: EvalRow[], degraded: DegradedLine[]): Promise<EvalResult> {
+/** Run the full eval across all judge pools and assemble the panel verdict + per-pool diagnostics.
+ *  Each pool is isolated: a throw from one family is logged and dropped so remaining pools still
+ *  aggregate. Zero surviving pools throws (I/O/setup), not a falsifiable FAIL. */
+export async function evaluate(
+  judges: MoodJudge[],
+  rows: EvalRow[],
+  degraded: DegradedLine[],
+  progress: EvalProgress = silentProgress,
+): Promise<EvalResult> {
   const pools: PoolReport[] = [];
-  for (const j of judges) pools.push(await runPool(j, rows, degraded));
+  const failed: string[] = [];
+  for (let i = 0; i < judges.length; i++) {
+    const j = judges[i];
+    progress(
+      `[eval] pool ${i + 1}/${judges.length} "${j.name}" starting (${rows.length} real + ${degraded.length} degraded)`,
+    );
+    try {
+      pools.push(await runPool(j, rows, degraded, progress));
+      progress(`[eval] pool ${i + 1}/${judges.length} "${j.name}" finished`);
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      failed.push(`${j.name}: ${error}`);
+      console.error(
+        `[eval] pool "${j.name}" failed: ${error} — dropping this family; remaining pools still aggregate. ` +
+          `Operator: check that Ollama is serving "${j.name}" (\`ollama pull ${j.name}\`, \`ollama ps\`).`,
+      );
+    }
+  }
+  if (pools.length === 0) {
+    const detail = failed.length > 0 ? failed.join('; ') : 'no judges given';
+    throw new Error(
+      `no judge pools produced a report (${detail}). Operator: pull at least one judge model ` +
+        '(`ollama pull <model>`) and retry — this is an I/O/setup error, not an eval FAIL.',
+    );
+  }
   const gates = pools.map(gatePool);
   const panel = aggregatePanel(pools, rows);
   const panelGates = gatePool({ ...panel, judge: 'panel' });
@@ -309,6 +353,6 @@ export async function evaluate(judges: MoodJudge[], rows: EvalRow[], degraded: D
     panel,
     panelGates,
     agreement: interPoolAgreement(pools),
-    pass: pools.length > 0 && panelGates.pass,
+    pass: panelGates.pass,
   };
 }
