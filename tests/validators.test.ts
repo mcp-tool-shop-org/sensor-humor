@@ -58,6 +58,35 @@ describe('validators', () => {
     it('is case-insensitive', () => {
       expect(hasSimileLeak('LIKE A trainwreck')).toBe(true);
     });
+
+    // Crash-path cases the bare SIMILE_PATTERN misses (F-59082050). Analog of the hasHarshLeak
+    // ZWSP / homoglyph / combining proofs at 105-137: removing normalizeConfusables from
+    // hasSimileLeak would leak these while every plaintext simile test stayed green.
+    const ZWSP_LIKE = `broken li${String.fromCharCode(0x200b)}ke a charm`;
+    const CYRILLIC_LIKE = `broken l${String.fromCharCode(0x0456)}ke a charm`; // Cyrillic і
+    const GREEK_LIKE = `broken l${String.fromCharCode(0x03b9)}ke a charm`;   // Greek ι
+    // Combining mark: variation selector-15 (U+FE0E, general category Mn) laced into 'like'.
+    // The shared ZERO_WIDTH_AND_FORMAT strip removes it, so hasSimileLeak recovers 'like a'
+    // and the bare regex does not. (U+0301 composes under NFKC to 'í' and is a hasHarshLeak-only
+    // NFKD path — the simile gate uses normalizeConfusables, not normalizeForDetection.)
+    const COMBINING_LIKE = `broken li${String.fromCharCode(0xfe0e)}ke a charm`;
+
+    it('catches a zero-width-laced "like a" the bare SIMILE_PATTERN misses', () => {
+      expect(SIMILE_PATTERN.test(ZWSP_LIKE)).toBe(false);
+      expect(hasSimileLeak(ZWSP_LIKE)).toBe(true);
+    });
+
+    it('catches a Cyrillic/Greek homoglyph in "like" the bare SIMILE_PATTERN misses', () => {
+      expect(SIMILE_PATTERN.test(CYRILLIC_LIKE)).toBe(false);
+      expect(SIMILE_PATTERN.test(GREEK_LIKE)).toBe(false);
+      expect(hasSimileLeak(CYRILLIC_LIKE)).toBe(true);
+      expect(hasSimileLeak(GREEK_LIKE)).toBe(true);
+    });
+
+    it('catches a combining-mark laced "like a" the bare SIMILE_PATTERN misses', () => {
+      expect(SIMILE_PATTERN.test(COMBINING_LIKE)).toBe(false);
+      expect(hasSimileLeak(COMBINING_LIKE)).toBe(true);
+    });
   });
 
   describe('SIMILE_PATTERN', () => {

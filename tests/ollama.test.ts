@@ -71,6 +71,7 @@ describe('generateComedy', () => {
 
     const result = await generateComedy<TestResult>(makeOptions(), fallback);
     expect(result.data.text).toBe('fallback');
+    expect(result.fallback_reason).toBe('json-parse');
     // MAX_RETRIES=1 means 2 attempts
     expect(mockChat).toHaveBeenCalledTimes(2);
   });
@@ -82,6 +83,7 @@ describe('generateComedy', () => {
 
     const result = await generateComedy<TestResult>(makeOptions(), fallback);
     expect(result.data.text).toBe('fallback');
+    expect(result.fallback_reason).toBe('validation');
   });
 
   it('retries once before falling back — second attempt succeeds', async () => {
@@ -118,6 +120,7 @@ describe('generateComedy', () => {
 
     const result = await generateComedy<TestResult>(makeOptions(), fallback);
     expect(result.data.text).toBe('fallback');
+    expect(result.fallback_reason).toBe('validation');
   });
 
   it('classifies a non-object JSON root as json-parse (NOT unknown), no TypeError escapes (server-001)', async () => {
@@ -184,6 +187,7 @@ describe('generateComedy', () => {
 
     const result = await generateComedy<TestResult>(makeOptions(), fallback);
     expect(result.data.text).toBe('fallback');
+    expect(result.fallback_reason).toBe('connection');
     expect(mockChat).toHaveBeenCalledTimes(2);
   });
 
@@ -196,7 +200,7 @@ describe('generateComedy', () => {
 
     const result = await generateComedy<TestResult>(makeOptions(), fallback);
     expect(result.data.text).toBe('fallback');
-    expect(result.fallback_reason).toBeDefined();
+    expect(result.fallback_reason).toBe('timeout');
 
     // Clean up
     delete process.env.SENSOR_HUMOR_TIMEOUT_MS;
@@ -243,7 +247,7 @@ describe('generateComedy', () => {
 
       // Fallback is still returned (timer-cleanup + fallback behavior preserved).
       expect(result.data.text).toBe('fallback');
-      expect(result.fallback_reason).toBeDefined();
+      expect(result.fallback_reason).toBe('timeout');
 
       // The fetch wrapper must have threaded a signal into the underlying fetch...
       expect(seenSignals.length).toBeGreaterThan(0);
@@ -278,20 +282,42 @@ describe('generateComedy', () => {
   it('classifies error reasons into the fallback_reason tag (table-driven)', async () => {
     const respErr = (msg: string, status: number) =>
       Object.assign(new Error(msg), { name: 'ResponseError', status_code: status });
-    const cases: Array<[Error, string]> = [
-      [new Error('connect ECONNREFUSED 127.0.0.1:11434'), 'connection'],
-      [new Error('getaddrinfo EAI_AGAIN ollama.com'), 'connection'],
-      [respErr('model "nope" not found', 404), 'model-not-found'],
-      [respErr('unauthorized', 401), 'auth'],
-      [respErr('too many requests', 429), 'rate-limit'],
-      [respErr('internal server error', 500), 'server'],
+    const zodFrom = (value: unknown): Error => {
+      try {
+        TestSchema.parse(value);
+        throw new Error('expected ZodError');
+      } catch (e) {
+        if (e instanceof z.ZodError) return e;
+        throw e;
+      }
+    };
+    type Row =
+      | { via: 'reject'; err: Error; expected: string }
+      | { via: 'content'; content: string; expected: string };
+    const cases: Row[] = [
+      { via: 'reject', err: new Error('connect ECONNREFUSED 127.0.0.1:11434'), expected: 'connection' },
+      { via: 'reject', err: new Error('getaddrinfo EAI_AGAIN ollama.com'), expected: 'connection' },
+      { via: 'reject', err: respErr('model "nope" not found', 404), expected: 'model-not-found' },
+      { via: 'reject', err: respErr('unauthorized', 401), expected: 'auth' },
+      { via: 'reject', err: respErr('too many requests', 429), expected: 'rate-limit' },
+      { via: 'reject', err: respErr('internal server error', 500), expected: 'server' },
+      { via: 'reject', err: new Error('Ollama timeout after 10ms'), expected: 'timeout' },
+      { via: 'reject', err: Object.assign(new Error('The operation was aborted'), { name: 'AbortError' }), expected: 'timeout' },
+      { via: 'reject', err: zodFrom({ wrong_key: 123 }), expected: 'validation' },
+      { via: 'reject', err: zodFrom({ text: null }), expected: 'validation' },
+      { via: 'reject', err: new SyntaxError('Unexpected token n in JSON at position 0'), expected: 'json-parse' },
+      { via: 'content', content: '{"wrong_key":123}', expected: 'validation' },
+      { via: 'content', content: '{"text":null}', expected: 'validation' },
+      { via: 'content', content: 'not json at all', expected: 'json-parse' },
+      { via: 'content', content: '{garbage', expected: 'json-parse' },
     ];
-    for (const [err, expected] of cases) {
+    for (const row of cases) {
       mockChat.mockReset();
-      mockChat.mockRejectedValue(err);
+      if (row.via === 'reject') mockChat.mockRejectedValue(row.err);
+      else mockChat.mockResolvedValue({ message: { content: row.content } });
       const result = await generateComedy<TestResult>(makeOptions(), fallback);
       expect(result.data.text).toBe('fallback');
-      expect(result.fallback_reason).toBe(expected);
+      expect(result.fallback_reason).toBe(row.expected);
     }
   });
 
@@ -441,6 +467,7 @@ describe('generateComedy', () => {
       mockChat.mockResolvedValue({ message: { content: 'not json' } });
       const result = await generateComedy<TestResult>(makeOptions(), fallback);
       expect(result.data.text).toBe('fallback');
+      expect(result.fallback_reason).toBe('json-parse');
       // Zero retries => a single attempt, not the default two.
       expect(mockChat).toHaveBeenCalledTimes(1);
     });
@@ -451,6 +478,7 @@ describe('generateComedy', () => {
       mockChat.mockResolvedValue({ message: { content: 'still not json' } });
       const result = await generateComedy<TestResult>(makeOptions(), fallback);
       expect(result.data.text).toBe('fallback');
+      expect(result.fallback_reason).toBe('json-parse');
       // 3 retries after the first attempt => 4 total.
       expect(mockChat).toHaveBeenCalledTimes(4);
     });
@@ -502,6 +530,7 @@ describe('generateComedy', () => {
       mockChat.mockRejectedValue(new Error('ECONNREFUSED'));
       const result = await generateComedy<TestResult>(makeOptions(), fallback);
       expect(result.data.text).toBe('fallback');
+      expect(result.fallback_reason).toBe('connection');
       // Default MAX_RETRIES=1 => 2 attempts made.
       expect(result.retries).toBe(2);
       expect(typeof result.prompt_fingerprint).toBe('string');

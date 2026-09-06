@@ -1,11 +1,29 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resetSession, getSession } from '../src/session.js';
 import { MOOD_STYLES, MOOD_DESCRIPTIONS, type MoodStyle } from '../src/types.js';
-import { HARSH_FILTER, SIMILE_PATTERN, STATIC_SAFE_FALLBACK, hasLanguageLeak } from '../src/validators.js';
+import { HARSH_FILTER, SIMILE_PATTERN, STATIC_SAFE_FALLBACK, hasLanguageLeak, hasHarshLeak, hasSimileLeak, voicedSafeFallback } from '../src/validators.js';
 
 // Local mirror of roast.ts's (non-exported) COMPARISON_LEAK term-list, so a server-003 test can
 // assert a benign comparison word did not survive the terminal gate without importing a private symbol.
 const COMPARISON_LEAK_WORDS = /\bblanket\b|\bcoffee break\b|\bband[\s-]?aid\b|\bbandaid\b/i;
+
+// Obfuscated slur payloads (F-12a23ffa). Built from char codes so the slur is never spelled
+// plainly. Each defeats HARSH_FILTER's \b until normalizeForDetection runs — swapping a tool
+// site from hasHarshLeak back to HARSH_FILTER.test would leak these while every plaintext
+// slur test in this file stayed green.
+const RET = String.fromCharCode(0x72, 0x65, 0x74); // "ret"
+const ARD = String.fromCharCode(0x61, 0x72, 0x64); // "ard"
+const ZWSP_SLUR = `you ${RET}a${String.fromCharCode(0x200b)}${ARD.slice(1)} of a function`;
+const CYRILLIC_SLUR = `you ${String.fromCharCode(0x72, 0x435, 0x442, 0x430, 0x72, 0x64)} of a function`;
+const OBFUSCATED_SLURS: Array<{ name: string; payload: string }> = [
+  { name: 'ZWSP-laced', payload: ZWSP_SLUR },
+  { name: 'Cyrillic-homoglyph', payload: CYRILLIC_SLUR },
+];
+// Mirrors the unexported STATIC_SAFE_CATCHPHRASE.dry in catchphrase.ts. Default session mood
+// is dry; a gated generate/callback must collapse to this input-free line.
+const DRY_SAFE_CATCHPHRASE = 'Noted. Moving on.';
+// Zero-width-laced simile the bare SIMILE_PATTERN misses (F-59082050 tool-site pin).
+const ZWSP_LIKE = `broken li${String.fromCharCode(0x200b)}ke a charm`;
 
 // Mock the Ollama module so tests don't need a live server. recordSafetyFilterFire is a no-op
 // counter the tools call when a terminal gate fires — stub it so the tool code path runs.
@@ -24,7 +42,7 @@ import { roast } from '../src/tools/roast.js';
 import { heckle } from '../src/tools/heckle.js';
 import { comicTiming } from '../src/tools/comic_timing.js';
 import { catchphraseGenerate, catchphraseCallback } from '../src/tools/catchphrase.js';
-import { runningGag } from '../src/tools/running_gag.js';
+import { runningGag, DirtyGagError } from '../src/tools/running_gag.js';
 
 describe('mood tools', () => {
   beforeEach(() => {
@@ -1876,5 +1894,106 @@ describe('per-tool trace recording (ROADMAP v2.0 debug_chain)', () => {
     const traces = getSession().getTraces();
     expect(traces).toHaveLength(3);
     expect(traces.map((t) => t.input)).toEqual(['three', 'two', 'one']);
+  });
+});
+
+// F-12a23ffa: comedy-tool safety proofs must plant obfuscated slurs and call hasHarshLeak.
+// Plaintext 'you retard' tests stay green if a tool site swaps hasHarshLeak back to HARSH_FILTER.test;
+// these payloads go RED because the bare regex misses them.
+describe('obfuscated slur wiring (hasHarshLeak at every tool site)', () => {
+  const TARGET = 'bad code';
+
+  beforeEach(() => {
+    resetSession();
+    mockGenerate.mockReset();
+    mockRecordSafetyFire.mockClear();
+  });
+
+  it('named regression: HARSH_FILTER.test misses the obfuscated payloads (why the normalized path is required at the tool site)', () => {
+    for (const { payload } of OBFUSCATED_SLURS) {
+      expect(HARSH_FILTER.test(payload)).toBe(false);
+      expect(hasHarshLeak(payload)).toBe(true);
+    }
+  });
+
+  for (const { name, payload } of OBFUSCATED_SLURS) {
+    it(`roast substitutes the voiced safe fallback for a ${name} slur`, async () => {
+      expect(HARSH_FILTER.test(payload)).toBe(false);
+      mockGenerate.mockResolvedValue({ data: { roast: payload, severity: 3 } });
+      const result = await roast(TARGET);
+      expect(result.roast).toBe(voicedSafeFallback('dry', TARGET));
+      expect(result.degraded).toBe(true);
+      expect(result.degraded_reason).toBe('safety-filter');
+      expect(hasHarshLeak(result.roast)).toBe(false);
+    });
+
+    it(`heckle substitutes the voiced safe fallback for a ${name} slur`, async () => {
+      expect(HARSH_FILTER.test(payload)).toBe(false);
+      mockGenerate.mockResolvedValue({ data: { heckle: payload } });
+      const result = await heckle(TARGET);
+      expect(result.heckle).toBe(`${TARGET}. That's a choice.`);
+      expect(result.degraded).toBe(true);
+      expect(result.degraded_reason).toBe('safety-filter');
+      expect(hasHarshLeak(result.heckle)).toBe(false);
+    });
+
+    it(`comic_timing substitutes the voiced safe fallback for a ${name} slur`, async () => {
+      expect(HARSH_FILTER.test(payload)).toBe(false);
+      mockGenerate.mockResolvedValue({ data: { rewrite: payload, technique_used: 'understatement' } });
+      const result = await comicTiming(TARGET);
+      expect(result.rewrite).toBe(voicedSafeFallback('dry', TARGET));
+      expect(result.degraded).toBe(true);
+      expect(result.degraded_reason).toBe('safety-filter');
+      expect(hasHarshLeak(result.rewrite)).toBe(false);
+    });
+
+    it(`catchphraseGenerate substitutes the static safe catchphrase for a ${name} slur`, async () => {
+      expect(HARSH_FILTER.test(payload)).toBe(false);
+      mockGenerate.mockResolvedValue({ data: { phrase: payload } });
+      const result = await catchphraseGenerate(TARGET);
+      expect(result.phrase).toBe(DRY_SAFE_CATCHPHRASE);
+      expect(result.degraded).toBe(true);
+      expect(result.degraded_reason).toBe('safety-filter');
+      expect(hasHarshLeak(result.phrase)).toBe(false);
+      expect(getSession().catchphrases.has(payload)).toBe(false);
+    });
+
+    it(`catchphraseCallback substitutes the static safe catchphrase for a stored ${name} slur`, () => {
+      expect(HARSH_FILTER.test(payload)).toBe(false);
+      getSession().useCatchphrase(payload);
+      const result = catchphraseCallback();
+      expect(result).not.toBeNull();
+      expect(result!.phrase).toBe(DRY_SAFE_CATCHPHRASE);
+      expect(result!.degraded).toBe(true);
+      expect(result!.degraded_reason).toBe('safety-filter');
+      expect(hasHarshLeak(result!.phrase)).toBe(false);
+    });
+
+    it(`runningGag refuses a ${name} slur and stores nothing`, () => {
+      expect(HARSH_FILTER.test(payload)).toBe(false);
+      let threw: unknown;
+      try {
+        runningGag(payload, 'clean-tag');
+      } catch (e) {
+        threw = e;
+      }
+      expect(threw).toBeInstanceOf(DirtyGagError);
+      const msg = (threw as Error).message;
+      expect(hasHarshLeak(msg)).toBe(false);
+      expect(getSession().running_gags).toHaveLength(0);
+    });
+  }
+
+  // F-59082050: pin one obfuscated simile through a comedy tool so the terminal gate, not just
+  // the unit hasSimileLeak suite, requires the normalized path.
+  it('roast terminal-gates a zero-width-laced simile the bare SIMILE_PATTERN misses', async () => {
+    expect(SIMILE_PATTERN.test(ZWSP_LIKE)).toBe(false);
+    expect(hasSimileLeak(ZWSP_LIKE)).toBe(true);
+    mockGenerate.mockResolvedValue({ data: { roast: ZWSP_LIKE, severity: 3 } });
+    const result = await roast('the code');
+    expect(result.roast).toBe(voicedSafeFallback('dry', 'the code'));
+    expect(result.degraded).toBe(true);
+    expect(result.degraded_reason).toBe('safety-filter');
+    expect(hasSimileLeak(result.roast)).toBe(false);
   });
 });

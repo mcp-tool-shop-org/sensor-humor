@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resetSession, getSession, getGagMinDistance, getGagMaxFires } from '../src/session.js';
 import { runningGag, DirtyGagError } from '../src/tools/running_gag.js';
-import { HARSH_FILTER, SIMILE_PATTERN } from '../src/validators.js';
+import { HARSH_FILTER, SIMILE_PATTERN, hasHarshLeak } from '../src/validators.js';
 
 // The running-gag/callback mechanic was DEAD: running_gags was never seeded at runtime, so
 // findCallbackCandidates always returned [] and no callback could ever fire. These tests prove the
@@ -122,6 +122,31 @@ describe('running_gag REFUSES a dirty gag (callback-revival C1 / C5)', () => {
 
   it('refuses when both fields sanitize to empty', () => {
     expect(() => runningGag('\r\n\t', '   ')).toThrow(DirtyGagError);
+    expect(getSession().running_gags).toHaveLength(0);
+  });
+
+  // F-12a23ffa: the char-code SLUR above is plaintext after join, so HARSH_FILTER.test would
+  // still catch it. These payloads defeat the bare regex; swapping hasHarshLeak back to
+  // HARSH_FILTER.test at the plant site (without relying on sanitize folding) must go RED.
+  const ZWSP_SLUR = `you ${SLUR.slice(0, 4)}${String.fromCharCode(0x200b)}${SLUR.slice(4)} of a bug`;
+  const CYRILLIC_SLUR = `you ${String.fromCharCode(0x72, 0x435, 0x442, 0x430, 0x72, 0x64)} of a bug`;
+
+  it('named regression: HARSH_FILTER.test misses the obfuscated payloads (why hasHarshLeak is required at the plant site)', () => {
+    expect(HARSH_FILTER.test(ZWSP_SLUR)).toBe(false);
+    expect(HARSH_FILTER.test(CYRILLIC_SLUR)).toBe(false);
+    expect(hasHarshLeak(ZWSP_SLUR)).toBe(true);
+    expect(hasHarshLeak(CYRILLIC_SLUR)).toBe(true);
+  });
+
+  it('throws DirtyGagError on a ZWSP-laced setup the bare HARSH_FILTER misses, and stores nothing', () => {
+    expect(HARSH_FILTER.test(ZWSP_SLUR)).toBe(false);
+    expect(() => runningGag(ZWSP_SLUR, 'cleanish')).toThrow(DirtyGagError);
+    expect(getSession().running_gags).toHaveLength(0);
+  });
+
+  it('throws DirtyGagError on a Cyrillic-homoglyph setup the bare HARSH_FILTER misses, and stores nothing', () => {
+    expect(HARSH_FILTER.test(CYRILLIC_SLUR)).toBe(false);
+    expect(() => runningGag(CYRILLIC_SLUR, 'cleanish')).toThrow(DirtyGagError);
     expect(getSession().running_gags).toHaveLength(0);
   });
 });
