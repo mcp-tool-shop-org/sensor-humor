@@ -67,6 +67,8 @@ export interface PoolReport {
   blind_n: number;
   blind_accuracy: number;
   shuffled_conformance: number;
+  /** Decided (non-null) shuffled verdicts — 0 means the shuffled gate must refuse pass. */
+  shuffled_n: number;
   degraded_n: number;
   degraded_conformance: number;
   /** Per-line verdicts, kept so the panel can majority-aggregate and so inter-pool agreement is computable. */
@@ -77,7 +79,10 @@ export interface PoolReport {
   degradedVerdicts: (boolean | null)[];
 }
 
-/** Rate of `true` over the non-null verdicts (null = unparseable/abstain, dropped from the denominator). */
+/** Rate of `true` over the non-null verdicts (null = unparseable/abstain, dropped from the denominator).
+ *  Empty decided set returns 0 — fail-closed for the POSITIVE real-conformance floor. Negative
+ *  controls pass shuffled_n / degraded_n into the gates, which refuse pass when n===0 (0% of
+ *  nothing is not a discriminating / floor-passing control). */
 function rateOf(verdicts: (boolean | null)[]): number {
   const decided = verdicts.filter((v) => v !== null) as boolean[];
   if (decided.length === 0) return 0;
@@ -157,6 +162,7 @@ export async function runPool(judge: MoodJudge, rows: EvalRow[], degraded: Degra
     blind_n,
     blind_accuracy: blind_n > 0 ? blind_correct / blind_n : 0,
     shuffled_conformance: rateOf(shuffledVerdicts),
+    shuffled_n: shuffledVerdicts.filter((v) => v !== null).length,
     degraded_n: degradedVerdicts.filter((v) => v !== null).length,
     degraded_conformance: rateOf(degradedVerdicts),
     realVerdicts,
@@ -182,12 +188,14 @@ export function gatePool(r: {
   blind_n: number;
   real_conformance: number;
   shuffled_conformance: number;
+  shuffled_n?: number;
+  degraded_n?: number;
   degraded_conformance: number;
   judge?: string;
 }): PoolGates {
   const blind = moodBlindGate(r.blind_correct, r.blind_n);
-  const shuffled = moodShuffledGate(r.real_conformance, r.shuffled_conformance);
-  const degraded = degradedLineGate(r.degraded_conformance);
+  const shuffled = moodShuffledGate(r.real_conformance, r.shuffled_conformance, r.shuffled_n);
+  const degraded = degradedLineGate(r.degraded_conformance, r.degraded_n);
   const conformanceFloor = conformanceFloorGate(r.real_conformance);
   return {
     judge: r.judge ?? 'panel',
@@ -210,6 +218,7 @@ export interface PanelReport {
   blind_n: number;
   blind_accuracy: number;
   shuffled_conformance: number;
+  shuffled_n: number;
   degraded_n: number;
   degraded_conformance: number;
 }
@@ -246,6 +255,7 @@ export function aggregatePanel(pools: PoolReport[], rows: EvalRow[]): PanelRepor
     blind_n,
     blind_accuracy: blind_n > 0 ? blind_correct / blind_n : 0,
     shuffled_conformance: rateOf(panelShuffled),
+    shuffled_n: panelShuffled.filter((v) => v !== null).length,
     degraded_n: panelDegraded.filter((v) => v !== null).length,
     degraded_conformance: rateOf(panelDegraded),
   };

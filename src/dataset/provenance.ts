@@ -53,8 +53,8 @@ export interface EnrichedRecord extends CaptureRow {
 /** Context the verdict engine needs beyond the row itself. */
 export interface VerdictContext {
   /**
-   * Where the input came from. Defaults to 'synthetic' (internal-seed) — the batch sweep supplies
-   * curated inputs; a live-capture wrapper passes 'user_input'.
+   * Where the input came from. Prefer the row's capture-time stamp; otherwise this context;
+   * otherwise fail-closed to 'user_input' (never silently treat live capture as synthetic).
    */
   source_type?: SourceType;
   /** Consent for a user_input row. Ignored for synthetic rows. */
@@ -91,7 +91,8 @@ export function looksLikeCode(text: string): boolean {
  * never assigned here — only a human opt-in + review step promotes public_candidate → public.
  */
 export function assignVerdict(row: CaptureRow, ctx: VerdictContext = {}): EnrichedRecord {
-  const source_type: SourceType = ctx.source_type ?? 'synthetic';
+  // Fail-closed: an unstamped live-capture row is user_input, never silently synthetic.
+  const source_type: SourceType = ctx.source_type ?? row.source_type ?? 'user_input';
   const code_snippet_flag = looksLikeCode(row.input);
   const pii_scrub = ctx.pii_scrub ?? null;
   const consent_status: ConsentStatus =
@@ -110,10 +111,18 @@ export function assignVerdict(row: CaptureRow, ctx: VerdictContext = {}): Enrich
     // failing entity is enough — Hong et al.: one pass is not defensible, so a failure is decisive).
     record_verdict = 'excluded';
     verdict_reason = 'PII scrub reported a failing entity — excluded from distribution';
+  } else if (!pii_scrub) {
+    // Never mint public_candidate without a scrub result — an unstamped live file used to default
+    // to synthetic and skip the floor, shipping plaintext PII as a public_candidate.
+    record_verdict = 'internal';
+    verdict_reason =
+      source_type === 'synthetic'
+        ? 'synthetic row not yet PII-scrubbed — internal until a scrub result exists'
+        : 'user input not yet PII-scrubbed — internal until scrubbed';
   } else if (source_type === 'synthetic') {
     // Fully synthetic (curated internal-seed input + model output, no user content): eligible for
-    // public pending human review. code_snippet_flag on OUR OWN seed inputs is informational only
-    // (it is not a third-party license risk).
+    // public pending human review, but only AFTER a clean scrub result. code_snippet_flag on OUR
+    // OWN seed inputs is informational only (it is not a third-party license risk).
     record_verdict = 'public_candidate';
     verdict_reason = 'synthetic row (internal-seed input + model output); public pending human review';
   } else if (consent_status !== 'opted_in') {
@@ -123,9 +132,6 @@ export function assignVerdict(row: CaptureRow, ctx: VerdictContext = {}): Enrich
     record_verdict = 'internal';
     verdict_reason =
       'user input contains code (license/attribution review required per Doe v. GitHub) — internal until reviewed';
-  } else if (!pii_scrub) {
-    record_verdict = 'internal';
-    verdict_reason = 'user input not yet PII-scrubbed — internal until scrubbed';
   } else {
     record_verdict = 'public_candidate';
     verdict_reason = 'user input opted-in, PII-clean, no code — public pending human review';

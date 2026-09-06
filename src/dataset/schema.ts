@@ -33,8 +33,8 @@ export const InferenceSettingsSchema = z
 /**
  * The row shape before the cross-field check. `.strict()` closes the contract — an unknown top-level
  * key is rejected, so schema drift or a hand-edited row can't smuggle fields past the validator.
- * Optional fields (`degraded_reason`, `prompt_fingerprint`, `retries`, `latency_ms`) may be absent —
- * the sink omits them on the reuse / degraded paths.
+ * Optional fields (`degraded_reason`, `prompt_fingerprint`, `retries`, `latency_ms`, `source_type`)
+ * may be absent — the sink omits degraded-path fields; `source_type` is omitted only on pre-stamp JSONL.
  *
  * Exported (as the ZodObject, before `.refine`) so the Slice-2 enriched-record contract can
  * `.extend()` it with the `provenance` block: the enriched schema is the same row plus provenance,
@@ -49,6 +49,12 @@ export const BaseCaptureRowSchema = z
     mood: z.enum(MOOD_STYLES),
     input: z.string(),
     output: z.string().min(1),
+    /**
+     * Where this row's input came from. Stamped at capture time (live → user_input;
+     * internal-seed sweep → synthetic). Optional so pre-stamp JSONL still parses;
+     * enrich fail-closes unstamped rows to user_input rather than synthetic.
+     */
+    source_type: z.enum(['synthetic', 'user_input']).optional(),
     valid: z.boolean(),
     degraded_reason: z.string().min(1).optional(),
     validators_triggered: z.array(z.string()),

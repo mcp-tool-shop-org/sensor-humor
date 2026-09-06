@@ -104,22 +104,46 @@ export function buildIdentifyPrompt(line: string, orderedOptions: MoodStyle[]): 
   ].join('\n');
 }
 
-/** Parse a judge's yes/no reply. Returns the first standalone yes/no token, or null if neither appears
- *  (\bno\b never matches "not"/"cannot", so a "No, because…" or "not in the voice, so NO" parses right). */
-export function parseYesNo(raw: string): boolean | null {
-  const m = raw.toLowerCase().match(/\b(yes|no)\b/);
-  if (!m) return null;
-  return m[1] === 'yes';
+/** True when `token` at `idx` is a negated mention ('not yes', 'cannot say yes', 'never roast'). */
+function isNegatedMention(text: string, idx: number): boolean {
+  const before = text.slice(Math.max(0, idx - 24), idx).toLowerCase();
+  return /(?:^|\b)(?:not|never|cannot|can'?t|don't|dont|isn't|isnt|ain't|aint|no)\s+(?:\w+\s+){0,2}$/.test(before);
 }
 
-/** Parse a judge's mood choice: the EARLIEST-mentioned option in the reply (so "clearly the roast
- *  voice" → roast), or null if no option word appears. */
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Parse a judge's yes/no reply. Last standalone YES/NO token wins (so an echoed 'YES or NO' plus a
+ * later 'NO' counts as NO). The instruction phrase 'YES or NO' is stripped so it cannot vote.
+ * Negated mentions ('not yes', 'cannot say yes') are non-votes. Returns null when nothing remains.
+ */
+export function parseYesNo(raw: string): boolean | null {
+  const stripped = raw.replace(/\byes\s+or\s+no\b/gi, ' ');
+  let last: boolean | null = null;
+  for (const m of stripped.matchAll(/\b(yes|no)\b/gi)) {
+    const idx = m.index ?? 0;
+    if (isNegatedMention(stripped, idx)) continue;
+    last = m[1].toLowerCase() === 'yes';
+  }
+  return last;
+}
+
+/**
+ * Parse a judge's mood choice: whole-word option mentions only (so 'sundry' is not 'dry'), LAST
+ * mention wins, and negated mentions ('not roast') are non-votes. Null if no option word remains.
+ */
 export function parseMoodChoice(raw: string, options: readonly MoodStyle[]): MoodStyle | null {
   const t = raw.toLowerCase();
   let best: { mood: MoodStyle; idx: number } | null = null;
-  for (const m of options) {
-    const idx = t.indexOf(m);
-    if (idx >= 0 && (best === null || idx < best.idx)) best = { mood: m, idx };
+  for (const mood of options) {
+    const re = new RegExp(`\\b${escapeRe(mood)}\\b`, 'g');
+    for (const m of t.matchAll(re)) {
+      const idx = m.index ?? 0;
+      if (isNegatedMention(t, idx)) continue;
+      if (best === null || idx >= best.idx) best = { mood, idx };
+    }
   }
   return best ? best.mood : null;
 }

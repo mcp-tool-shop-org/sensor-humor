@@ -8,8 +8,10 @@
  * with SPRT early-stopping (see src/scorecard/stats.ts for the grounding).
  *
  *   PASS         — Wilson lower bound > threshold: the mood still conforms.
- *   FAIL         — Wilson upper bound < threshold: a CONFIRMED drift; exit 1 (blocks a release).
- *   INCONCLUSIVE — not enough evidence; never blocks (raise SCORECARD_N for a tighter answer).
+ *   FAIL         — Wilson upper bound < threshold, SPRT ACCEPT_DRIFTED, OR total==0 after a
+ *                  reachable backend (an empty sample is a confirmed outage, not INCONCLUSIVE).
+ *   INCONCLUSIVE — not enough evidence on a non-empty sample; never blocks (raise SCORECARD_N).
+ *   SKIP         — Ollama unreachable / model missing; exit 75 (distinct from PASS/FAIL).
  *
  * The per-PR gate is the DETERMINISTIC half — the golden-set + stats tests under `npm test` —
  * which needs no backend. This live run is the nightly/manual complement; run it with:
@@ -114,6 +116,9 @@ interface MoodReport {
   stopped: string;
 }
 
+/** Distinct skip exit when the live gate could not run (backend down). Not 0 (PASS) and not 1 (FAIL). */
+const SKIP_EXIT = 75;
+
 /**
  * Authoritative verdict layer for the exit code (sc-005).
  *
@@ -129,6 +134,8 @@ interface MoodReport {
  *   - SPRT ACCEPT_HEALTHY  -> PASS         (a confirmed healthy stream)
  *   - SPRT CONTINUE / never fired (fixed-N exhaustion) -> fall back to the Wilson three-valued
  *     verdict on the full realized sample (the andon-correct decision at fixed N).
+ *   - total==0 after a reachable backend -> FAIL (empty sample is a confirmed outage, not
+ *     INCONCLUSIVE). Unreachable Ollama is SKIP (exit 75), never PASS.
  *
  * The Wilson interval is still computed and reported for the human-readable row; only the
  * exit-code verdict is reconciled here.
@@ -136,7 +143,9 @@ interface MoodReport {
 function reconcileVerdict(sprtDecision: SprtDecision | null, hits: number, total: number): Verdict {
   if (sprtDecision === 'ACCEPT_DRIFTED') return 'FAIL';
   if (sprtDecision === 'ACCEPT_HEALTHY') return 'PASS';
-  if (total === 0) return 'INCONCLUSIVE';
+  // A reachable backend that produced zero scorable samples is a confirmed outage, not "not enough
+  // evidence" — INCONCLUSIVE never blocks, and printing PASS on an empty sample hid a total failure.
+  if (total === 0) return 'FAIL';
   return threeValuedVerdict(hits, total, { threshold: THRESHOLD });
 }
 
@@ -182,12 +191,13 @@ async function scoreMood(mood: MoodStyle): Promise<MoodReport> {
 async function main(): Promise<void> {
   const probe = await probeOllama(5000);
   if (!probe.reachable || !probe.model_available) {
-    // This gate needs the backend. Don't fail a gate you couldn't run — skip cleanly (exit 0).
+    // This gate needs the backend. Don't fail a gate you couldn't run — and don't print PASS.
+    // Distinct skip exit (75 / EX_TEMPFAIL), not 0, so CI can tell skip from a green PASS.
     console.error(
-      `[scorecard] Ollama not ready (reachable=${probe.reachable}, model_available=${probe.model_available}, model="${getModel()}"). ` +
-        `This live gate needs the backend; skipping. The deterministic per-PR gate runs in 'npm test'.`,
+      `[scorecard] SKIP — Ollama not ready (reachable=${probe.reachable}, model_available=${probe.model_available}, model="${getModel()}"). ` +
+        `This live gate needs the backend; not a PASS. The deterministic per-PR gate runs in 'npm test'.`,
     );
-    process.exit(0);
+    process.exit(SKIP_EXIT);
   }
 
   console.error(
@@ -231,11 +241,21 @@ async function main(): Promise<void> {
     );
   }
   if (failed.length) {
-    console.error(
-      `[scorecard] FAIL: ${failed.map((r) => r.mood).join(', ')} drifted below ${THRESHOLD} ` +
-        `(SPRT ACCEPT_DRIFTED or Wilson upper < threshold — a confirmed regression). ` +
-        `Investigate the prompt/model before shipping.`,
-    );
+    const empty = failed.filter((r) => r.total === 0);
+    const drifted = failed.filter((r) => r.total > 0);
+    if (empty.length) {
+      console.error(
+        `[scorecard] FAIL: ${empty.map((r) => r.mood).join(', ')} produced 0 scorable samples ` +
+          `(backend reachable but every comicTiming sample was degraded — an empty sample is not PASS).`,
+      );
+    }
+    if (drifted.length) {
+      console.error(
+        `[scorecard] FAIL: ${drifted.map((r) => r.mood).join(', ')} drifted below ${THRESHOLD} ` +
+          `(SPRT ACCEPT_DRIFTED or Wilson upper < threshold — a confirmed regression). ` +
+          `Investigate the prompt/model before shipping.`,
+      );
+    }
     process.exit(1);
   }
   console.error('[scorecard] PASS — no mood shows a confirmed conformance regression.');
