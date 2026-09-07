@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-09-07
+
+Feature Pass after the 1.3.0 health swarm: mood×technique overlays, callback variation contract, scorecard model pin, tarball CI gate, language-conformance, and the confirming-audit close-outs. 425 → 700 tests.
+
 ### Added
 - **Confirming Feature Pass (F-8c2e1a47 / F-7e2c9b14 / F-e4b17c2a / F-f0b39d16 / F-4a7e6c91)** —
   roast/heckle `technique: "callback"` now shares comic_timing's honor/vary/retirement path;

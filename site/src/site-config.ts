@@ -47,7 +47,7 @@ export const config: SiteConfig = {
         { title: 'Start Ollama', code: 'ollama run qwen2.5:7b-instruct' },
         { title: 'Start MCP server', code: 'SENSOR_HUMOR_DEBUG=true npm start' },
         { title: 'Set the mood', code: 'mood_set(style: "dry")\n// -> { mood: "dry", description: "Deadpan, minimalist..." }' },
-        { title: 'Roast some code', code: 'roast(target: "global mutable state", context: "code")\n// -> { roast: "Verdict: Shared hallucination.", severity: 4 }' },
+        { title: 'Roast some code', code: 'roast(target: "global mutable state", context: "code", technique: "misdirection")\n// -> { roast: "Verdict: Shared hallucination.", severity: 4, technique_used: "misdirection" }' },
         { title: 'Rewrite with timing', code: 'comic_timing(text: "Build failed after 47 attempts", technique: "escalation")\n// -> { rewrite: "Forty-seven builds. A new personal record." }' },
         { title: 'Voice it (mcp-voice-soundboard)', code: '// not a sensor-humor tool — pair the roast with Piper\nvoice_speak({ text: result.roast, mood: "roast" })\n// -> am_eric @ 1.05x, confident sarcastic energy' },
       ],

@@ -26,7 +26,7 @@ import { allowedTechniquesForMood } from './tools/techniques.js';
 
 const server = new McpServer({
   name: 'sensor-humor',
-  version: '1.3.0',
+  version: '1.3.1',
 });
 
 /** Hints keyed by error code, so a tool error tells the caller how to fix it. */
@@ -406,7 +406,7 @@ async function checkOllamaHealth(): Promise<void> {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('[sensor-humor] MCP server v1.3.0 running on stdio');
+  console.error('[sensor-humor] MCP server v1.3.1 running on stdio');
 
   // Fire-and-forget health check
   checkOllamaHealth();

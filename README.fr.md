@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="logo.png" width="400" alt="sensor-humor" />
+  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/sensor-humor/readme.png" width="400" alt="sensor-humor" />
 </p>
 
 <p align="center">
@@ -13,32 +13,31 @@
   <a href="https://mcp-tool-shop-org.github.io/sensor-humor/"><img src="https://img.shields.io/badge/landing-page-34d399" alt="Landing Page"></a>
 </p>
 
-```text
-Outil MCP qui donne à votre LLM un acolyte comique permanent : personnalité basée sur l’humeur, rappels tenant compte de la session, blagues récurrentes, sarcasmes, railleries et expressions toutes faites — le tout avec intégration vocale via Piper TTS (prosodie contrôlée).
+L’outil MCP qui donne à votre LLM un partenaire comique persistant : personnalité basée sur l’humeur, rappels tenant compte de la session, blagues récurrentes, sarcasmes, railleries et phrases toutes faites, le tout avec intégration vocale via Piper TTS (prosodie contrôlée).
 
-Conçu pour les développeurs : critiques douces sur les problèmes de code, messages d’erreur secs et laconiques, escalade chaotique en cas d’échec de la compilation. N’écrase jamais le ton du LLM hôte — voix distincte qui intervient lorsqu’on lui demande.
+Conçu pour les développeurs : critiques subtiles sur les problèmes de code, messages d’erreur secs et laconiques, escalade chaotique en cas d’échec de la compilation. N’écrase jamais le ton du LLM hôte, mais propose une voix distincte qui intervient lorsqu’on le lui demande.
 
 ## Fonctionnalités
 
-- 6 humeurs, chacune étant réglée avec un modèle de phrase à trous pour une sortie prévisible et de haute qualité
-- État de la session : blagues récurrentes, tampon circulaire des dernières remarques (maximum 20), mappage des expressions toutes faites — éventuellement conservé sur le disque (`SENSOR_HUMOR_PERSIST`) afin que les rappels survivent à un redémarrage du serveur
-- 9 outils : mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, debug_status, session_reset
+- 6 humeurs, chacune étant réglée avec un modèle de phrase à compléter pour une sortie prévisible et de haute qualité
+- État de la session : blagues récurrentes, tampon circulaire des dernières répliques (maximum 20), mappage des phrases toutes faites, qui peuvent être sauvegardées sur le disque (`SENSOR_HUMOR_PERSIST`) afin que les rappels survivent à un redémarrage du serveur
+- 11 outils : mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, running_gag, debug_status, debug_chain, session_reset
 - Backend Ollama local (qwen2.5:7b par défaut, configurable via `SENSOR_HUMOR_MODEL`)
 - Appariement vocal : mcp-voice-soundboard avec Piper TTS (réglages de la prosodie : length_scale, noise_scale, noise_w_scale, volume)
-- Déterministe : application du schéma JSON, validation, nouvelle tentative en cas de sortie incorrecte, héritage de l’humeur appliqué
+- Déterministe : application du schéma JSON, validation, nouvelle tentative en cas de sortie incorrecte, application de l’héritage de l’humeur
 
 ## Humeurs
 
-Chaque humeur utilise un modèle de phrase à trous qui force le modèle à adopter une forme prévisible et de haute qualité.
+Chaque humeur utilise un modèle de phrase à compléter qui force le modèle à adopter une forme prévisible et de haute qualité.
 
-- **dry** — laconique, minimaliste, douloureusement évident (par défaut)
-- **roast** — sarcasmes affectueux, étiquettes de verdict/diagnostic
-- **cynic** — cynisme, réalisme silencieux et acerbe (« Bien sûr : », « Prévisiblement : »)
-- **cheeky** — taquineries ludiques (« Oh chérie », « Coup audacieux »)
-- **chaotic** — phrase bien construite, puis rebondissement absurde soudain (« Selon les informations… »)
-- **zoomer** — sarcasme typique de la génération Z, constamment en ligne (réaction, pique, BLOC DE MAJUSCULES, balise)
+- **dry** (sec) : laconique, minimaliste, douloureusement évident (par défaut)
+- **roast** (sarcasme) : sarcasmes affectueux et pointus, étiquettes de verdict/diagnostic
+- **cynic** (cynique) : réalisme cynique et discret (« Bien sûr », « Prévisiblement »)
+- **cheeky** (effronté) : taquineries et espiègleries (« Oh, mon chéri », « Coup audacieux »)
+- **chaotic** (chaotique) : phrase ancrée, puis rebondissement absurde soudain (« Selon les informations… »)
+- **zoomer** : sarcasme typique de la génération Z, constamment en ligne (réaction, pique, BLOC EN MAJUSCULES, balise)
 
-Toutes les humeurs héritent de la voix + de la prosodie via mcp-voice-soundboard (Piper recommandé).
+Toutes les humeurs héritent de la voix et de la prosodie via mcp-voice-soundboard (Piper recommandé).
 
 ## Prérequis
 
@@ -57,7 +56,7 @@ npm install /path/to/sensor-humor
 
 ### Docker
 
-Une image de conteneur est publiée sur GHCR à chaque version. sensor-humor communique via MCP sur stdio, donc exécutez-le en mode interactif et pointez-le vers un Ollama accessible :
+Une image de conteneur est publiée sur GHCR à chaque version. sensor-humor communique via MCP sur stdio, il est donc préférable de l’exécuter de manière interactive et de le connecter à un Ollama accessible :
 
 ```bash
 docker run -i --rm -e OLLAMA_HOST=http://host.docker.internal:11434 \
@@ -66,7 +65,7 @@ docker run -i --rm -e OLLAMA_HOST=http://host.docker.internal:11434 \
 
 ### Configurez votre client MCP
 
-Enregistrez « sensor-humor » comme serveur stdio dans la configuration MCP de votre client. Pour Claude Code / Claude Desktop (`claude_desktop_config.json`) ou toute autre configuration au format `mcpServers` :
+Enregistrez sensor-humor en tant que serveur stdio dans la configuration MCP de votre client. Pour Claude Code / Claude Desktop (`claude_desktop_config.json`) ou toute configuration de type `mcpServers` :
 
 ```json
 {
@@ -83,7 +82,7 @@ Enregistrez « sensor-humor » comme serveur stdio dans la configuration MCP de 
 }
 ```
 
-Le serveur lit sa configuration à partir de ce bloc `env` (ou du shell qui le lance) ; il ne charge **pas** automatiquement un fichier `.env`. Consultez [`.env.example`](.env.example) pour connaître toutes les variables prises en charge. Si vous avez installé le paquet globalement, utilisez `"command": "sensor-humor"` sans aucun argument (`args`).
+Le serveur lit sa configuration à partir de ce bloc `env` (ou du shell qui le lance) ; il ne charge **pas** automatiquement un fichier `.env`. Consultez [`.env.example`](.env.example) pour toutes les variables prises en charge. Si vous avez installé le package globalement, utilisez `"command": "sensor-humor"` sans `args`.
 
 ## Démarrage rapide
 
@@ -125,34 +124,33 @@ Tous les outils héritent de l’humeur actuelle de la session.
 | Outil | Signature | Description |
 |------|-----------|-------------|
 | `mood_set` | `(style: string)` | Définit l’humeur active (dry, roast, chaotic, cheeky, cynic, zoomer) |
-| `mood_get` | `()` | Humeur actuelle + nombre de blagues |
-| `comic_timing` | `(text, technique?)` | Réécrit avec une présentation comique (règle des trois, diversion, escalade, rappel, euphémisme, automatique) |
-| `roast` | `(target, context?)` | Sarcasme affectueux dans la voix de l’humeur actuelle, renvoie un niveau de gravité de 1 à 5. Contexte : code, erreur, idée, situation |
-| `heckle` | `(target)` | Brève pique acerbe |
-| `catchphrase_generate` | `(context?)` | Crée une phrase réutilisable (stockée dans la session) |
-| `catchphrase_callback` | `()` | Réutilise l’expression toutes faites la plus utilisée (ou null) |
-| `running_gag` | `(setup, tag)` | Introduisez un élément récurrent que l’acolyte pourra rappeler plus tard (avec des mesures de sécurité). Cet élément devient un candidat pour être rappelé après que `SENSOR_HUMOR_GAG_MIN_DISTANCE` est activé ; il cesse d’être utilisé après que `SENSOR_HUMOR_GAG_MAX_FIRES` a été atteint. |
-| `debug_status` | `()` | État de santé du backend en direct (Ollama accessible, modèle téléchargé), configuration résolue, nombre de tentatives et état de la session |
-| `debug_chain` | `(limit?)` | Dernières N traces par appel (outil, humeur, entrée, empreinte de l’invite, tentatives, validateurs utilisés, latence) : un seul appel reconstitue le processus de génération. |
-| `session_reset` | `()` | Réinitialise tout l’état de la session (humeur, blagues, phrases, expressions toutes faites, compteur de tours) |
+| `mood_get` | `()` | Humeur actuelle + nombre de blagues + `allowed_techniques` pour l’humeur active |
+| `comic_timing` | `(text, technique?)` | Réécrit avec une présentation comique (règle de trois, diversion, escalade, rappel, sous-entendu, automatique) |
+| `roast` | `(target, context?, technique?)` | Sarcasme affectueux dans la voix de l’humeur actuelle, renvoie une sévérité de 1 à 5. Contexte : code, erreur, idée, situation. Le surcalage de technique facultatif doit être valide pour l’humeur actuelle (les combinaisons non valides sont refusées). |
+| `heckle` | `(target, technique?)` | Brève pique. Surcalage de technique facultatif, même matrice humeur × technique que le sarcasme. |
+| `catchphrase_generate` | `(context?)` | Crée un élément réutilisable (stocké dans la session) |
+| `catchphrase_callback` | `()` | Réutilise la phrase toutes faites la plus utilisée (ou null) |
+| `running_gag` | `(setup, tag)` | Introduit une blague récurrente à laquelle le partenaire comique peut faire référence plus tard (sécurité garantie). Devient un candidat au rappel après `SENSOR_HUMOR_GAG_MIN_DISTANCE` tours ; disparaît après `SENSOR_HUMOR_GAG_MAX_FIRES` utilisations. |
+| `debug_status` | `()` | État de santé du backend en direct (Ollama accessible, modèle téléchargé), configuration résolue, nombre de tentatives et d’échecs, et état de la session |
+| `debug_chain` | `(limit?)` | Dernières N traces par appel (outil, humeur, entrée, empreinte de l’invite, nouvelles tentatives, validateurs déclenchés, latence) : un seul appel reconstruit le pipeline de génération |
+| `session_reset` | `()` | Réinitialise tout l’état de la session (humeur, blagues, éléments, phrases toutes faites, traces, compteur de tours) |
 
-**Sortie dégradée (texte, pouvant être branché par une machine) :** lorsqu’un outil ne peut pas renvoyer une génération de modèle authentique, il renvoie une phrase préenregistrée dans la voix appropriée, ainsi que `degraded: true` et une `degraded_reason` provenant d’un **ensemble fermé** sur lequel un agent consommateur peut effectuer une branche exhaustive : `safety-filter` (un juron/une comparaison/une fuite de métadonnées a été substitué) · `connection` · `timeout` · `model-not-found` · `auth` · `rate-limit` · `server` · `http` · `json-parse` · `validation` · `exhausted` · `unknown`. Une génération authentique ne contient **pas** de drapeau `degraded` — son absence est le signal positif. **Tous** les outils comiques en contiennent un, y compris `catchphrase_callback` (un rappel substitué pour des raisons de sécurité est signalé, mais n’est jamais présenté comme authentique). `roast`/`heckle` renvoient également l’humeur active ; `catchphrase_generate` renvoie `is_fresh` (`true` = nouvellement créé, `false` = une expression toutes faites existante réutilisée).
+**Sortie dégradée (typée, pouvant être traitée par une machine) :** lorsqu’un outil ne peut pas renvoyer une génération de modèle authentique, il renvoie une phrase préenregistrée dans la voix appropriée, ainsi que `degraded: true` et un `degraded_reason` provenant d’un **ensemble fermé** sur lequel un agent consommateur peut effectuer une branchement exhaustif : `safety-filter` (un juron/une comparaison/une fuite de métadonnées a été substitué) · `language` (le modèle a basculé hors de l’alphabet latin et une phrase anglaise a été substituée, ce qui est une dégradation de la conformité, et non une dégradation de la sécurité) · `connection` · `timeout` · `model-not-found` · `auth` · `rate-limit` · `server` · `http` · `json-parse` · `validation` · `exhausted` · `unknown`. Une génération authentique ne comporte **aucun** indicateur `degraded` ; son absence est le signal positif. **Tous** les outils comiques comportent cet indicateur, y compris `catchphrase_callback` (un rappel substitué pour des raisons de sécurité est signalé, mais il n’est jamais présenté comme authentique). `roast`/`heckle` font également écho à l’humeur active `mood` ; `catchphrase_generate` renvoie `is_fresh` (`true` = nouvellement créé, `false` = une phrase toutes faites de la session réutilisée).
 
-Appelez `debug_status` pour obtenir une réponse sur l’état en un seul appel : accessibilité en direct (plus `unreachable_reason` lorsque cela est impossible — `connection` par rapport à `auth` par rapport à `timeout`), le modèle/hôte/délai résolus, les statistiques de génération, y compris à la fois `fallback_calls` (backend) **et** `safety_filter_fires` (fréquence à laquelle le seuil de sécurité a substitué une phrase), et un `prompt_fingerprint` + `active_prompt_key` qui lient le texte du *prompt actif* + le modèle afin que la dérive de la sortie puisse être attribuée à un changement de prompt par rapport au modèle — et une rétrogradation silencieuse de la version du prompt (une version 2 demandée qui est revenue à la version 1) est visible.
+Appelez le `debug_status` pour obtenir une réponse rapide sur les questions de santé : disponibilité en temps réel (plus `unreachable_reason` en cas de panne — `connection` par rapport à `auth` par rapport à `timeout`), modèle/hôte/délai résolus, statistiques de génération incluant à la fois `fallback_calls` (backend) **et** `safety_filter_fires` (fréquence à laquelle le seuil de sécurité a remplacé une ligne), et un `prompt_fingerprint` + `active_prompt_key` qui lient le texte de l’invite *active* + le modèle, de sorte que la dérive de la sortie est attribuable à un changement d’invite par rapport au modèle, et une mise à niveau silencieuse de la version de l’invite (une version v2 demandée qui est revenue à la version v1) est visible.
 
 ## Prosodie de l’humeur (voix Piper)
 
-Chaque humeur correspond à une voix Piper + une configuration de prosodie distincte :
+Chaque humeur correspond à une voix Piper + une configuration de prosodie distinctes :
 
-| Humeur | Voix | length_scale | noise_scale | noise_w_scale | volume | Caractère |
+| Humeur | Voix | length_scale | noise_scale | noise_w_scale | volume | Personnage |
 |------|-------|-------------|-------------|---------------|--------|-----------|
-| dry | en_GB-alan-medium | 1.15 | 0.3 | 0.3 | 0.9 | Plat, las, métronome |
+| dry | en_GB-alan-medium | 1.15 | 0.3 | 0.3 | 0.9 | Plat, las, rythmique |
 | roast | en_US-ryan-high | 0.95 | 0.667 | 0.8 | 1.0 | Sarcasme confiant |
-| chaotic | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | Animateur de journal télévisé qui raconte des absurdités |
-| cheeky
-``` | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Chaleureux, taquin, clin d’œil joueur |
-| cynique | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | Froid, plat, aucune surprise |
-| jeune génération (zoomer) | en_US-lessac-high | 0.90 | 0.85 | 0.9 | 1.15 | Rythmé, bruyant, énergie de streamer |
+| chaotic | en_US-lessac-high | 0.88 | 0.8 | 0.9 | 1.1 | Présentateur de journal télévisé débitant des absurdités |
+| cheeky | en_GB-cori-high | 1.05 | 0.5 | 0.6 | 0.95 | Chaleureux, taquin, clin d’œil joueur |
+| cynic | en_GB-alan-medium | 1.25 | 0.2 | 0.2 | 0.8 | Froid, plat, aucune surprise |
+| zoomer | en_US-lessac-high | 0.90 | 0.85 | 0.9 | 1.15 | Rapide, fort, énergie de streamer |
 
 ## Variables d’environnement
 
@@ -179,30 +177,31 @@ VOICE_SOUNDBOARD_PIPER_MODEL_DIR=/path/to/piper/models
 
 ## Observabilité et débogage
 
-- Chaque appel à un outil est enregistré : requête envoyée, réponse brute d’Ollama, résultat analysé, mise à jour de la session
-- Voix : les journaux de débogage affichent les paramètres Piper appliqués en fonction de l’humeur
+- Chaque appel d’outil enregistre : invite envoyée, réponse brute d’Ollama, sortie analysée, mise à jour de la session
+- Voix : les journaux de débogage affichent les paramètres Piper appliqués par humeur
 - Définissez `SENSOR_HUMOR_DEBUG=true` pour tout voir
 
 ## Notes sur la qualité
 
-- La qualité comique provient d’une conception de requêtes basée sur un modèle, et non d’un seul paramètre du modèle ; chaque humeur impose une forme prévisible. Mesurez le taux de succès sur votre propre modèle/matériel avec `scripts/ab-scorecard.ts` (modèle dans SCORECARD.md)
-- Contrôle de régression de la stabilité des requêtes (v1.2) : les requêtes d’humeur v1 sont **figées** (définies par `tests/scorecard-frozen-prompts.ts` — pour en modifier une, passez à `v2`, ne modifiez jamais directement). Un ensemble de référence déterministe **forme + sécurité** et des statistiques sont exécutés dans `npm test` (pas de backend) ; `npm run scorecard` exécute la vérification statistique en direct des dérives — le taux de succès par humeur est contrôlé à l’aide d’un intervalle de Wilson avec un verdict à trois valeurs : PASSÉ / ÉCHOUÉ / INCONCLUSIF et arrêt précoce SPRT. Il mesure la conformité structurelle + la sécurité, **pas** l’humour (la notation automatisée de l’humour est peu fiable — meilleure corrélation LLM par rapport à un humain ≈ 0,2)
-- Filtre de similitudes/comparaisons : regex de post-validation + nouvelle tentative, puis une alternative sûre basée sur l’humeur si une fuite persiste
-- Filtre de langage violent : une liste déterministe de termes est utilisée comme un *contrôle final* pour **tous** les outils comiques (y compris les slogans), vérifiée à nouveau après chaque nouvelle tentative et appliquée avant toute alternative. Le chemin de détection désambiguïse d’abord — NFKC + suppression des caractères zéro-largeur/bidirectionnels + pliage des homoglyphes + pliage du langage « leet » + suppression des séparateurs intra-mots + suppression des marques combinatoires — afin que les échappatoires courants (insertion de largeur nulle, ressemblances cyrilliques/grecques, caractères larges, `r3tard`, `re-tard`, `retárd`) ne puissent pas contourner la limite du mot. Il s’agit d’un **seuil** déterministe, et non d’une barrière de sécurité — voir Sécurité et confiance pour connaître le seuil réel
-- Déterministe : application du schéma JSON, nouvelle tentative en cas de résultat incorrect, héritage de l’humeur appliqué à tous les outils
-- Voix : Piper fournit une séparation prosodique (durée/bruit/volume par humeur) ; Kokoro ne se base que sur la vitesse
-- Uniquement pour les outils de développement. L’humour est subjectif ; désactivez toute humeur via l’environnement ou ajustez les requêtes si nécessaire
+- La qualité comique provient de l’ingénierie d’invites basée sur un squelette, et non d’un seul paramètre du modèle : chaque humeur impose une forme prévisible. Mesurez le taux de réussite sur votre propre modèle/matériel avec `scripts/ab-scorecard.ts` (modèle dans SCORECARD.md)
+- Barrière de régression de la stabilité de l’invite (v1.2) : les invites d’humeur v1 sont **figées** (fixées par `tests/scorecard-frozen-prompts.test.ts` — pour en modifier une, passez à `v2`, ne modifiez jamais directement). Un ensemble **forme + sécurité** déterministe + des statistiques sont exécutées dans `npm test` (pas de backend) ; `npm run scorecard` exécute la vérification statistique en direct de la dérive — le taux de réussite par humeur est limité par un intervalle de Wilson avec un verdict à trois valeurs : RÉUSSI / ÉCHOUÉ / INCONCLUSIF et arrêt précoce SPRT. Il mesure la conformité structurelle + la sécurité, **pas** l’humour (le score d’humour automatisé est peu fiable — la meilleure corrélation LLM par rapport à l’humain ≈ 0,2)
+- Filtre de similitude/comparaison : regex de post-validation + nouvelle tentative, puis une alternative de sécurité vocalisée par l’humeur si une fuite persiste
+- Filtre de conformité linguistique : l’humour est en anglais, donc une barrière non latine (une séquence continue de mots étrangers **ou** un ratio élevé de lettres non latines, calculé uniquement sur les lettres) signale une sortie avec changement de code — par exemple, `qwen2.5:7b` qui glisse dans le chinois au milieu d’une ligne. Post-validation + une nouvelle tentative uniquement en anglais, puis une alternative en anglais sans entrée avec `degraded_reason: language` (une dégradation de la *conformité*, distincte de `safety-filter`, elle ne compte donc pas dans le compteur de déclenchement du filtre de sécurité). Détection uniquement — les mots d’emprunt latins accentués (`café`, `résumé`), la ponctuation, les chiffres et les emojis ne la déclenchent jamais
+- Filtre de langage violent : une regex déterministe de liste de termes s’exécute comme une *barrière terminale* sur **chaque** outil comique (y compris les slogans), est vérifiée à nouveau après chaque nouvelle tentative et est appliquée avant l’interpolation de toute alternative. Le chemin de détection dés-obfusque d’abord — NFKC + suppression des espaces zéro/bidi + pliage des homoglyphes + pliage du langage geek + suppression des séparateurs intra-mots + suppression des marques de combinaison — de sorte que les échappatoires courants (insertion d’espaces zéro, ressemblances cyrilliques/grecques, caractères de largeur complète, `r3tard`, `re-tard`, `retárd`) ne peuvent pas faire passer un terme vulgaire au-delà de la limite du mot. Il s’agit d’un **seuil** déterministe, et non d’une garde-fou — voir Sécurité et confiance pour le seuil réel
+- Déterministe : application du schéma JSON, nouvelle tentative en cas de sortie incorrecte, application de l’héritage de l’humeur sur tous les outils
+- Voix : Piper offre une séparation de la prosodie (longueur/bruit/volume par humeur) ; Kokoro offre une alternative uniquement en termes de vitesse
+- Uniquement pour l’outil de développement. L’humour est subjectif ; désactivez toute humeur via l’environnement ou ajustez les invites si nécessaire
 
 ## Sécurité et confiance
 
-- **Par défaut, fonctionnement local** — communique avec Ollama sur `localhost` via HTTP. `OLLAMA_HOST` peut pointer vers un autre emplacement (par exemple, un Ollama distant/dans le cloud) ; il s’agit de la seule sortie externe et du choix explicite de l’opérateur
-- **Système de fichiers** — aucun par défaut. Avec `SENSOR_HUMOR_PERSIST=true`, il lit/écrit un fichier, `~/.sensor-humor/session.json` (remplacez le répertoire par `SENSOR_HUMOR_SESSION_DIR`), qui contient uniquement l’état comique de votre session (éléments, blagues, slogans) — aucun identifiant. Le fichier expire automatiquement après 24 heures
-- **Secrets** — aucun par défaut. Si vous pointez `OLLAMA_HOST` vers un Ollama distant/dans le cloud, définissez `OLLAMA_API_KEY` ; il est lu à partir de l’environnement et envoyé uniquement en tant qu’en-tête `Bearer` vers cet hôte — jamais enregistré, conservé ou affiché (`debug_status` indique seulement si une clé est définie, jamais sa valeur)
-- **Pas de télémétrie** — rien n’est collecté ni envoyé
-- **L’état de la session est stocké en mémoire par défaut** — il disparaît lorsque le processus du serveur s’arrête ; activez la persistance sur disque avec `SENSOR_HUMOR_PERSIST`
-- **Sanitisation des entrées** — tout texte fourni par l’utilisateur est normalisé et nettoyé avant l’injection de requêtes : pliage Unicode NFKC, suppression des caractères zéro-largeur/bidirectionnels/de format, pliage des homoglyphes courants vers ASCII, suppression des sauts de ligne, suppression des caractères de contrôle, limitation de la longueur
-- **Filtrage des sorties (seuil déterministe + seuil réaliste)** — une liste de termes stockée au format base64 est utilisée comme un filtre de sécurité final pour tous les outils comiques (vérifiée à nouveau après chaque nouvelle tentative, appliquée avant toute alternative), et une alternative basée sur l’entrée du demandeur se réduit à une ligne statique, sans entrée, plutôt que d’afficher un terme interdit. Le chemin de détection désambiguïse d’abord, afin que les échappatoires courants soient neutralisés : insertion de largeur nulle/bidirectionnelle, homoglyphes (cyrilliques/grecs/caractères larges), langage « leet » (`r3tard`), séparateurs intra-mots (`re-tard`, `r.e.t.a.r.d`) et diacritiques combinés (`retárd`). Les entrées incorrectes sont également supprimées d’une session persistante altérée ou obsolète lors du chargement. **Ce que cela ne fait PAS :** il s’agit d’un filtre de liste de termes déterministe, et non d’un classificateur appris — il ne se protège pas contre les variantes d’insultes hors liste/nouvelles, l’espacement à une lettre (`r e t a r d`), l’art ASCII / l’obfuscation spatiale, la couverture Unicode complète ou les attaques sémantiques/de contournement. Considérez-le comme un seuil minimal pour un outil de développement local, et non comme une garantie de modération pour des entrées publiques non fiables
-- **Forme d’erreur de l’outil** — les erreurs d’exécution/d’outil renvoient la forme d’erreur structurée du studio (`{code, message, hint, retryable}`); notez que les erreurs de *validation du schéma d’entrée* (par exemple, une humeur non valide) sont détectées par le SDK MCP avant l’exécution du gestionnaire et apparaissent sous la forme de l’erreur standard `InvalidParams` du SDK, et non de cette forme
+- **Par défaut, fonctionnement local** : communique avec Ollama sur `localhost` via HTTP. `OLLAMA_HOST` peut pointer vers un autre emplacement (par exemple, un Ollama distant/dans le cloud) ; il s’agit de la seule sortie externe et c’est le choix explicite de l’opérateur.
+- **Système de fichiers** : aucun par défaut. Avec `SENSOR_HUMOR_PERSIST=true`, il lit/écrit un seul fichier, `~/.sensor-humor/session.json` (remplace le répertoire par `SENSOR_HUMOR_SESSION_DIR`), qui contient uniquement l’état de la session pour les éléments humoristiques (blagues, gags, expressions) – aucun identifiant. Le fichier expire automatiquement après 24 heures.
+- **Secrets** : aucun par défaut. Si vous pointez `OLLAMA_HOST` vers un Ollama distant/dans le cloud, définissez `OLLAMA_API_KEY` ; il est lu à partir de l’environnement et envoyé uniquement en tant qu’en-tête `Bearer` vers cet hôte – il n’est jamais enregistré, conservé ou affiché (`debug_status` indique uniquement si une clé est définie, jamais sa valeur).
+- **Aucune télémétrie** : rien n’est collecté ni envoyé.
+- **L’état de la session est stocké en mémoire par défaut** : il est supprimé lorsque le processus du serveur s’arrête ; vous pouvez activer la persistance sur disque avec `SENSOR_HUMOR_PERSIST`.
+- **Nettoyage des entrées** : tout le texte fourni par l’utilisateur est normalisé et nettoyé avant l’injection d’invite : normalisation Unicode NFKC, suppression des caractères de largeur nulle/bidirectionnels/de format, regroupement des homoglyphes courants en ASCII, suppression des sauts de ligne, suppression des caractères de contrôle, limitation de la longueur.
+- **Filtrage des sorties (seuil déterministe + limite réaliste)** : une liste de termes stockée au format base64 est utilisée comme filtre de sécurité terminal pour chaque outil humoristique (elle est vérifiée à nouveau après chaque nouvelle tentative et appliquée avant toute solution de repli), et une solution de repli basée sur l’entrée de l’utilisateur se réduit à une ligne statique, sans entrée, plutôt que d’afficher un terme interdit. Le chemin de détection dés-obfusque d’abord, de sorte que les méthodes d’évasion courantes sont neutralisées : insertion de caractères de largeur nulle/bidirectionnels, homoglyphes (cyrillique/grec/largeur complète), leet speak (`r3tard`), séparateurs intra-mots (`re-tard`, `r.e.t.a.r.d`) et diacritiques combinés (`retárd`). Les entrées incorrectes sont également supprimées d’une session persistante altérée ou obsolète lors du chargement. **Ce que cela ne fait PAS** : il s’agit d’un filtre de liste de termes déterministe, et non d’un classificateur entraîné ; il ne se protège pas contre les variantes d’insultes nouvelles ou non répertoriées, l’espacement d’une seule lettre (`r e t a r d`), l’art ASCII/l’obfuscation spatiale, une couverture Unicode complète ou les attaques sémantiques/de contournement. Considérez-le comme un seuil minimal pour un outil d’humour local, et non comme une garantie de modération pour les entrées publiques non fiables.
+- **Format des erreurs d’outil** : les erreurs d’exécution/d’outil renvoient le format d’erreur structuré du studio (`{code, message, hint, retryable}`) ; notez que les erreurs de validation du *schéma d’entrée* (par exemple, un `mood` non valide) sont détectées par le SDK MCP avant l’exécution du gestionnaire et se manifestent sous la forme de l’erreur standard `InvalidParams` du SDK, et non de ce format.
 
 ## Architecture
 

@@ -1,6 +1,6 @@
 ---
 title: Tool Reference
-description: Complete API reference for all 9 sensor-humor tools
+description: Complete API reference for all 11 sensor-humor tools
 sidebar:
   order: 3
 ---
@@ -32,9 +32,12 @@ Read the current mood and session stats.
 {
   "mood": "dry",
   "description": "Deadpan, minimalist, says the obvious like devastating news",
-  "session_gag_count": 3
+  "session_gag_count": 3,
+  "allowed_techniques": ["auto", "misdirection", "callback", "understatement"]
 }
 ```
+
+`allowed_techniques` is `auto` plus the overlays that are legal for the current mood. Invalid mood×technique combos are refused before the model is called.
 
 ## comic_timing
 
@@ -62,13 +65,15 @@ Affectionate burn on code, errors, ideas, or situations. Uses the verdict/label 
 **Input:**
 - `target` (string, required) — what to roast
 - `context` (string, optional) — one of: `code`, `error`, `idea`, `situation`
+- `technique` (string, optional) — overlay: `rule-of-three`, `misdirection`, `escalation`, `callback`, `understatement`, `auto`. Must be valid for the current mood.
 
 **Output:**
 ```json
 {
   "roast": "Verdict: Monolithic state blob syndrome.",
   "severity": 4,
-  "mood": "roast"
+  "mood": "roast",
+  "technique_used": "misdirection"
 }
 ```
 
@@ -80,12 +85,14 @@ Short, punchy reaction. The quick jab — no config needed.
 
 **Input:**
 - `target` (string, required) — what to heckle
+- `technique` (string, optional) — same overlay matrix as roast
 
 **Output:**
 ```json
 {
   "heckle": "var in 2026.",
-  "mood": "dry"
+  "mood": "dry",
+  "technique_used": "auto"
 }
 ```
 
@@ -153,7 +160,8 @@ Dump the current session state, mood config, and voice backend. Useful for inspe
   "ollama_reachable": true,
   "model_available": true,
   "generation": { "total_calls": 12, "fallback_calls": 0, "safety_filter_fires": 0, "last_latency_ms": 380 },
-  "debug": false
+  "debug": false,
+  "allowed_techniques": ["auto", "misdirection", "callback", "understatement"]
 }
 ```
 
@@ -170,7 +178,7 @@ Plant a recurring bit the sidekick can call back to later. This is the explicit 
 { "tag": "deadbeef", "setup": "the deadbeef incident", "gag_count": 1, "created_turn": 4 }
 ```
 
-Both `setup` and `tag` pass the terminal safety gate — a gag that trips the harsh/simile filter is refused (a stored, replayed gag must never carry a slur). A planted gag becomes a callback candidate only after `SENSOR_HUMOR_GAG_MIN_DISTANCE` turns (so the setup has time to land) and retires after `SENSOR_HUMOR_GAG_MAX_FIRES` fires — the inverted-U of humor repetition, where a running gag has a low peak. `comic_timing` with `technique: "callback"` references an eligible gag and is instructed to escalate it, never repeat it verbatim.
+Both `setup` and `tag` pass the terminal safety gate — a gag that trips the harsh/simile filter is refused (a stored, replayed gag must never carry a slur). A planted gag becomes a callback candidate only after `SENSOR_HUMOR_GAG_MIN_DISTANCE` turns (so the setup has time to land) and retires after `SENSOR_HUMOR_GAG_MAX_FIRES` fires — the inverted-U of humor repetition, where a running gag has a low peak. `comic_timing` with `technique: "callback"` references an eligible gag and is instructed to escalate it, never repeat it verbatim. `roast` and `heckle` accept the same overlay; a callback overlay that would replay the planted setup verbatim is retried once, then left unhonored.
 
 ## debug_chain
 
@@ -219,6 +227,7 @@ The v1 mood prompts are frozen and pinned by tests — to change one you bump to
 |----------|---------|-------------|
 | `SENSOR_HUMOR_DEBUG` | `false` | Verbose logging of prompts, responses, and session updates |
 | `SENSOR_HUMOR_MODEL` | `qwen2.5:7b` | Ollama model to use for comedy generation |
+| `SENSOR_HUMOR_SCORECARD_MODEL` | _(unset)_ | Scorecard-only model pin (`npm run scorecard -- --model <id>` also works). Same-base A/B, not live per-mood routing |
 | `SENSOR_HUMOR_TIMEOUT_MS` | `30000` | Per-call Ollama timeout in ms (invalid values fall back to the default) |
 | `SENSOR_HUMOR_TEMPERATURE` | `0.55` | Generation temperature, clamped 0.0–2.0 (invalid values fall back to the default) |
 | `SENSOR_HUMOR_PROMPT_VERSION` | `1` | Prompt set version. `dry.v2` ships as the exemplar; set `2` to load v2 prompts where they exist (other moods fall back to v1 per-mood). Malformed values fall back to v1 |
