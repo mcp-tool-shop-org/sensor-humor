@@ -17,9 +17,9 @@ export const config: SiteConfig = {
     primaryCta: { href: '#usage', label: 'Get started' },
     secondaryCta: { href: 'handbook/', label: 'Read the Handbook' },
     previews: [
-      { label: 'Set mood', code: 'mood.set(style: "roast")' },
+      { label: 'Set mood', code: 'mood_set(style: "roast")' },
       { label: 'Roast', code: 'roast(target: "800-line god function")' },
-      { label: 'Speak', code: 'voice_speak(mood: "roast") // Piper TTS' },
+      { label: 'Running gag', code: 'running_gag(setup: "the flaky test", tag: "flaky")' },
     ],
   },
 
@@ -34,7 +34,7 @@ export const config: SiteConfig = {
         { title: 'Session Memory', desc: 'Running gags, recent bits ring buffer, catchphrase persistence. Callbacks to turn-47 bits still land on turn-120.' },
         { title: 'Voice Prosody', desc: 'Piper TTS with 4 knobs per mood: length_scale, noise_scale, noise_w_scale, volume. Deadpan sounds flat. Chaotic sounds like a news anchor delivering nonsense.' },
         { title: 'Deterministic + honest', desc: 'JSON schema enforcement, a deterministic safety floor (homoglyph/leetspeak-normalized harsh + simile filters as a terminal gate on every tool), and a typed degraded signal a consuming agent can branch on — a real joke is never confused with a fallback. Comedy with guardrails.' },
-        { title: '9 Tools', desc: 'mood.set/get, comic_timing, roast, heckle, catchphrase.generate/callback, debug_status, session_reset — all inherit active mood.' },
+        { title: '11 Tools', desc: 'mood_set/mood_get, comic_timing, roast, heckle, catchphrase_generate/catchphrase_callback, running_gag, debug_status, debug_chain, session_reset — all inherit active mood.' },
         { title: 'Prompt stability', desc: 'v1 mood prompts are frozen; a form + safety regression scorecard (Wilson interval, three-valued PASS/FAIL/INCONCLUSIVE, SPRT) catches prompt drift before it ships. Versioned prompts load alongside v1. It measures conformance + safety, not "funniness".' },
         { title: 'Local-first', desc: 'Ollama + qwen2.5:7b-instruct for comedy generation. Piper ONNX for voice. No cloud, no API keys, no latency.' },
       ],
@@ -46,10 +46,10 @@ export const config: SiteConfig = {
       cards: [
         { title: 'Start Ollama', code: 'ollama run qwen2.5:7b-instruct' },
         { title: 'Start MCP server', code: 'SENSOR_HUMOR_DEBUG=true npm start' },
-        { title: 'Set the mood', code: 'mood.set(style: "dry")\n// -> { mood: "dry", description: "Deadpan, minimalist..." }' },
+        { title: 'Set the mood', code: 'mood_set(style: "dry")\n// -> { mood: "dry", description: "Deadpan, minimalist..." }' },
         { title: 'Roast some code', code: 'roast(target: "global mutable state", context: "code")\n// -> { roast: "Verdict: Shared hallucination.", severity: 4 }' },
         { title: 'Rewrite with timing', code: 'comic_timing(text: "Build failed after 47 attempts", technique: "escalation")\n// -> { rewrite: "Forty-seven builds. A new personal record." }' },
-        { title: 'Voice it', code: 'voice_speak({ text: result.roast, mood: "roast" })\n// -> am_eric @ 1.05x, confident sarcastic energy' },
+        { title: 'Voice it (mcp-voice-soundboard)', code: '// not a sensor-humor tool — pair the roast with Piper\nvoice_speak({ text: result.roast, mood: "roast" })\n// -> am_eric @ 1.05x, confident sarcastic energy' },
       ],
     },
   ],
