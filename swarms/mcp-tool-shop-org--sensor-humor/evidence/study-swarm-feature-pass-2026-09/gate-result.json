@@ -1,0 +1,719 @@
+{
+  "verdict": "escalate",
+  "pass": false,
+  "blocking": false,
+  "advisory": true,
+  "citations": [
+    {
+      "id": "c1",
+      "identifier": "10.1037/bul0000085",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate",
+      "action": "RETRIEVE FULL TEXT",
+      "detail": "resolved, but no abstract was available to ground the claim",
+      "span": null,
+      "source_title": "A re-examination of the mere exposure effect: The influence of repeated exposure on recognition, familiarity, and liking.",
+      "source_abstract": null
+    },
+    {
+      "id": "c2",
+      "identifier": "arXiv:2502.12110",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate",
+      "action": "RETRIEVE FULL TEXT",
+      "detail": "claim is not addressed in the title+abstract",
+      "span": null,
+      "source_title": "A-MEM: Agentic Memory for LLM Agents",
+      "source_abstract": "While large language model (LLM) agents can effectively use external tools for complex real-world tasks, they require memory systems to leverage historical experiences. Current memory systems enable basic storage and retrieval but lack sophisticated memory organization, despite recent attempts to incorporate graph databases. Moreover, these systems' fixed operations and structures limit their adaptability across diverse tasks. To address this limitation, this paper proposes a novel agentic memory system for LLM agents that can dynamically organize memories in an agentic way. Following the basic principles of the Zettelkasten method, we designed our memory system to create interconnected knowledge networks through dynamic indexing and linking. When a new memory is added, we generate a comprehensive note containing multiple structured attributes, including contextual descriptions, keywords, and tags. The system then analyzes historical memories to identify relevant connections, establishing links where meaningful similarities exist. Additionally, this process enables memory evolution - as new memories are integrated, they can trigger updates to the contextual representations and attributes of existing historical memories, allowing the memory network to continuously refine its understanding. Our approach combines the structured organization principles of Zettelkasten with the flexibility of agent-driven decision making, allowing for more adaptive and context-aware memory management. Empirical experiments on six foundation models show superior improvement against existing SOTA baselines. The source code for evaluating performance is available at https://github.com/WujiangXu/A-mem, while the source code of the agentic memory system is available at https://github.com/WujiangXu/A-mem-sys."
+    },
+    {
+      "id": "c3",
+      "identifier": "arXiv:2607.19359",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c4",
+      "identifier": "arXiv:2608.28978",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c5",
+      "identifier": "arXiv:2608.30198",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c6",
+      "identifier": "arXiv:2405.14831",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c7",
+      "identifier": "arXiv:2303.06135",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c8",
+      "identifier": "arXiv:2508.19258",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c9",
+      "identifier": "arXiv:2605.00143",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c10",
+      "identifier": "arXiv:2409.01232",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c11",
+      "identifier": "arXiv:2211.01889",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c12",
+      "identifier": "arXiv:2303.17125",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c13",
+      "identifier": "arXiv:2502.18658",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c14",
+      "identifier": "arXiv:2401.01275",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c15",
+      "identifier": "arXiv:2512.12775",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c16",
+      "identifier": "arXiv:2310.10158",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c17",
+      "identifier": "arXiv:2509.12525",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c18",
+      "identifier": "arXiv:2510.00339",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c19",
+      "identifier": "arXiv:2510.10157",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c20",
+      "identifier": "arXiv:2310.00746",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c21",
+      "identifier": "10.1086/383419",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate",
+      "action": "RETRIEVE FULL TEXT",
+      "detail": "resolved, but no abstract was available to ground the claim",
+      "span": null,
+      "source_title": "When Good Brands Do Bad",
+      "source_abstract": null
+    },
+    {
+      "id": "c22",
+      "identifier": "arXiv:2406.18665",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c23",
+      "identifier": "arXiv:2305.05176",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c24",
+      "identifier": "arXiv:2404.14618",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c25",
+      "identifier": "arXiv:2310.12963",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c26",
+      "identifier": "arXiv:2412.00804",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c27",
+      "identifier": "arXiv:2603.18507",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c28",
+      "identifier": "arXiv:2311.06668",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c29",
+      "identifier": "arXiv:2607.29238",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c30",
+      "identifier": "arXiv:2509.09309",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c31",
+      "identifier": "arXiv:2502.18658",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c32",
+      "identifier": "arXiv:2210.14306",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c33",
+      "identifier": "10.1145/1240624.1240730",
+      "existence": "resolved",
+      "finding_match": "not_addressed",
+      "verdict": "escalate",
+      "action": "RETRIEVE FULL TEXT",
+      "detail": "resolved, but no abstract was available to ground the claim",
+      "span": null,
+      "source_title": "Disruption and recovery of computing tasks",
+      "source_abstract": null
+    },
+    {
+      "id": "c34",
+      "identifier": "arXiv:2602.04000",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c35",
+      "identifier": "arXiv:2407.18064",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    },
+    {
+      "id": "c36",
+      "identifier": "arXiv:2509.24073",
+      "existence": "unresolvable",
+      "finding_match": "unchecked",
+      "verdict": "escalate",
+      "action": "RETRIEVE MANUALLY",
+      "detail": "arXiv oracle unreachable: ReadTimeout",
+      "span": null,
+      "source_title": null,
+      "source_abstract": null
+    }
+  ],
+  "unparsed": [
+    "**Repo:** mcp-tool-shop-org/sensor-humor (`@mcptoolshop/sensor-humor`) **Tree:** local `main` after health A–D of dogfood-swarm run `swarm-1788652660-6b31` (HEAD at init `e1b469d`; health-amend-c landed locally; not pushed). **Protocol:** Research-Grounded Advisor Protocol (\"study-swarm\") — research → synthesize → **external-verify (different family)** → connect. **Why this dispatch:** the 2026-06-30 study-swarm (`study-swarm.dispatch.md`, 29 findings, prism `prism-01kwbkyc0scw6hmny7d60x8jsk`) grounded *safety / funniness-ceiling / CI statistics / degradation signaling*. This pass grounds the *next product layer* so a comprehensive Feature Pass builds the right things and does not ship ROADMAP v2.1 speculation as if it were evidence.",
+    "**The repetition-shift (setup, setup, break) structure is common (~1/3 of story jokes/folktales) because similar items build an expectation the last item violates; sheer repetition without a shift is the weaker control.** Loewenstein & Heath 2005 (https://escholarship.org/content/qt96p2r8qs/qt96p2r8qs.pdf). Implication: running gags should vary the payload, not chain extra inferred hops; tags + no-verbatim already encode “same bit, new break.”",
+    "**Callback jokes in Netflix specials drew longer laugh/applause than non-callbacks in a marketer write-up of ongoing Fuqua research; verbatim-repeat ads decayed faster than recontextualized callbacks.** Winet 2025 (https://www.fuqua.duke.edu/duke-fuqua-insights/how-marketers-can-harness-power-of-callbacks). Implication: delayed, *recontextualized* callbacks match the already-shipped distance gate + no-verbatim; multi-hop linking is not what that laugh increment measures. Out-of-band.",
+    "**An LLM “Humor Index” reports poor test–retest reliability and ~zero correlation with IMDb across hundreds of episodes; its “Impact” axis scores quotability/callback payoff.** The Humor Index 2026 (https://www.thehumorindex.com/methodology/). Implication: pointwise LLM craft/impact and catchphrase-reuse-as-landed are circular. Out-of-band.",
+    "**Clippy’s unsolicited helper comedy was turned off by default in Office XP; contemporaneous writing called it optimized for first use — amusing once, frustrating after.** Meyer 2015 (https://www.theatlantic.com/technology/archive/2015/06/clippy-the-microsoft-office-assistant-is-the-patriarchys-fault/396653/). Implication: mass-market unsolicited helper comedy was disabled by its maker; do not re-ship as heckles. Out-of-band."
+  ],
+  "receipt": {
+    "schema": "roleos-citation-receipt/v1",
+    "kind": "citation-verification",
+    "tool": "roleos verify-citations",
+    "input": "E:/AI/sensor-humor/swarms/mcp-tool-shop-org--sensor-humor/study-swarm.feature-pass-2026-09.dispatch.md",
+    "verdict": "escalate",
+    "blocking": false,
+    "advisory": true,
+    "citations_sha256": "19836a05fd2d193ebaf0a1f3cb67dec8c6906bb4d3e5fc5f5e07c6f92ed55353",
+    "prism_receipt": {
+      "id": "prism-01m1wwv69bbbzxkn4pcgrsps3b",
+      "signature": "eb477777c53680d901837a9e719179dd72ac711b311bbd4b70eb7cf59038249e11e92d6a75472004d5b10d932b2e861a4aa4a3455ddba5c145b4f99479338002",
+      "verdict": "escalate"
+    },
+    "retrieval_pins": [
+      {
+        "id": "c1",
+        "identifier": "10.1037/bul0000085",
+        "query": "https://api.crossref.org/works/10.1037/bul0000085?mailto=verify%40prism-verify.dev",
+        "source_sha256": "d744481c5b84f2f246f5104946cd2693ed80414de0399e8435ef4a0922eaa731",
+        "existence": "resolved"
+      },
+      {
+        "id": "c2",
+        "identifier": "arXiv:2502.12110",
+        "query": "https://export.arxiv.org/api/query?id_list=2502.12110",
+        "source_sha256": "86dcea9282ef0bd8deeb549a45af3edd05710f63457aca375fb88b0231dd38de",
+        "existence": "resolved"
+      },
+      {
+        "id": "c3",
+        "identifier": "arXiv:2607.19359",
+        "query": "https://export.arxiv.org/api/query?id_list=2607.19359",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c4",
+        "identifier": "arXiv:2608.28978",
+        "query": "https://export.arxiv.org/api/query?id_list=2608.28978",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c5",
+        "identifier": "arXiv:2608.30198",
+        "query": "https://export.arxiv.org/api/query?id_list=2608.30198",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c6",
+        "identifier": "arXiv:2405.14831",
+        "query": "https://export.arxiv.org/api/query?id_list=2405.14831",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c7",
+        "identifier": "arXiv:2303.06135",
+        "query": "https://export.arxiv.org/api/query?id_list=2303.06135",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c8",
+        "identifier": "arXiv:2508.19258",
+        "query": "https://export.arxiv.org/api/query?id_list=2508.19258",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c9",
+        "identifier": "arXiv:2605.00143",
+        "query": "https://export.arxiv.org/api/query?id_list=2605.00143",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c10",
+        "identifier": "arXiv:2409.01232",
+        "query": "https://export.arxiv.org/api/query?id_list=2409.01232",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c11",
+        "identifier": "arXiv:2211.01889",
+        "query": "https://export.arxiv.org/api/query?id_list=2211.01889",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c12",
+        "identifier": "arXiv:2303.17125",
+        "query": "https://export.arxiv.org/api/query?id_list=2303.17125",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c13",
+        "identifier": "arXiv:2502.18658",
+        "query": "https://export.arxiv.org/api/query?id_list=2502.18658",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c14",
+        "identifier": "arXiv:2401.01275",
+        "query": "https://export.arxiv.org/api/query?id_list=2401.01275",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c15",
+        "identifier": "arXiv:2512.12775",
+        "query": "https://export.arxiv.org/api/query?id_list=2512.12775",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c16",
+        "identifier": "arXiv:2310.10158",
+        "query": "https://export.arxiv.org/api/query?id_list=2310.10158",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c17",
+        "identifier": "arXiv:2509.12525",
+        "query": "https://export.arxiv.org/api/query?id_list=2509.12525",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c18",
+        "identifier": "arXiv:2510.00339",
+        "query": "https://export.arxiv.org/api/query?id_list=2510.00339",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c19",
+        "identifier": "arXiv:2510.10157",
+        "query": "https://export.arxiv.org/api/query?id_list=2510.10157",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c20",
+        "identifier": "arXiv:2310.00746",
+        "query": "https://export.arxiv.org/api/query?id_list=2310.00746",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c21",
+        "identifier": "10.1086/383419",
+        "query": "https://api.crossref.org/works/10.1086/383419?mailto=verify%40prism-verify.dev",
+        "source_sha256": "bf69f2d14edaeb9abcc84729b1a740fce59ad574588b9309c4c4321997e93d76",
+        "existence": "resolved"
+      },
+      {
+        "id": "c22",
+        "identifier": "arXiv:2406.18665",
+        "query": "https://export.arxiv.org/api/query?id_list=2406.18665",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c23",
+        "identifier": "arXiv:2305.05176",
+        "query": "https://export.arxiv.org/api/query?id_list=2305.05176",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c24",
+        "identifier": "arXiv:2404.14618",
+        "query": "https://export.arxiv.org/api/query?id_list=2404.14618",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c25",
+        "identifier": "arXiv:2310.12963",
+        "query": "https://export.arxiv.org/api/query?id_list=2310.12963",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c26",
+        "identifier": "arXiv:2412.00804",
+        "query": "https://export.arxiv.org/api/query?id_list=2412.00804",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c27",
+        "identifier": "arXiv:2603.18507",
+        "query": "https://export.arxiv.org/api/query?id_list=2603.18507",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c28",
+        "identifier": "arXiv:2311.06668",
+        "query": "https://export.arxiv.org/api/query?id_list=2311.06668",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c29",
+        "identifier": "arXiv:2607.29238",
+        "query": "https://export.arxiv.org/api/query?id_list=2607.29238",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c30",
+        "identifier": "arXiv:2509.09309",
+        "query": "https://export.arxiv.org/api/query?id_list=2509.09309",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c31",
+        "identifier": "arXiv:2502.18658",
+        "query": "https://export.arxiv.org/api/query?id_list=2502.18658",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c32",
+        "identifier": "arXiv:2210.14306",
+        "query": "https://export.arxiv.org/api/query?id_list=2210.14306",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c33",
+        "identifier": "10.1145/1240624.1240730",
+        "query": "https://api.crossref.org/works/10.1145/1240624.1240730?mailto=verify%40prism-verify.dev",
+        "source_sha256": "6c0d75f3501242683c7f1ac7e6706cef9ce9b1391af61566a129b4e19da0ed7d",
+        "existence": "resolved"
+      },
+      {
+        "id": "c34",
+        "identifier": "arXiv:2602.04000",
+        "query": "https://export.arxiv.org/api/query?id_list=2602.04000",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c35",
+        "identifier": "arXiv:2407.18064",
+        "query": "https://export.arxiv.org/api/query?id_list=2407.18064",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      },
+      {
+        "id": "c36",
+        "identifier": "arXiv:2509.24073",
+        "query": "https://export.arxiv.org/api/query?id_list=2509.24073",
+        "source_sha256": "",
+        "existence": "unresolvable"
+      }
+    ],
+    "local_panel": null,
+    "chain_sha256": "c1b518af9bea88fc3429d9fd012d39380fa636633322124d1eb58fe58289df66"
+  },
+  "duration": 674181
+}

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **mood×technique overlays on `roast` / `heckle`** — optional `technique` param (rule-of-three,
+  misdirection, escalation, callback, understatement, auto). A capability matrix refuses combos
+  that fight the frozen primary skeleton (`cynic`+`escalation` is the documented example). Overlay
+  is flavor, not `mood.blend`.
+- **Callback variation contract** — an honored `comic_timing` callback that would replay the
+  planted setup verbatim is retried once, then left unhonored (no fire-count bump) if it is still
+  a rerun.
+- **Scorecard `--model` pin** — `npm run scorecard -- --model <id>` (or `SENSOR_HUMOR_SCORECARD_MODEL`)
+  pins ONE model for a live scorecard run. Same-base A/B harness, not live per-mood routing.
+- **`npm run pack:check`** — gzipped tarball budget (200 KiB), no `.wav` / `scripts/` / source maps /
+  retired-mood leaks. Wired into CI after `npm test`. package.json `files` now ships `dist/**/*.js`
+  and `dist/**/*.d.ts` only (maps stay local).
 - **Language-conformance gate** — the comedy contract is English, but `qwen2.5:7b` occasionally
   code-switches out of the Latin script mid-generation (observed: a roast-mood `comic_timing` rewrite
   that continued in Chinese, which used to pass as a clean, `valid:true` line). `hasLanguageLeak`

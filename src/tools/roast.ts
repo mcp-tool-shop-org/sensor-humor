@@ -8,8 +8,9 @@ import { getSession, fullTraceEnabled } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
-import type { RoastContext, RoastResult, MoodStyle } from '../types.js';
+import type { RoastContext, RoastResult, MoodStyle, ComicTechnique } from '../types.js';
 import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, hasLanguageLeak, LANGUAGE_RETRY_SUFFIX, sanitizeForPrompt, voicedSafeFallback, STATIC_SAFE_FALLBACK } from '../validators.js';
+import { assertMoodTechnique, buildTechniqueGuidance } from './techniques.js';
 
 const RoastSchema = z.object({
   roast: z.string().max(200),
@@ -37,39 +38,58 @@ export const ROAST_LABEL_PATTERN = /^(Verdict|Diagnosis|Official status|Classifi
 const COMPARISON_LEAK = /\blike a\b|\bas a\b|\bas if\b|\bsimilar to\b|\bresembles\b|\bband[\s-]?aid\b|\bbandaid\b|\bblanket\b|\bcoffee break\b/i;
 
 /** Build roast-specific guidance that respects mood voice. */
-function buildRoastGuidance(mood: MoodStyle): string {
+function buildRoastGuidance(mood: MoodStyle, technique: ComicTechnique, hasCallbacks: boolean): string {
+  const overlay =
+    technique === 'auto' ? '' : `\nTECHNIQUE OVERLAY (primary mood pattern still wins): ${buildTechniqueGuidance(technique, hasCallbacks)}`;
   if (mood === 'roast') {
-    return `\nROAST MODE: Assign severity 1-5 based on how egregious the flaw is (1=mild pattern, 3=notable code smell, 5=architectural crime). Start with ONE label — pick exactly one of: "Verdict:", "Diagnosis:", "Classification:", "Case closed:", "File under:", "Official status:". Do NOT combine labels.`;
+    return `\nROAST MODE: Assign severity 1-5 based on how egregious the flaw is (1=mild pattern, 3=notable code smell, 5=architectural crime). Start with ONE label — pick exactly one of: "Verdict:", "Diagnosis:", "Classification:", "Case closed:", "File under:", "Official status:". Do NOT combine labels.${overlay}`;
   }
   // All other moods: let the mood prompt handle voice, just add severity guidance
-  return `\nROAST MODE: Assign severity 1-5 based on how egregious the flaw is. Deliver the roast in your current mood voice — follow the mood prompt's pattern exactly.`;
+  return `\nROAST MODE: Assign severity 1-5 based on how egregious the flaw is. Deliver the roast in your current mood voice — follow the mood prompt's pattern exactly.${overlay}`;
 }
 
 /** Build roast user prompt that respects mood voice. */
-function buildRoastUserPrompt(mood: MoodStyle, target: string, context: RoastContext): string {
+function buildRoastUserPrompt(
+  mood: MoodStyle,
+  target: string,
+  context: RoastContext,
+  techniqueGuide: string,
+  callbackContext: string,
+): string {
+  const extra = techniqueGuide === '' ? '' : `\nTECHNIQUE: ${techniqueGuide}${callbackContext}\n`;
   if (mood === 'roast') {
-    return `Roast the following ${context}. Pick ONE label (Verdict: OR Diagnosis: OR Classification:) then deliver 1 tight sentence.\n\nTARGET:\n${sanitizeForPrompt(target)}\n\nRespond with JSON only.`;
+    return `Roast the following ${context}. Pick ONE label (Verdict: OR Diagnosis: OR Classification:) then deliver 1 tight sentence.${extra}\nTARGET:\n${sanitizeForPrompt(target)}\n\nRespond with JSON only.`;
   }
   // Other moods: roast the target using mood's own pattern
-  return `Roast the following ${context}. Use your mood's delivery pattern — do NOT use "Verdict:" or other roast labels.\n\nTARGET:\n${sanitizeForPrompt(target)}\n\nRespond with JSON only.`;
+  return `Roast the following ${context}. Use your mood's delivery pattern — do NOT use "Verdict:" or other roast labels.${extra}\nTARGET:\n${sanitizeForPrompt(target)}\n\nRespond with JSON only.`;
 }
 
 export async function roast(
   target: string,
   context: RoastContext = 'code',
+  technique: ComicTechnique = 'auto',
 ): Promise<RoastResult> {
   const session = getSession();
   session.tick();
   const mood = session.mood;
+  assertMoodTechnique(mood, technique);
+
+  const callbackCandidates = session.findCallbackCandidates(target);
+  const hasCallbacks = callbackCandidates.length > 0 || session.recent_bits.length > 0;
+  const techniqueGuide = technique === 'auto' ? '' : buildTechniqueGuidance(technique, hasCallbacks);
+  const callbackContext =
+    technique === 'callback' && callbackCandidates.length > 0
+      ? `\nCALLBACK MATERIAL AVAILABLE:\n${callbackCandidates.map((g) => `- "${sanitizeForPrompt(g.setup)}" (tag: ${sanitizeForPrompt(g.tag)})`).join('\n')}`
+      : '';
 
   const systemPrompt = [
     baseSystemPrefix(),
     getMoodSystemPrompt(mood),
-    buildRoastGuidance(mood),
+    buildRoastGuidance(mood, technique, hasCallbacks),
     `\nSESSION CONTEXT:\n${session.stateSummary()}`,
   ].join('\n\n');
 
-  const userPrompt = buildRoastUserPrompt(mood, target, context);
+  const userPrompt = buildRoastUserPrompt(mood, target, context, techniqueGuide, callbackContext);
 
   const fallback: z.infer<typeof RoastSchema> = {
     roast: `${target}. No further comment.`,
@@ -259,6 +279,7 @@ export async function roast(
     roast: result.data.roast,
     severity,
     mood,
+    technique_used: technique,
     ...(degradedReason ? { degraded: true, degraded_reason: degradedReason } : {}),
   };
 }

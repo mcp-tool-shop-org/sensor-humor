@@ -18,6 +18,7 @@
  *
  *   npm run scorecard                 # ~recommended N per mood, SPRT early-stop
  *   SCORECARD_N=40 npm run scorecard  # quick pass
+ *   npm run scorecard -- --model llama3.1:8b   # pin ONE model for this run (same-base A/B; not live mood routing)
  *
  * Per the studio's GitHub Actions rules, org repos do not run scheduled workflows — this stays a
  * manual `npm run scorecard` (or a workflow_dispatch), never an unattended cron.
@@ -38,6 +39,7 @@ import {
   type SprtDecision,
 } from '../src/scorecard/stats.js';
 import { probeOllama, getModel } from '../src/ollama.js';
+import { resolveScorecardModel } from '../src/scorecard/cli.js';
 
 const THRESHOLD = 0.65; // conformance floor; FAIL only when the Wilson UPPER bound is below this
 const SPRT = { p0: 0.72, p1: 0.62, alpha: 0.05, beta: 0.05 }; // healthy vs drifted, 5%/5% errors
@@ -217,6 +219,10 @@ function formatScorecardRow(
 }
 
 async function main(): Promise<void> {
+  // FP-4: pin a single model for this process so getModel()/probeOllama see it. Not per-mood.
+  const pinned = resolveScorecardModel(process.argv.slice(2), process.env);
+  if (pinned) process.env.SENSOR_HUMOR_MODEL = pinned;
+
   const probe = await probeOllama(5000);
   if (!probe.reachable || !probe.model_available) {
     // This gate needs the backend. Don't fail a gate you couldn't run — and don't print PASS.

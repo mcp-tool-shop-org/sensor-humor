@@ -19,6 +19,7 @@
     "dev": "tsc --watch",
     "test": "vitest run",
     "scorecard": "tsx scripts/regression-scorecard.ts",
+    "pack:check": "node scripts/check-pack.mjs",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -40,7 +41,8 @@
   },
   "homepage": "https://mcp-tool-shop-org.github.io/sensor-humor/",
   "files": [
-    "dist",
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
     "CHANGELOG.md",
     "SECURITY.md"
   ],

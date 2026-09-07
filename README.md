@@ -126,8 +126,8 @@ All tools inherit current mood from session.
 | `mood_set` | `(style: string)` | Set active mood (dry, roast, chaotic, cheeky, cynic, zoomer) |
 | `mood_get` | `()` | Current mood + gag count |
 | `comic_timing` | `(text, technique?)` | Rewrite with comedic delivery (rule-of-three, misdirection, escalation, callback, understatement, auto) |
-| `roast` | `(target, context?)` | Affectionate burn in current mood voice, returns severity 1-5. Context: code, error, idea, situation |
-| `heckle` | `(target)` | Short pointed jab |
+| `roast` | `(target, context?, technique?)` | Affectionate burn in current mood voice, returns severity 1-5. Context: code, error, idea, situation. Optional technique overlay must be valid for the current mood (invalid combos are refused). |
+| `heckle` | `(target, technique?)` | Short pointed jab. Optional technique overlay, same mood×technique matrix as roast. |
 | `catchphrase_generate` | `(context?)` | Create reusable bit (stored in session) |
 | `catchphrase_callback` | `()` | Reuse most-used catchphrase (or null) |
 | `running_gag` | `(setup, tag)` | Plant a recurring bit the sidekick can call back to later (safety-gated). Becomes a callback candidate after `SENSOR_HUMOR_GAG_MIN_DISTANCE` turns; retires after `SENSOR_HUMOR_GAG_MAX_FIRES` fires |

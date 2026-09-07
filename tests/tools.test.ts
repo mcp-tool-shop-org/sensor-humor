@@ -51,6 +51,7 @@ import { heckle } from '../src/tools/heckle.js';
 import { comicTiming } from '../src/tools/comic_timing.js';
 import { catchphraseGenerate, catchphraseCallback } from '../src/tools/catchphrase.js';
 import { runningGag, DirtyGagError } from '../src/tools/running_gag.js';
+import { InvalidTechniqueError } from '../src/tools/techniques.js';
 
 describe('mood tools', () => {
   beforeEach(() => {
@@ -331,6 +332,33 @@ describe('roast with new moods', () => {
     expect(result.mood).toBe('zoomer');
     expect(result.severity).toBe(5);
   });
+
+  it('echoes technique_used=auto when no overlay is requested', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { roast: 'Verdict: Fine.', severity: 2 },
+    });
+    const result = await roast('mild smell', 'code');
+    expect(result.technique_used).toBe('auto');
+  });
+
+  it('puts a valid overlay into the roast prompt (roast + misdirection)', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { roast: 'Verdict: You expected a helper. It is a 600-line novel.', severity: 4 },
+    });
+    const result = await roast('god function', 'code', 'misdirection');
+    expect(result.technique_used).toBe('misdirection');
+    const opts = mockGenerate.mock.calls[0][0] as { userPrompt: string; systemPrompt: string };
+    expect(opts.userPrompt).toMatch(/misdirection/i);
+    expect(opts.systemPrompt).toMatch(/TECHNIQUE OVERLAY/);
+  });
+
+  it('refuses cynic + escalation before calling the model', async () => {
+    moodSet('cynic');
+    await expect(roast('global state', 'code', 'escalation')).rejects.toBeInstanceOf(
+      InvalidTechniqueError,
+    );
+    expect(mockGenerate).not.toHaveBeenCalled();
+  });
 });
 
 describe('heckle with new moods', () => {
@@ -369,6 +397,21 @@ describe('heckle with new moods', () => {
 
     const result = await heckle('console.log debugging');
     expect(result.mood).toBe('zoomer');
+  });
+
+  it('refuses cynic + escalation on heckle before calling the model', async () => {
+    moodSet('cynic');
+    await expect(heckle('global state', 'escalation')).rejects.toBeInstanceOf(InvalidTechniqueError);
+    expect(mockGenerate).not.toHaveBeenCalled();
+  });
+
+  it('puts a valid overlay into the heckle prompt', async () => {
+    moodSet('cheeky');
+    mockGenerate.mockResolvedValue({ data: { heckle: 'Oh honey, no.' } });
+    const result = await heckle('no types', 'understatement');
+    expect(result.technique_used).toBe('understatement');
+    const opts = mockGenerate.mock.calls[0][0] as { userPrompt: string };
+    expect(opts.userPrompt).toMatch(/understatement/i);
   });
 });
 
@@ -585,6 +628,65 @@ describe('comic_timing tool', () => {
       // The prompt actually surfaced the planted gag as callback material.
       const opts = mockGenerate.mock.calls[0][0] as { userPrompt: string };
       expect(opts.userPrompt).toContain('deadbeef');
+    });
+
+    it('retries a verbatim setup replay and does not honor if the retry is still verbatim (FP-2)', async () => {
+      const session = getSession();
+      session.tick();
+      runningGag('the deadbeef pointer that keeps haunting this build', 'deadbeef');
+      session.turn_counter += 3;
+
+      mockGenerate
+        .mockResolvedValueOnce({
+          data: {
+            rewrite: 'the deadbeef pointer that keeps haunting this build',
+            technique_used: 'callback',
+            callback_source: 'deadbeef',
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            rewrite: 'the deadbeef pointer that keeps haunting this build',
+            technique_used: 'callback',
+            callback_source: 'deadbeef',
+          },
+        });
+
+      const result = await comicTiming('another crash at deadbeef', 'callback');
+      expect(mockGenerate).toHaveBeenCalledTimes(2);
+      expect(result.callback_honored).toBe(false);
+      const gag = session.running_gags.find((g) => g.tag === 'deadbeef');
+      expect(gag!.used).toBe(1);
+    });
+
+    it('honors a callback after a verbatim first try is twisted on retry (FP-2)', async () => {
+      const session = getSession();
+      session.tick();
+      runningGag('the deadbeef pointer that keeps haunting this build', 'deadbeef');
+      session.turn_counter += 3;
+
+      mockGenerate
+        .mockResolvedValueOnce({
+          data: {
+            rewrite: 'The deadbeef pointer that keeps haunting this build.',
+            technique_used: 'callback',
+            callback_source: 'deadbeef',
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            rewrite: 'Deadbeef, back for an encore, now with 30% more undefined behavior.',
+            technique_used: 'callback',
+            callback_source: 'deadbeef',
+          },
+        });
+
+      const result = await comicTiming('another crash at deadbeef', 'callback');
+      expect(mockGenerate).toHaveBeenCalledTimes(2);
+      expect(result.callback_honored).toBe(true);
+      expect(result.rewrite).toMatch(/encore/i);
+      const gag = session.running_gags.find((g) => g.tag === 'deadbeef');
+      expect(gag!.used).toBe(2);
     });
 
     it('does NOT honor a callback against a gag still inside the distance gate (planted this turn)', async () => {

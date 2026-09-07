@@ -12,8 +12,8 @@ Everything below must meaningfully move quality, determinism, debuggability, dev
 The v1.0.0 publish shipped 1.6MB because voice-demos/, scripts/, debug.log, and stale dist files leaked into the tarball. Fix before any more publishes.
 
 - [x] Add `.npmignore` (exclude voice-demos/, scripts/, debug.log, site/, tests/, .github/, *.prompt.ts source) (2026-03-31)
-- [ ] Add `npm pack --dry-run` verification to CI (fail if tarball > 200KB)
-- [ ] Clean stale dist/ files from deleted moods (absurdist, sardonic, wholesome, unhinged)
+- [x] Add `npm pack --dry-run` verification to CI — `npm run pack:check` (fail if gzipped tarball > 200 KiB; source maps excluded from `files`) (2026-09-06)
+- [x] Clean stale dist/ files from deleted moods (absurdist, sardonic, wholesome, unhinged) — live moods only; pack:check fails on a retired-mood filename (2026-09-06)
 - [x] Patch bump to v1.0.1, publish clean tarball (shipped 2026-03-25)
 
 **Gate:** `npm pack --dry-run` shows < 200KB, no .wav files, no scripts.
@@ -54,27 +54,26 @@ In-memory session dies on server stop. For long coding marathons, callbacks to t
 
 **Gate:** Callback references turn-47 bits on turn-120 after full server restart. ✅
 
-### Priority 2: Chain Trace Tool (1 day)
+### Priority 2: Chain Trace Tool (1 day) — ✅ SHIPPED in v1.3.0
 
 When a roast lands weird, you should debug why in seconds — not grep through console logs.
 
-- [ ] Add trace ring buffer to session (last 10 calls)
-- [ ] Each trace entry: `{ turn, tool, mood, input, prompt_hash, ollama_raw, parsed_output, retries, validators_triggered, latency_ms }`
-- [ ] `debug_chain(limit?)` tool returns last N traces as JSON
-- [ ] Optional: `SENSOR_HUMOR_FULL_TRACE=true` adds full prompt text + Piper params to trace
+- [x] Add trace ring buffer to session (last 10 calls)
+- [x] Each trace entry: `{ turn, tool, mood, input, prompt_hash, ollama_raw, parsed_output, retries, validators_triggered, latency_ms }`
+- [x] `debug_chain(limit?)` tool returns last N traces as JSON
+- [x] Optional: `SENSOR_HUMOR_FULL_TRACE=true` adds full prompt text + Piper params to trace
 
-**Gate:** One tool call reconstructs the full generation pipeline for any recent output.
+**Gate:** One tool call reconstructs the full generation pipeline for any recent output. ✅
 
-### Priority 3: Per-Mood Model Selection (2 days)
+### Priority 3: Per-Mood Model Selection — **WON'T** (study-swarm 2026-09)
 
-qwen2.5:7b is the baseline, but some moods might benefit from different models. The A/B infrastructure already exists from the prompt war.
+Always-on `SENSOR_HUMOR_MODEL_MAP` (mood→7B weights) is a persona discontinuity plus a VRAM/cold-load hitch. Published routers are capability/cost between *unequal* models, not peer-7B style maps. Keep one `qwen2.5:7b`.
 
-- [ ] `SENSOR_HUMOR_MODEL_MAP` env: JSON mapping mood→model (e.g. `{"zoomer":"llama3.1:8b","default":"qwen2.5:7b"}`)
-- [ ] ollama.ts reads model from map at call time, falls back to default
-- [ ] debug_status shows active model per mood
-- [ ] Scorecard script accepts model param for targeted A/B
+- [x] Scorecard/harness model A/B on the **same** base: `npm run scorecard -- --model <id>` (or `SENSOR_HUMOR_SCORECARD_MODEL`). Not live per-call routing. (2026-09-06)
+- [ ] ~~`SENSOR_HUMOR_MODEL_MAP` live mood→weights~~ **WON'T**
+- [ ] Hard-case cascade (cheap generator, escalate on scorer) — only if a measured 7B ceiling is proven
 
-**Gate:** Each mood can run on its best model without code changes. Default still qwen2.5:7b.
+**Gate:** A scorecard run can pin a single model without changing the server's default.
 
 ### Priority 4: Voice Personality Sliders (2 days)
 
@@ -87,41 +86,38 @@ Fixed prosody per mood is good. User-tunable prosody per call is better.
 
 **Gate:** `voice_speak(mood: "roast", voice_overrides: { sarcasm: 1.5 })` produces audibly different output vs default.
 
-### Priority 5: Mood-Specific Technique Combos (1-2 days)
+### Priority 5: Mood-Specific Technique Combos — ✅ SHIPPED (2026-09-06)
 
-Let users dial precision: "give me a cheeky heckle with misdirection."
+Let users dial precision: "give me a cheeky heckle with misdirection." Bounded overlay inside one frozen primary skeleton — not `mood.blend`.
 
-- [ ] Extend roast/heckle params with optional `technique` override
-- [ ] Build mood×technique capability matrix (not all combos valid)
-- [ ] Reject invalid combos with clear error: "cynic doesn't support escalation — try understatement or callback"
-- [ ] Tests for valid/invalid combos
+- [x] Extend roast/heckle params with optional `technique` override
+- [x] Build mood×technique capability matrix (not all combos valid)
+- [x] Reject invalid combos with clear error: "cynic doesn't support escalation — try understatement or callback"
+- [x] Tests for valid/invalid combos
 
-**Gate:** `roast(target, context, technique: "misdirection")` produces misdirection-shaped roast in current mood voice.
+**Gate:** `roast(target, context, technique: "misdirection")` produces misdirection-shaped roast in current mood voice. Invalid combos throw `InvalidTechniqueError` (MCP `validation`) before the model is called.
 
 ---
 
-## v2.1 — Comedy Intelligence (speculative, 2-4 weeks)
+## v2.1 — Comedy Intelligence — **WON'T as specified** (study-swarm 2026-09)
 
-Only pursue if v2.0 sessions prove the need. Not pre-approved.
+The 2026-09 Feature Pass study-swarm grounded these as known-broken defaults. The grounded slice that *did* ship is mood×technique overlays + the callback variation contract (v2.0 P5 + FP-2).
 
-### Adaptive Difficulty
+### Adaptive Difficulty — **WON'T** on 👍/👎 or catchphrase-reuse
 
-- [ ] Track per-session hit/miss ratio (user reactions: 👍/👎 or implicit via catchphrase reuse)
-- [ ] If hit rate drops, auto-simplify: shorter outputs, safer techniques, more label patterns
-- [ ] If hit rate is high, allow riskier techniques: longer bits, callbacks, escalation chains
-- [ ] Never auto-switch mood — that's user territory
+Stickiness and reuse are dark-pattern-confounded / circular. The scorecard stays a form-and-safety gate.
 
-### Callback Graph
+### Callback Graph — **WON'T**
 
-- [ ] Replace flat ring buffer with tagged graph: bits connect to gags connect to catchphrases
-- [ ] Enable multi-hop callbacks: "remember that deadbeef thing from earlier? well NOW it's..."
-- [ ] Visualize in debug_chain output
+Keep the tagged ring + distance gate + retirement cap + no-verbatim. Inferred multi-hop edges help long factual QA and lose surface form; humor *is* the surface form.
 
-### Ensemble Mood Blending
+### Ensemble Mood Blending — **WON'T**
 
-- [ ] `mood.blend(primary: "cynic", accent: "zoomer", ratio: 0.7)` — generates with primary skeleton but allows accent flavor
-- [ ] Use primary mood's prompt + append accent's voice notes as soft guidance
-- [ ] Validate output against primary pattern (accent is flavor, not structure)
+Moods stay exclusive. Two style cards fail to co-activate; a coding session is already the hostile case for persona death. Technique overlays inside one frozen skeleton are the Pareto frontier (shipped).
+
+### Unsolicited sidekick speech — **WON'T**
+
+Stay strictly reactive (MCP wait-to-be-called). Unsolicited help raises self-threat; interruption resumption is minutes.
 
 ---
 
@@ -132,7 +128,7 @@ These are not planned for any version unless proven necessary by real usage data
 | Idea | Why not |
 |------|---------|
 | Larger models (14b, 70b) | Only if we hit a hard ceiling on new moods. 7B with skeleton prompts is the moat. |
-| RAG memory | Ring buffer + tags sufficient. Prove need with session data first. |
+| RAG memory / callback graph | Tagged ring + distance/retirement is the product. Graphs lose surface form. |
 | Multilingual comedy | English-only. Comedy doesn't translate; prompts would need full rewrites per language. |
 | UI dashboard | CLI/MCP debug tools first. If debug_chain isn't enough, then consider. |
 | Cloud TTS (Azure, ElevenLabs) | Piper local is the moat. No latency, no API keys, no cost. |
@@ -152,4 +148,4 @@ These are not planned for any version unless proven necessary by real usage data
 
 ---
 
-*Last updated: 2026-07-07 — re-swarm health pass (Stage A)*
+*Last updated: 2026-09-06 — Feature Pass study-swarm lock (FP-1..FP-5)*

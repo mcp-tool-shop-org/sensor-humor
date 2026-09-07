@@ -17,6 +17,9 @@ tsconfig.json
 # Docs
 ROADMAP.md
 
+# Source maps are local debug, not the published tarball (keeps the pack:check 200 KiB gate honest)
+**/*.map
+
 # NOTE: package.json "files" (dist + CHANGELOG + SECURITY) is the authoritative allowlist.
 # npm ALWAYS force-includes the root README and any root README.<lang>.md translations regardless
 # of this file or "files" — they cannot be excluded here, so the language READMEs do ship (small,

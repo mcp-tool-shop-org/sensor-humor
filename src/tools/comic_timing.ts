@@ -8,9 +8,10 @@ import { getSession, fullTraceEnabled } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
-import { COMIC_TECHNIQUES, type ComicTechnique, type ComicTimingResult } from '../types.js';
+import type { ComicTechnique, ComicTimingResult } from '../types.js';
 import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, hasLanguageLeak, LANGUAGE_RETRY_SUFFIX, sanitizeForPrompt, voicedSafeFallback, STATIC_SAFE_FALLBACK } from '../validators.js';
 import { ROAST_LABEL_PATTERN } from './roast.js';
+import { buildTechniqueGuidance, isVerbatimCallback } from './techniques.js';
 
 const ComicTimingSchema = z.object({
   rewrite: z.string().max(300),
@@ -60,31 +61,6 @@ const COMIC_TIMING_JSON_SCHEMA = {
   },
   required: ['rewrite', 'technique_used'],
 };
-
-function buildTechniqueGuidance(technique: ComicTechnique, hasCallbacks: boolean): string {
-  switch (technique) {
-    case 'rule-of-three':
-      return 'Use the rule of three: two normal items, then a third that breaks the pattern.';
-    case 'misdirection':
-      return 'Use misdirection: set up an expectation, then deliver something completely different.';
-    case 'escalation':
-      return 'Use escalation: start reasonable, then each beat gets progressively more absurd.';
-    case 'callback':
-      // Fresh-twist guidance (callback-revival C4): a callback that merely repeats the bit verbatim
-      // is not funny and reads as tedium. Petrović & Matthews 2013 (ACL P13-2041) — humor requires
-      // related AND unexpected; West & Horvitz 2019 (arXiv:1901.03253) — models default to safe
-      // reuse, so we must explicitly demand fresh incongruity. Escalate or add a new angle.
-      return hasCallbacks
-        ? 'Use a callback: reference an earlier bit from this session (check the session state / callback material). Do NOT repeat it verbatim — ESCALATE it or add a NEW twist so the callback lands as a fresh surprise, not a rerun.'
-        : 'A callback was requested but there are no earlier bits to reference. Use understatement instead.';
-    case 'understatement':
-      return 'Use understatement: describe something dramatic as if it were completely mundane.';
-    case 'auto':
-      return hasCallbacks
-        ? 'Choose the best technique for this text. If earlier session material is available, consider a callback.'
-        : 'Choose the best comedy technique for this text.';
-  }
-}
 
 export async function comicTiming(
   text: string,
@@ -180,6 +156,22 @@ Respond with JSON only.`;
     result = await gen(`${userPrompt}${LANGUAGE_RETRY_SUFFIX}`);
   }
 
+  // FP-2: a callback that replays the planted setup verbatim is not a callback. Retry once
+  // with a stronger vary instruction BEFORE the terminal gate, so a dirty retry cannot skip it.
+  if (!result.fallback_reason && result.data.technique_used === 'callback') {
+    const gagForVerbatim = result.data.callback_source
+      ? callbackCandidates.find(
+          (g) => g.setup === result.data.callback_source || g.tag === result.data.callback_source,
+        )
+      : undefined;
+    if (gagForVerbatim && isVerbatimCallback(result.data.rewrite, gagForVerbatim.setup)) {
+      validatorsTriggered.push('callback-verbatim');
+      result = await gen(
+        `${userPrompt}\n\nDo NOT repeat the callback setup verbatim. Escalate it or add a NEW twist so it lands as a fresh surprise, not a rerun.`,
+      );
+    }
+  }
+
   // Roast pattern nudge: if roast mood and no verdict/label pattern, retry with hint.
   // Uses the entry-snapshot `mood`, not session.mood, so a concurrent mood_set during an await
   // above cannot flip this decision (tools-002).
@@ -250,9 +242,18 @@ Respond with JSON only.`;
           (g) => g.setup === data.callback_source || g.tag === data.callback_source,
         )
       : undefined;
-    if (gag) {
+    if (gag && !isVerbatimCallback(data.rewrite, gag.setup)) {
       session.addGag(gag.setup, gag.tag);
       data.callback_honored = true;
+    } else if (gag) {
+      // Matched a real gag but the rewrite is a verbatim replay of the setup — not honored,
+      // and do not bump the fire count (a rerun is not a fire that should retire the gag).
+      data.callback_honored = false;
+      if (process.env.SENSOR_HUMOR_DEBUG === 'true') {
+        console.error(
+          `[sensor-humor] callback rewrite matched setup verbatim — callback_honored: false`,
+        );
+      }
     } else {
       // Model labeled this a callback but callback_source matched no gag candidate (or was absent).
       // Flag it as unhonored rather than silently passing an unverified 'callback' through.

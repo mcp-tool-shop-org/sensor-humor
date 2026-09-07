@@ -8,8 +8,9 @@ import { getSession, fullTraceEnabled } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
-import type { HeckleResult, MoodStyle } from '../types.js';
+import type { HeckleResult, MoodStyle, ComicTechnique } from '../types.js';
 import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, hasLanguageLeak, LANGUAGE_RETRY_SUFFIX, sanitizeForPrompt } from '../validators.js';
+import { assertMoodTechnique, buildTechniqueGuidance } from './techniques.js';
 
 const HeckleSchema = z.object({
   heckle: z.string().max(120),
@@ -80,36 +81,57 @@ Rules: 8-20 words max. Exactly one caps block (3-5 words). No questions, no meta
 }
 
 /** Mood-specific heckle user prompt. */
-function buildHeckleUserPrompt(mood: MoodStyle, target: string): string {
+function buildHeckleUserPrompt(
+  mood: MoodStyle,
+  target: string,
+  techniqueGuide: string,
+  callbackContext: string,
+): string {
+  const extra = techniqueGuide === '' ? '' : `\nTECHNIQUE: ${techniqueGuide}${callbackContext}\n`;
   if (mood === 'zoomer') {
-    return `Heckle this. Format: [reaction opener], [savage jab] [CAPS BLOCK]. 8-20 words. No questions. No metaphors.
-
+    return `Heckle this. Format: [reaction opener], [savage jab] [CAPS BLOCK]. 8-20 words. No questions. No metaphors.${extra}
 TARGET:
 ${sanitizeForPrompt(target)}
 
 Respond with JSON only.`;
   }
-  return `Heckle this. One short punchy line in your mood's voice pattern, 8-20 words. Direct hit.
-
+  return `Heckle this. One short punchy line in your mood's voice pattern, 8-20 words. Direct hit.${extra}
 TARGET:
 ${sanitizeForPrompt(target)}
 
 Respond with JSON only.`;
 }
 
-export async function heckle(target: string): Promise<HeckleResult> {
+export async function heckle(
+  target: string,
+  technique: ComicTechnique = 'auto',
+): Promise<HeckleResult> {
   const session = getSession();
   session.tick();
   const mood = session.mood;
+  assertMoodTechnique(mood, technique);
+
+  const callbackCandidates = session.findCallbackCandidates(target);
+  const hasCallbacks = callbackCandidates.length > 0 || session.recent_bits.length > 0;
+  const techniqueGuide = technique === 'auto' ? '' : buildTechniqueGuidance(technique, hasCallbacks);
+  const callbackContext =
+    technique === 'callback' && callbackCandidates.length > 0
+      ? `\nCALLBACK MATERIAL AVAILABLE:\n${callbackCandidates.map((g) => `- "${sanitizeForPrompt(g.setup)}" (tag: ${sanitizeForPrompt(g.tag)})`).join('\n')}`
+      : '';
+
+  const overlay =
+    technique === 'auto'
+      ? ''
+      : `\nTECHNIQUE OVERLAY (primary mood pattern still wins): ${buildTechniqueGuidance(technique, hasCallbacks)}`;
 
   const systemPrompt = [
     baseSystemPrefix(),
     getMoodSystemPrompt(mood),
-    buildHeckleGuidance(mood),
+    buildHeckleGuidance(mood) + overlay,
     `\nSESSION CONTEXT:\n${session.stateSummary()}`,
   ].join('\n\n');
 
-  const userPrompt = buildHeckleUserPrompt(mood, target);
+  const userPrompt = buildHeckleUserPrompt(mood, target, techniqueGuide, callbackContext);
 
   // Voiced fallback so a backend-down heckle reads as an in-voice stock line, not a bare
   // echo of the caller's input (OBS-06).
@@ -258,6 +280,7 @@ export async function heckle(target: string): Promise<HeckleResult> {
   return {
     heckle: result.data.heckle,
     mood,
+    technique_used: technique,
     ...(degradedReason ? { degraded: true, degraded_reason: degradedReason } : {}),
   };
 }

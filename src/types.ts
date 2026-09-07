@@ -142,11 +142,15 @@ export interface RoastResult extends Degradable {
   roast: string;
   severity: number;
   mood: MoodStyle;
+  /** Overlay requested (or `auto`). Primary mood skeleton still wins. */
+  technique_used?: ComicTechnique;
 }
 
 export interface HeckleResult extends Degradable {
   heckle: string;
   mood: MoodStyle;
+  /** Overlay requested (or `auto`). Primary mood skeleton still wins. */
+  technique_used?: ComicTechnique;
 }
 
 export interface CatchphraseGenerateResult extends Degradable {

@@ -13,6 +13,7 @@ import { moodSet, moodGet } from './tools/mood.js';
 import { comicTiming } from './tools/comic_timing.js';
 import { roast } from './tools/roast.js';
 import { heckle } from './tools/heckle.js';
+import { InvalidTechniqueError } from './tools/techniques.js';
 import { catchphraseGenerate, catchphraseCallback } from './tools/catchphrase.js';
 import { runningGag } from './tools/running_gag.js';
 import { getSession, resetSession, persistEnabled, sessionFilePath, getGagMinDistance, getGagMaxFires, fullTraceEnabled } from './session.js';
@@ -29,7 +30,7 @@ const server = new McpServer({
 
 /** Hints keyed by error code, so a tool error tells the caller how to fix it. */
 const ERROR_HINTS: Record<string, string> = {
-  validation: 'Check the tool arguments against the documented schema (e.g. a valid mood).',
+  validation: 'Check the tool arguments against the documented schema (e.g. a valid mood, or a mood×technique combo the current mood supports).',
   connection: 'Ensure Ollama is running and OLLAMA_HOST is reachable.',
   'model-not-found': 'The configured model is not pulled. Run: ollama pull <SENSOR_HUMOR_MODEL> (default qwen2.5:7b).',
   timeout: 'The model took too long — raise SENSOR_HUMOR_TIMEOUT_MS or use a smaller model.',
@@ -42,6 +43,7 @@ function classifyToolError(e: Error): string {
   // DirtyGagError: running_gag refused an unsafe/empty gag — a caller-input problem, not a backend
   // fault, so it classifies as 'validation' (the hint points the caller at the arguments).
   if (e.name === 'DirtyGagError') return 'validation';
+  if (e instanceof InvalidTechniqueError || e.name === 'InvalidTechniqueError') return 'validation';
   if (e.name === 'ZodError' || /ZodError|Invalid mood|Valid moods/i.test(e.message)) return 'validation';
   if (e.name === 'ResponseError' && /not found|no such model/i.test(e.message)) return 'model-not-found';
   if (/ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET/.test(e.message)) return 'connection';
@@ -136,17 +138,23 @@ server.tool(
 // --- roast ---
 server.tool(
   'roast',
-  'Deliver an affectionate burn on code, errors, ideas, or situations. Returns a severity rating 1-5. Uses verdict/diagnosis label pattern.',
+  'Deliver an affectionate burn on code, errors, ideas, or situations. Returns a severity rating 1-5. Uses verdict/diagnosis label pattern. Optional technique overlay must be valid for the current mood.',
   {
     target: z.string().describe('The code, error, idea, or situation to roast'),
     context: z
       .enum(ROAST_CONTEXTS)
       .optional()
       .describe('What kind of thing is being roasted: code, error, idea, or situation'),
+    technique: z
+      .enum(COMIC_TECHNIQUES)
+      .optional()
+      .describe(
+        'Optional comedy-technique overlay (rule-of-three, misdirection, escalation, callback, understatement, auto). Invalid mood×technique combos are refused.',
+      ),
   },
-  async ({ target, context }) => {
+  async ({ target, context, technique }) => {
     try {
-      const result = await roast(target, context ?? 'code');
+      const result = await roast(target, context ?? 'code', technique ?? 'auto');
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -159,13 +167,19 @@ server.tool(
 // --- heckle ---
 server.tool(
   'heckle',
-  'Quick, punchy reaction to bad code or bad ideas. Short jab — one line, no config needed.',
+  'Quick, punchy reaction to bad code or bad ideas. Short jab — one line. Optional technique overlay must be valid for the current mood.',
   {
     target: z.string().describe('The thing to heckle'),
+    technique: z
+      .enum(COMIC_TECHNIQUES)
+      .optional()
+      .describe(
+        'Optional comedy-technique overlay (rule-of-three, misdirection, escalation, callback, understatement, auto). Invalid mood×technique combos are refused.',
+      ),
   },
-  async ({ target }) => {
+  async ({ target, technique }) => {
     try {
-      const result = await heckle(target);
+      const result = await heckle(target, technique ?? 'auto');
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };

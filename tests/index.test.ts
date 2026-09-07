@@ -17,6 +17,16 @@ describe('index module', () => {
     expect(versionMatch![1]).toBe(pkg.version);
   });
 
+  it('roast and heckle register an optional technique overlay', () => {
+    const src = readFileSync('src/index.ts', 'utf-8');
+    expect(src).toMatch(/server\.tool\(\s*'roast'/);
+    expect(src).toMatch(/server\.tool\(\s*'heckle'/);
+    // Both handlers pass technique through; invalid combos are a validation error.
+    expect(src).toContain('InvalidTechniqueError');
+    expect(src).toContain('roast(target, context ?? \'code\', technique ?? \'auto\')');
+    expect(src).toContain('heckle(target, technique ?? \'auto\')');
+  });
+
   it('registers all 11 tools', () => {
     const src = readFileSync('src/index.ts', 'utf-8');
     const toolRegistrations = src.match(/server\.tool\(/g);
