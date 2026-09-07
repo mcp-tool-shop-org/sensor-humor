@@ -17,6 +17,12 @@ describe('index module', () => {
     expect(versionMatch![1]).toBe(pkg.version);
   });
 
+  it('release.yml verify uses pack:check not print-only npm pack --dry-run (F-e4b17c2a)', () => {
+    const yml = readFileSync('.github/workflows/release.yml', 'utf-8');
+    expect(yml).toContain('npm run pack:check');
+    expect(yml).not.toMatch(/run:\s*npm pack --dry-run\s*$/m);
+  });
+
   it('roast and heckle register an optional technique overlay', () => {
     const src = readFileSync('src/index.ts', 'utf-8');
     expect(src).toMatch(/server\.tool\(\s*'roast'/);
@@ -232,6 +238,8 @@ describe('index module', () => {
     expect(body.generation).toHaveProperty('fallback_rate');
     expect(body.generation).toHaveProperty('fallback_rate_recent');
     expect(body.generation).toHaveProperty('consecutive_fallbacks');
+    expect(Array.isArray(body.allowed_techniques)).toBe(true);
+    expect(body.allowed_techniques[0]).toBe('auto');
 
     toolSpy.mockRestore();
     connectSpy.mockRestore();

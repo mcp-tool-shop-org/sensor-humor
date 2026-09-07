@@ -6,15 +6,23 @@
 import { z } from 'zod';
 import { getSession, fullTraceEnabled } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
+import { overlayCoexistenceBlock } from '../prompts/overlay.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
 import type { RoastContext, RoastResult, MoodStyle, ComicTechnique } from '../types.js';
 import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, hasLanguageLeak, LANGUAGE_RETRY_SUFFIX, sanitizeForPrompt, voicedSafeFallback, STATIC_SAFE_FALLBACK } from '../validators.js';
-import { assertMoodTechnique, buildTechniqueGuidance } from './techniques.js';
+import {
+  assertMoodTechnique,
+  buildTechniqueGuidance,
+  isVerbatimCallback,
+  matchCallbackGag,
+  resolveOverlayTechnique,
+} from './techniques.js';
 
 const RoastSchema = z.object({
   roast: z.string().max(200),
   severity: z.number().int().min(1).max(5),
+  callback_source: z.string().optional(),
 });
 
 const ROAST_JSON_SCHEMA = {
@@ -29,6 +37,10 @@ const ROAST_JSON_SCHEMA = {
       minimum: 1,
       maximum: 5,
       description: 'Severity 1-5 (1=mild pattern, 3=notable smell, 5=architectural crime)',
+    },
+    callback_source: {
+      type: 'string',
+      description: 'If the overlay is callback, the planted gag tag or setup being referenced',
     },
   },
   required: ['roast', 'severity'],
@@ -70,24 +82,31 @@ export async function roast(
   technique: ComicTechnique = 'auto',
 ): Promise<RoastResult> {
   const session = getSession();
-  session.tick();
   const mood = session.mood;
+  // F-4a7e6c91: validation before tick — a refused overlay must not age gag distance.
   assertMoodTechnique(mood, technique);
+  session.tick();
 
   const callbackCandidates = session.findCallbackCandidates(target);
-  const hasCallbacks = callbackCandidates.length > 0 || session.recent_bits.length > 0;
-  const techniqueGuide = technique === 'auto' ? '' : buildTechniqueGuidance(technique, hasCallbacks);
+  const hasEligibleGags = callbackCandidates.length > 0;
+  const effective = resolveOverlayTechnique(technique, hasEligibleGags);
+  const hasCallbacks = hasEligibleGags || session.recent_bits.length > 0;
+  const techniqueGuide = effective === 'auto' ? '' : buildTechniqueGuidance(effective, hasEligibleGags);
   const callbackContext =
-    technique === 'callback' && callbackCandidates.length > 0
+    effective === 'callback' && hasEligibleGags
       ? `\nCALLBACK MATERIAL AVAILABLE:\n${callbackCandidates.map((g) => `- "${sanitizeForPrompt(g.setup)}" (tag: ${sanitizeForPrompt(g.tag)})`).join('\n')}`
       : '';
 
+  const coexistence = overlayCoexistenceBlock(mood, effective);
   const systemPrompt = [
     baseSystemPrefix(),
     getMoodSystemPrompt(mood),
-    buildRoastGuidance(mood, technique, hasCallbacks),
+    buildRoastGuidance(mood, effective, hasCallbacks),
+    coexistence,
     `\nSESSION CONTEXT:\n${session.stateSummary()}`,
-  ].join('\n\n');
+  ]
+    .filter((s) => s.length > 0)
+    .join('\n\n');
 
   const userPrompt = buildRoastUserPrompt(mood, target, context, techniqueGuide, callbackContext);
 
@@ -215,6 +234,24 @@ export async function roast(
     }
   }
 
+  // F-8c2e1a47 / FP-2: verbatim callback overlay retry before the terminal gate.
+  if (!result.fallback_reason && effective === 'callback') {
+    const gagForVerbatim = matchCallbackGag(result.data.callback_source, callbackCandidates);
+    if (gagForVerbatim && isVerbatimCallback(result.data.roast, gagForVerbatim.setup)) {
+      validatorsTriggered.push('callback-verbatim');
+      result = await generateComedy<z.infer<typeof RoastSchema>>(
+        {
+          systemPrompt,
+          userPrompt: `${userPrompt}\n\nDo NOT repeat the callback setup verbatim. Escalate it or add a NEW twist so it lands as a fresh surprise, not a rerun.`,
+          schema: RoastSchema,
+          jsonSchema: ROAST_JSON_SCHEMA,
+          numPredict: ROAST_NUM_PREDICT,
+        },
+        fallback,
+      );
+    }
+  }
+
   // Terminal safety gate: harsh + comparison + simile are the last word, so a late retry
   // cannot re-introduce a banned pattern an earlier filter already cleared.
   if (
@@ -245,6 +282,23 @@ export async function roast(
   // Clamp severity. The schema already constrains 1-5, so this only guards the fallback
   // literal and any future schema relaxation — defensive, intentionally redundant.
   const severity = Math.max(1, Math.min(5, result.data.severity));
+
+  let callback_honored: boolean | undefined;
+  const callback_source = result.data.callback_source;
+  if (
+    effective === 'callback' &&
+    !safetySubstituted &&
+    !languageSubstituted &&
+    !result.fallback_reason
+  ) {
+    const gag = matchCallbackGag(callback_source, callbackCandidates);
+    if (gag && !isVerbatimCallback(result.data.roast, gag.setup)) {
+      session.addGag(gag.setup, gag.tag);
+      callback_honored = true;
+    } else {
+      callback_honored = false;
+    }
+  }
 
   // Update session
   session.pushBit(result.data.roast, 'roast');
@@ -279,7 +333,9 @@ export async function roast(
     roast: result.data.roast,
     severity,
     mood,
-    technique_used: technique,
+    technique_used: effective,
+    ...(callback_source ? { callback_source } : {}),
+    ...(callback_honored !== undefined ? { callback_honored } : {}),
     ...(degradedReason ? { degraded: true, degraded_reason: degradedReason } : {}),
   };
 }

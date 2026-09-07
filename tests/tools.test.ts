@@ -139,6 +139,19 @@ describe('mood tools', () => {
       session.addGag('test2', 'tag2');
       expect(moodGet().session_gag_count).toBe(2);
     });
+
+    it('lists allowed_techniques for the current mood including auto (F-f0b39d16)', () => {
+      expect(moodGet().allowed_techniques[0]).toBe('auto');
+      expect(moodGet().allowed_techniques).toEqual(
+        expect.arrayContaining(['auto', 'misdirection', 'callback', 'understatement']),
+      );
+      expect(moodGet().allowed_techniques).not.toContain('escalation');
+      moodSet('cynic');
+      expect(moodGet().allowed_techniques).not.toContain('escalation');
+      expect(moodGet().allowed_techniques).toContain('understatement');
+      moodSet('roast');
+      expect(moodGet().allowed_techniques).toContain('escalation');
+    });
   });
 });
 
@@ -359,6 +372,71 @@ describe('roast with new moods', () => {
     );
     expect(mockGenerate).not.toHaveBeenCalled();
   });
+
+  it('does not tick the session when an overlay is refused (F-4a7e6c91)', async () => {
+    moodSet('cynic');
+    const before = getSession().turn_counter;
+    await expect(roast('global state', 'code', 'escalation')).rejects.toBeInstanceOf(
+      InvalidTechniqueError,
+    );
+    expect(getSession().turn_counter).toBe(before);
+  });
+
+  it('honors a roast callback overlay and bumps the gag (F-8c2e1a47)', async () => {
+    const session = getSession();
+    session.tick();
+    runningGag('the deadbeef pointer that keeps haunting this build', 'deadbeef');
+    session.turn_counter += 3;
+    mockGenerate.mockResolvedValue({
+      data: {
+        roast: 'Deadbeef again, now with extra undefined.',
+        severity: 4,
+        callback_source: 'deadbeef',
+      },
+    });
+    const result = await roast('crash at deadbeef', 'error', 'callback');
+    expect(result.callback_honored).toBe(true);
+    expect(result.technique_used).toBe('callback');
+    const gag = session.running_gags.find((g) => g.tag === 'deadbeef');
+    expect(gag!.used).toBe(2);
+  });
+
+  it('retries then unhonors a verbatim roast callback overlay (F-8c2e1a47)', async () => {
+    const session = getSession();
+    session.tick();
+    runningGag('the deadbeef pointer that keeps haunting this build', 'deadbeef');
+    session.turn_counter += 3;
+    mockGenerate
+      .mockResolvedValueOnce({
+        data: {
+          roast: 'the deadbeef pointer that keeps haunting this build',
+          severity: 3,
+          callback_source: 'deadbeef',
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          roast: 'the deadbeef pointer that keeps haunting this build',
+          severity: 3,
+          callback_source: 'deadbeef',
+        },
+      });
+    const result = await roast('crash at deadbeef', 'error', 'callback');
+    expect(mockGenerate).toHaveBeenCalledTimes(2);
+    expect(result.callback_honored).toBe(false);
+    const gag = session.running_gags.find((g) => g.tag === 'deadbeef');
+    expect(gag!.used).toBe(1);
+  });
+
+  it('injects overlay-coexistence copy when a technique overlay is requested (F-7e2c9b14)', async () => {
+    mockGenerate.mockResolvedValue({
+      data: { roast: 'Verdict: Fine.', severity: 2 },
+    });
+    await roast('mild smell', 'code', 'misdirection');
+    const opts = mockGenerate.mock.calls[0][0] as { systemPrompt: string };
+    expect(opts.systemPrompt).toMatch(/TECHNIQUE OVERLAY/);
+    expect(opts.systemPrompt).toMatch(/lexical flavor/i);
+  });
 });
 
 describe('heckle with new moods', () => {
@@ -412,6 +490,26 @@ describe('heckle with new moods', () => {
     expect(result.technique_used).toBe('understatement');
     const opts = mockGenerate.mock.calls[0][0] as { userPrompt: string };
     expect(opts.userPrompt).toMatch(/understatement/i);
+  });
+
+  it('does not tick heckle when an overlay is refused (F-4a7e6c91)', async () => {
+    moodSet('cynic');
+    const before = getSession().turn_counter;
+    await expect(heckle('global state', 'escalation')).rejects.toBeInstanceOf(InvalidTechniqueError);
+    expect(getSession().turn_counter).toBe(before);
+  });
+
+  it('honors a heckle callback overlay (F-8c2e1a47)', async () => {
+    const session = getSession();
+    session.tick();
+    runningGag('the deadbeef pointer that keeps haunting this build', 'deadbeef');
+    session.turn_counter += 3;
+    mockGenerate.mockResolvedValue({
+      data: { heckle: 'Deadbeef encore, extra UB.', callback_source: 'deadbeef' },
+    });
+    const result = await heckle('crash at deadbeef', 'callback');
+    expect(result.callback_honored).toBe(true);
+    expect(session.running_gags.find((g) => g.tag === 'deadbeef')!.used).toBe(2);
   });
 });
 

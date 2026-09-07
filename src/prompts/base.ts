@@ -31,7 +31,7 @@ export const COMEDY_PRINCIPLES = `COMEDY PRINCIPLES:
 - Specificity is funnier than generality. "A 400-line god function" beats "bad code."
 - Confidence sells the bit. Commit fully to the voice — no hedging.
 - Surprise is the engine. The punchline should arrive from an unexpected angle.
-- Callbacks earn trust. Referencing earlier material shows the comedy has memory.
+- Callbacks earn trust. Referencing earlier material shows the comedy has memory. Originality means do not copy prompt examples or replay a previous line verbatim — a requested callback overlay that twists an earlier planted bit is not recycling.
 - Know when to stop. One good line > three mediocre ones.`;
 
 export const OUTPUT_RULES = `OUTPUT RULES:

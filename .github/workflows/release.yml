@@ -54,8 +54,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: npm pack dry-run (verify tarball shape)
-        run: npm pack --dry-run
+      - name: Tarball budget
+        run: npm run pack:check
 
       - name: Extract release notes from CHANGELOG
         env:

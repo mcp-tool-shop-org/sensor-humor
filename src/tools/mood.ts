@@ -11,6 +11,7 @@ import {
   type MoodStyle,
 } from '../types.js';
 import { getMoodVoiceNotes } from '../prompts/loader.js';
+import { allowedTechniquesForMood } from './techniques.js';
 
 /**
  * mood_set result, structurally extending MoodSetResult with transition feedback (b-tools-004):
@@ -55,5 +56,6 @@ export function moodGet(): MoodGetResult {
     mood: session.mood,
     description: MOOD_DESCRIPTIONS[session.mood],
     session_gag_count: session.running_gags.length,
+    allowed_techniques: allowedTechniquesForMood(session.mood),
   };
 }

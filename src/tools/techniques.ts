@@ -9,7 +9,7 @@
  * Pai et al. 2025 (arXiv:2510.10157) two style cards fail to co-activate.
  */
 
-import { COMIC_TECHNIQUES, type ComicTechnique, type MoodStyle } from '../types.js';
+import { COMIC_TECHNIQUES, type ComicTechnique, type MoodStyle, type RunningGag } from '../types.js';
 
 /** Overlay techniques a caller can request. `auto` means "no overlay — mood default." */
 export const OVERLAY_TECHNIQUES = [
@@ -55,6 +55,31 @@ export class InvalidTechniqueError extends Error {
 
 export function techniquesForMood(mood: MoodStyle): readonly OverlayTechnique[] {
   return MOOD_TECHNIQUE_MATRIX[mood];
+}
+
+/** `auto` plus the mood's allow-list — what mood_get advertises. */
+export function allowedTechniquesForMood(mood: MoodStyle): ComicTechnique[] {
+  return ['auto', ...MOOD_TECHNIQUE_MATRIX[mood]];
+}
+
+/**
+ * A callback overlay with no eligible planted gag is not a callback — fall back to
+ * understatement rather than echoing technique_used:'callback'.
+ */
+export function resolveOverlayTechnique(
+  requested: ComicTechnique,
+  hasEligibleGags: boolean,
+): ComicTechnique {
+  if (requested === 'callback' && !hasEligibleGags) return 'understatement';
+  return requested;
+}
+
+export function matchCallbackGag(
+  source: string | undefined,
+  candidates: readonly RunningGag[],
+): RunningGag | undefined {
+  if (!source) return undefined;
+  return candidates.find((g) => g.setup === source || g.tag === source);
 }
 
 /**

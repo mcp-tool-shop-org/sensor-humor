@@ -6,14 +6,22 @@
 import { z } from 'zod';
 import { getSession, fullTraceEnabled } from '../session.js';
 import { baseSystemPrefix } from '../prompts/base.js';
+import { overlayCoexistenceBlock } from '../prompts/overlay.js';
 import { getMoodSystemPrompt } from '../prompts/loader.js';
 import { generateComedy, recordSafetyFilterFire } from '../ollama.js';
 import type { HeckleResult, MoodStyle, ComicTechnique } from '../types.js';
 import { hasSimileLeak, SIMILE_RETRY_SUFFIX, hasHarshLeak, hasLanguageLeak, LANGUAGE_RETRY_SUFFIX, sanitizeForPrompt } from '../validators.js';
-import { assertMoodTechnique, buildTechniqueGuidance } from './techniques.js';
+import {
+  assertMoodTechnique,
+  buildTechniqueGuidance,
+  isVerbatimCallback,
+  matchCallbackGag,
+  resolveOverlayTechnique,
+} from './techniques.js';
 
 const HeckleSchema = z.object({
   heckle: z.string().max(120),
+  callback_source: z.string().optional(),
 });
 
 const HECKLE_JSON_SCHEMA = {
@@ -22,6 +30,10 @@ const HECKLE_JSON_SCHEMA = {
     heckle: {
       type: 'string',
       description: 'A short, punchy heckle in the current mood voice. 8-20 words max.',
+    },
+    callback_source: {
+      type: 'string',
+      description: 'If the overlay is callback, the planted gag tag or setup being referenced',
     },
   },
   required: ['heckle'],
@@ -107,29 +119,36 @@ export async function heckle(
   technique: ComicTechnique = 'auto',
 ): Promise<HeckleResult> {
   const session = getSession();
-  session.tick();
   const mood = session.mood;
+  // F-4a7e6c91: validation before tick — a refused overlay must not age gag distance.
   assertMoodTechnique(mood, technique);
+  session.tick();
 
   const callbackCandidates = session.findCallbackCandidates(target);
-  const hasCallbacks = callbackCandidates.length > 0 || session.recent_bits.length > 0;
-  const techniqueGuide = technique === 'auto' ? '' : buildTechniqueGuidance(technique, hasCallbacks);
+  const hasEligibleGags = callbackCandidates.length > 0;
+  const effective = resolveOverlayTechnique(technique, hasEligibleGags);
+  const hasCallbacks = hasEligibleGags || session.recent_bits.length > 0;
+  const techniqueGuide = effective === 'auto' ? '' : buildTechniqueGuidance(effective, hasEligibleGags);
   const callbackContext =
-    technique === 'callback' && callbackCandidates.length > 0
+    effective === 'callback' && hasEligibleGags
       ? `\nCALLBACK MATERIAL AVAILABLE:\n${callbackCandidates.map((g) => `- "${sanitizeForPrompt(g.setup)}" (tag: ${sanitizeForPrompt(g.tag)})`).join('\n')}`
       : '';
 
   const overlay =
-    technique === 'auto'
+    effective === 'auto'
       ? ''
-      : `\nTECHNIQUE OVERLAY (primary mood pattern still wins): ${buildTechniqueGuidance(technique, hasCallbacks)}`;
+      : `\nTECHNIQUE OVERLAY (primary mood pattern still wins): ${buildTechniqueGuidance(effective, hasCallbacks)}`;
+  const coexistence = overlayCoexistenceBlock(mood, effective);
 
   const systemPrompt = [
     baseSystemPrefix(),
     getMoodSystemPrompt(mood),
     buildHeckleGuidance(mood) + overlay,
+    coexistence,
     `\nSESSION CONTEXT:\n${session.stateSummary()}`,
-  ].join('\n\n');
+  ]
+    .filter((s) => s.length > 0)
+    .join('\n\n');
 
   const userPrompt = buildHeckleUserPrompt(mood, target, techniqueGuide, callbackContext);
 
@@ -234,6 +253,24 @@ export async function heckle(
     }
   }
 
+  // F-8c2e1a47 / FP-2: verbatim callback overlay retry before the terminal gate.
+  if (!result.fallback_reason && effective === 'callback') {
+    const gagForVerbatim = matchCallbackGag(result.data.callback_source, callbackCandidates);
+    if (gagForVerbatim && isVerbatimCallback(result.data.heckle, gagForVerbatim.setup)) {
+      validatorsTriggered.push('callback-verbatim');
+      result = await generateComedy<z.infer<typeof HeckleSchema>>(
+        {
+          systemPrompt,
+          userPrompt: `${userPrompt}\n\nDo NOT repeat the callback setup verbatim. Escalate it or add a NEW twist so it lands as a fresh surprise, not a rerun.`,
+          schema: HeckleSchema,
+          jsonSchema: HECKLE_JSON_SCHEMA,
+          numPredict: HECKLE_NUM_PREDICT,
+        },
+        fallback,
+      );
+    }
+  }
+
   // Terminal safety gate: harsh + simile are the last word, so a late retry cannot
   // re-introduce a banned pattern an earlier filter already cleared.
   if (hasHarshLeak(result.data.heckle) || hasSimileLeak(result.data.heckle)) {
@@ -247,6 +284,23 @@ export async function heckle(
     validatorsTriggered.push('terminal-gate');
   }
   if (safetySubstituted) recordSafetyFilterFire();
+
+  let callback_honored: boolean | undefined;
+  const callback_source = result.data.callback_source;
+  if (
+    effective === 'callback' &&
+    !safetySubstituted &&
+    !languageSubstituted &&
+    !result.fallback_reason
+  ) {
+    const gag = matchCallbackGag(callback_source, callbackCandidates);
+    if (gag && !isVerbatimCallback(result.data.heckle, gag.setup)) {
+      session.addGag(gag.setup, gag.tag);
+      callback_honored = true;
+    } else {
+      callback_honored = false;
+    }
+  }
 
   // Update session
   session.pushBit(result.data.heckle, 'heckle');
@@ -280,7 +334,9 @@ export async function heckle(
   return {
     heckle: result.data.heckle,
     mood,
-    technique_used: technique,
+    technique_used: effective,
+    ...(callback_source ? { callback_source } : {}),
+    ...(callback_honored !== undefined ? { callback_honored } : {}),
     ...(degradedReason ? { degraded: true, degraded_reason: degradedReason } : {}),
   };
 }

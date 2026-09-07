@@ -22,6 +22,7 @@ import { createHash } from 'node:crypto';
 import { baseSystemPrefix } from './prompts/base.js';
 import { getMoodVoiceNotes, getMoodSystemPrompt, getPromptVersion, getActivePromptKey } from './prompts/loader.js';
 import { getModel, getOllamaHost, getTimeoutMs, getTemperature, getMaxRetries, getOllamaStats, isDebug, probeOllama, hasApiKey } from './ollama.js';
+import { allowedTechniquesForMood } from './tools/techniques.js';
 
 const server = new McpServer({
   name: 'sensor-humor',
@@ -279,6 +280,7 @@ server.tool(
       const status = {
         mood: session.mood,
         mood_description: MOOD_DESCRIPTIONS[session.mood],
+        allowed_techniques: allowedTechniquesForMood(session.mood),
         voice_notes: getMoodVoiceNotes(session.mood),
         turn_counter: session.turn_counter,
         recent_bits_count: session.recent_bits.length,

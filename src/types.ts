@@ -90,6 +90,8 @@ export interface MoodGetResult {
   mood: MoodStyle;
   description: string;
   session_gag_count: number;
+  /** `auto` plus the current mood's overlay allow-list (F-f0b39d16). */
+  allowed_techniques: ComicTechnique[];
 }
 
 /**
@@ -144,6 +146,8 @@ export interface RoastResult extends Degradable {
   mood: MoodStyle;
   /** Overlay requested (or `auto`). Primary mood skeleton still wins. */
   technique_used?: ComicTechnique;
+  callback_source?: string;
+  callback_honored?: boolean;
 }
 
 export interface HeckleResult extends Degradable {
@@ -151,6 +155,8 @@ export interface HeckleResult extends Degradable {
   mood: MoodStyle;
   /** Overlay requested (or `auto`). Primary mood skeleton still wins. */
   technique_used?: ComicTechnique;
+  callback_source?: string;
+  callback_honored?: boolean;
 }
 
 export interface CatchphraseGenerateResult extends Degradable {

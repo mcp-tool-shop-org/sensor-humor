@@ -124,7 +124,7 @@ All tools inherit current mood from session.
 | Tool | Signature | Description |
 |------|-----------|-------------|
 | `mood_set` | `(style: string)` | Set active mood (dry, roast, chaotic, cheeky, cynic, zoomer) |
-| `mood_get` | `()` | Current mood + gag count |
+| `mood_get` | `()` | Current mood + gag count + `allowed_techniques` for the active mood |
 | `comic_timing` | `(text, technique?)` | Rewrite with comedic delivery (rule-of-three, misdirection, escalation, callback, understatement, auto) |
 | `roast` | `(target, context?, technique?)` | Affectionate burn in current mood voice, returns severity 1-5. Context: code, error, idea, situation. Optional technique overlay must be valid for the current mood (invalid combos are refused). |
 | `heckle` | `(target, technique?)` | Short pointed jab. Optional technique overlay, same mood×technique matrix as roast. |

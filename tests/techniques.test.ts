@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
+  allowedTechniquesForMood,
   assertMoodTechnique,
   InvalidTechniqueError,
   MOOD_TECHNIQUE_MATRIX,
   isVerbatimCallback,
+  resolveOverlayTechnique,
   techniquesForMood,
 } from '../src/tools/techniques.js';
 import { MOOD_STYLES } from '../src/types.js';
@@ -52,6 +54,18 @@ describe('mood × technique matrix', () => {
   it('chaotic and zoomer reject understatement (skeleton fight)', () => {
     expect(() => assertMoodTechnique('chaotic', 'understatement')).toThrow(InvalidTechniqueError);
     expect(() => assertMoodTechnique('zoomer', 'understatement')).toThrow(InvalidTechniqueError);
+  });
+});
+
+describe('resolveOverlayTechnique', () => {
+  it('falls back from callback to understatement when no eligible gag exists', () => {
+    expect(resolveOverlayTechnique('callback', false)).toBe('understatement');
+    expect(resolveOverlayTechnique('callback', true)).toBe('callback');
+    expect(resolveOverlayTechnique('misdirection', false)).toBe('misdirection');
+  });
+
+  it('mood_get allow-list always starts with auto', () => {
+    expect(allowedTechniquesForMood('dry')[0]).toBe('auto');
   });
 });
 

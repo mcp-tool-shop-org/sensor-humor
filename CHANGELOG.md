@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Confirming Feature Pass (F-8c2e1a47 / F-7e2c9b14 / F-e4b17c2a / F-f0b39d16 / F-4a7e6c91)** —
+  roast/heckle `technique: "callback"` now shares comic_timing's honor/vary/retirement path;
+  overlay-coexistence copy is injected from `src/prompts/overlay.ts` (v1 fingerprints untouched);
+  `mood_get` and `debug_status` list `allowed_techniques`; refused overlays no longer `tick()` the
+  session; `release.yml` verify runs `npm run pack:check`.
 - **mood×technique overlays on `roast` / `heckle`** — optional `technique` param (rule-of-three,
   misdirection, escalation, callback, understatement, auto). A capability matrix refuses combos
   that fight the frozen primary skeleton (`cynic`+`escalation` is the documented example). Overlay
