@@ -188,6 +188,34 @@ async function scoreMood(mood: MoodStyle): Promise<MoodReport> {
   return { mood, total, hits, degraded, interval, verdict, stopped };
 }
 
+/** Shared with the header so labels sit over cells. hitsTotal is 10: 1000/1000 is 9 and the label "hits/total" is 10. */
+const COL = {
+  mood: 8,
+  verdict: 12,
+  hitsTotal: 10,
+  rate: 4,
+  wilson: 15,
+  degraded: 8,
+} as const;
+
+const TABLE_PREFIX = '[scorecard] ';
+
+function formatScorecardRow(
+  mood: string,
+  verdict: string,
+  hitsTotal: string,
+  rate: string,
+  wilson: string,
+  degraded: string,
+  stop: string,
+): string {
+  return (
+    TABLE_PREFIX +
+    `${mood.padEnd(COL.mood)} ${verdict.padEnd(COL.verdict)} ${hitsTotal.padEnd(COL.hitsTotal)} ` +
+    `(${rate.padEnd(COL.rate)})  ${wilson.padEnd(COL.wilson)} ${degraded.padEnd(COL.degraded)}  ${stop}`
+  );
+}
+
 async function main(): Promise<void> {
   const probe = await probeOllama(5000);
   if (!probe.reachable || !probe.model_available) {
@@ -203,7 +231,9 @@ async function main(): Promise<void> {
   console.error(
     `[scorecard] model="${getModel()}" threshold=${THRESHOLD} maxN=${MAX_N} — FORM + SAFETY conformance, NOT funniness.`,
   );
-  console.error('[scorecard] mood     verdict      hits/total (rate)  wilson[lo, hi]   degraded  stop');
+  console.error(
+    formatScorecardRow('mood', 'verdict', 'hits/total', 'rate', 'wilson[lo, hi]', 'degraded', 'stop'),
+  );
 
   const reports: MoodReport[] = [];
   for (const mood of MOOD_STYLES) {
@@ -211,8 +241,15 @@ async function main(): Promise<void> {
     reports.push(r);
     const pct = r.total ? `${((r.hits / r.total) * 100).toFixed(0)}%` : 'n/a';
     console.error(
-      `  ${r.mood.padEnd(8)} ${r.verdict.padEnd(12)} ${`${r.hits}/${r.total}`.padEnd(8)} (${pct.padEnd(4)})  ` +
-        `[${r.interval.lower.toFixed(2)}, ${r.interval.upper.toFixed(2)}]   ${String(r.degraded).padEnd(8)}  ${r.stopped}`,
+      formatScorecardRow(
+        r.mood,
+        r.verdict,
+        `${r.hits}/${r.total}`,
+        pct,
+        `[${r.interval.lower.toFixed(2)}, ${r.interval.upper.toFixed(2)}]`,
+        String(r.degraded),
+        r.stopped,
+      ),
     );
   }
 
