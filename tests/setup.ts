@@ -1,7 +1,9 @@
 /**
- * Persist isolation helpers (F-631b66ce). Each file that calls resetSession must
- * snapshot + delete these knobs in beforeAll and restore in afterAll so save()
- * cannot write ~/.sensor-humor. Not wired as vitest setupFiles (config is
+ * Persist isolation helpers (F-631b66ce). Isolation is required for any file
+ * that constructs Session or calls save()/addGag/resetSession/captureRow:
+ * snapshot + delete these knobs at module load and in beforeAll, restore in
+ * afterAll, so save()/captureRow cannot write ~/.sensor-humor or append the
+ * operator's capture JSONL. Not wired as vitest setupFiles (config is
  * outside tests/**).
  */
 

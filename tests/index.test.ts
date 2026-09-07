@@ -1,5 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'fs';
+import { isolatePersistEnv, restorePersistEnv, snapshotPersistEnv } from './setup.js';
+
+const ORIG_PERSIST_ENV = snapshotPersistEnv();
+isolatePersistEnv();
+beforeAll(() => isolatePersistEnv());
+afterAll(() => restorePersistEnv(ORIG_PERSIST_ENV));
 
 describe('index module', () => {
   it('package.json version matches server version constant', () => {
@@ -158,10 +164,17 @@ describe('index module', () => {
     }));
 
     // A real session seeded with a gag so recentGags() has content to surface.
+    // Push in memory (not addGag) so a missed isolate cannot save() to session.json.
     const { Session } = await import('../src/session.js');
     const realSession = new Session();
     realSession.tick();
-    realSession.addGag('the deadbeef incident', 'deadbeef');
+    realSession.running_gags.push({
+      setup: 'the deadbeef incident',
+      tag: 'deadbeef',
+      used: 1,
+      last_turn: realSession.turn_counter,
+      created_turn: realSession.turn_counter,
+    });
     vi.doMock('../src/session.js', async () => {
       const actual = await vi.importActual<typeof import('../src/session.js')>('../src/session.js');
       return { ...actual, getSession: () => realSession, resetSession: () => realSession };
