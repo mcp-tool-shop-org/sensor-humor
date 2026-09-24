@@ -1,0 +1,2503 @@
+{
+  "boundaries": [
+    {
+      "dynamicReads": 0,
+      "dynamicSpawns": 0,
+      "dynamicSpawnsInTests": 0,
+      "dynamicWrites": 0,
+      "entryPoints": [],
+      "externals": 0,
+      "files": [
+        {
+          "hash": "3f71014eb38210e25958c7b16ed69ad004b9ba22ef9d7268c1fb1daec2f19045",
+          "path": ".github/workflows/ci.yml"
+        },
+        {
+          "hash": "ee44e1ef3b89df4b217f3df591a271190f1229436ef6608724fe66505f4195ea",
+          "path": ".github/workflows/pages.yml"
+        },
+        {
+          "hash": "d7abf86e216d9d811773f52f9c609861a90fa8c336d063fbe9092283ab9e330a",
+          "path": ".github/workflows/release.yml"
+        }
+      ],
+      "globs": [
+        ".github/**"
+      ],
+      "importConfidence": "full",
+      "name": ".github",
+      "origin": "authored",
+      "role": "config",
+      "testedBy": 0,
+      "unresolvedSites": 0
+    },
+    {
+      "dynamicReads": 0,
+      "dynamicSpawns": 0,
+      "dynamicSpawnsInTests": 0,
+      "dynamicWrites": 0,
+      "entryPoints": [],
+      "externals": 0,
+      "files": [
+        {
+          "hash": "15db3f50c6ab0f239d8e50e6e076bbf86da28e17b6813dc420e15f9275f9f473",
+          "path": "docs/character-voice-model.md"
+        }
+      ],
+      "globs": [
+        "docs/**"
+      ],
+      "importConfidence": "full",
+      "name": "docs",
+      "origin": "authored",
+      "role": "docs",
+      "testedBy": 0,
+      "unresolvedSites": 0
+    },
+    {
+      "dynamicReads": 0,
+      "dynamicSpawns": 0,
+      "dynamicSpawnsInTests": 0,
+      "dynamicWrites": 0,
+      "entryPoints": [],
+      "externals": 0,
+      "files": [
+        {
+          "hash": "50988526695f8990d9d7d86c867d047d1bd63fac5b704520dcf6f2e7b4e6c3ed",
+          "path": ".dockerignore"
+        },
+        {
+          "hash": "daf6a6277c06afad1cace9ff082d9dd2e773480dbb7ee4bbb99449857d9428d6",
+          "path": ".env.example"
+        },
+        {
+          "hash": "d05a31e2d1e6bc0c1d98bd7274f838761e034989ac1a6b871ab98ae58daa5bc8",
+          "path": ".gitignore"
+        },
+        {
+          "hash": "aafa43f5b18c45ccebf25a0fffa5fd7aa3c721a36ef323733bf98608dd9a927f",
+          "path": ".npmignore"
+        },
+        {
+          "hash": "a6c09d8b40afb8abedd2578009103055820a4475d014ba83afe11b2cef7c664b",
+          "path": "CHANGELOG.md"
+        },
+        {
+          "hash": "6fc499ec6ffbb589f6aacab59dcae315b6cd120c9a6b4984c96ac3e6ed9ffbc1",
+          "path": "Dockerfile"
+        },
+        {
+          "hash": "5ae6b3c8f446f0a7cb95176e4dadb91b68aaffb16b3be09f64f5de248b6a973a",
+          "path": "LICENSE"
+        },
+        {
+          "hash": "a0c7c1c78e6bab3b5cf8e977d5e912c0eecb0988c53a4fcb4cddd5d564db6bab",
+          "path": "README.es.md"
+        },
+        {
+          "hash": "90a3ba964a6fc3f79b28702ae9552974b6211b845937ab8e61d06fac73bf6db2",
+          "path": "README.fr.md"
+        },
+        {
+          "hash": "050231cd89ce5df89ff9e20b638ff661ec2893dbc755ae59443fe0b3faebfb4f",
+          "path": "README.hi.md"
+        },
+        {
+          "hash": "1843c731cb8a36bc9d1cc38adadac3a3537dfa9478c73c5c99bea656e29de1fd",
+          "path": "README.it.md"
+        },
+        {
+          "hash": "7175492de00db6da119d60190ced94887087a663b6fa99866909178bd3475189",
+          "path": "README.ja.md"
+        },
+        {
+          "hash": "cc621692419c199a5489de4550684a2a841cd8ce8d50e7755e2ffc09fbec83e1",
+          "path": "README.md"
+        },
+        {
+          "hash": "99913ef50dad6ad8cd5ba7205f5b877d9f8d4688fb24d7fd213588838deb5d35",
+          "path": "README.pt-BR.md"
+        },
+        {
+          "hash": "98708678fe74a4651014187719a7fc93ffaa456541ea9d330cb865bc98836f9d",
+          "path": "README.zh.md"
+        },
+        {
+          "hash": "73e181250713edc38a66b8a53b97c871be178088ffc64fb6195172a1efe047a4",
+          "path": "ROADMAP.md"
+        },
+        {
+          "hash": "3c97799787538a61aed96675d7e9a21bf189a77e9bd7afa414113c5aa7840dfc",
+          "path": "SCORECARD.md"
+        },
+        {
+          "hash": "4b374246f5858e61429b424693733acd231af15ce6f56b46abec5111b823cf69",
+          "path": "SECURITY.md"
+        },
+        {
+          "hash": "e290b66bf785c68494944ecf1d2cfbda12b3589cda93ac75c4ff0a2d175ab126",
+          "path": "SHIP_GATE.md"
+        },
+        {
+          "hash": "4ff65e320a530ee6a3e54fb92761ebf5ce99c6893f6c95b2035c61eb79a257a5",
+          "path": "logo.png"
+        },
+        {
+          "hash": "f0bfed1bae0c31c7ff532e50024b87a2bcf4fdf51346f4f381f646590c206d37",
+          "path": "package-lock.json"
+        },
+        {
+          "hash": "e56dd7d9126533247661c8b17be5e05d3ca4b5e5b9948542f197db96a2d7233e",
+          "path": "package.json"
+        },
+        {
+          "hash": "9c9ae11302eefb0581530c4be872f85e47e146533ecce657011afb903b0265fa",
+          "path": "tsconfig.build.json"
+        },
+        {
+          "hash": "e081d3f8a99d5523061d2d0d7978012a84ba8dd3170a7230aaa08182ad0b39ac",
+          "path": "tsconfig.json"
+        },
+        {
+          "hash": "9c451ab68d9719296f3338865ec0ceb7c5bdb84aa57d121cdcaeea02b22639e3",
+          "path": "verify.sh"
+        },
+        {
+          "hash": "ad67d1bd240b9e056e381ecc88585c9ca42fe3e7144eb27c9490ebfd3e3be4ed",
+          "path": "vitest.config.ts"
+        }
+      ],
+      "globs": [
+        "*"
+      ],
+      "importConfidence": "full",
+      "name": "root",
+      "origin": "authored",
+      "role": "config",
+      "testedBy": 0,
+      "unresolvedSites": 0
+    },
+    {
+      "dynamicReads": 0,
+      "dynamicSpawns": 0,
+      "dynamicSpawnsInTests": 0,
+      "dynamicWrites": 0,
+      "entryPoints": [],
+      "externals": 0,
+      "files": [
+        {
+          "hash": "4ea3b813982a09e282e84fa613ffd926bd10bf86d4e45d91bf8b67a076760d10",
+          "importsFiles": [
+            "src/prompts/base.ts",
+            "src/prompts/loader.ts",
+            "src/types.ts"
+          ],
+          "path": "scripts/ab-scorecard.ts"
+        },
+        {
+          "hash": "ca9d3a7897bfd16e33248bdfe8940960d0cb792ba79173f6a8cb41f470b3ce7d",
+          "importsFiles": [
+            "src/session.ts",
+            "src/tools/catchphrase.ts",
+            "src/tools/comic_timing.ts",
+            "src/tools/heckle.ts",
+            "src/tools/mood.ts",
+            "src/tools/roast.ts",
+            "src/types.ts"
+          ],
+          "path": "scripts/capture-internal-sweep.ts"
+        },
+        {
+          "entry": "parsePackJson",
+          "entryRule": 1,
+          "hash": "e5811e651bf35830a89fe88e01f4b90c1b6650d6812ee1a184273f24b8771f56",
+          "path": "scripts/check-pack.mjs",
+          "sequences": []
+        },
+        {
+          "hash": "8d1ab00a8a96201d0163d61901527c8212a80047f9e4329a328a36fe473384d0",
+          "importsFiles": [
+            "src/dataset/enrich.ts",
+            "src/dataset/provenance.ts"
+          ],
+          "path": "scripts/enrich-comedic-moods.ts"
+        },
+        {
+          "hash": "8a1965f8e533b2aa949191f3864d5f6f9e760d8a432f7a8a3236b7e4ed73ea18",
+          "importsFiles": [
+            "src/dataset/eval/controls.ts",
+            "src/dataset/eval/ollama-judge.ts",
+            "src/dataset/eval/rubric.ts",
+            "src/types.ts",
+            "src/validators.ts"
+          ],
+          "path": "scripts/eval-comedic-moods.ts"
+        },
+        {
+          "hash": "2ab88195f5f5267e122fb1f00b4a9530d2f2c4e5f73f34e80419e2a573e8d459",
+          "importsFiles": [
+            "src/dataset/label/bws-active.ts",
+            "src/dataset/label/bws.ts",
+            "src/dataset/label/schema.ts",
+            "src/dataset/label/validate.ts",
+            "src/types.ts"
+          ],
+          "path": "scripts/label-comedic-moods.ts"
+        },
+        {
+          "hash": "ce08d12af023b5df49f46a2e45d9033dd1e18d95efc7987a817984e5060e9203",
+          "importsFiles": [
+            "src/session.ts",
+            "src/tools/catchphrase.ts",
+            "src/tools/comic_timing.ts",
+            "src/tools/heckle.ts",
+            "src/tools/mood.ts",
+            "src/tools/roast.ts",
+            "src/types.ts"
+          ],
+          "path": "scripts/live-validation.ts"
+        },
+        {
+          "hash": "2fcbc1564f16c9fb8c87a66ebc99203e657043a06f0396f7c67cc6fa39c86b05",
+          "importsFiles": [
+            "src/ollama.ts",
+            "src/scorecard/cli.ts",
+            "src/scorecard/rules.ts",
+            "src/scorecard/stats.ts",
+            "src/session.ts",
+            "src/tools/comic_timing.ts",
+            "src/tools/mood.ts",
+            "src/types.ts"
+          ],
+          "path": "scripts/regression-scorecard.ts"
+        },
+        {
+          "hash": "52c5cd6cf3233e9b50e8a19a2a96a817871a52a356dbcc22a8a564590084afeb",
+          "importsFiles": [
+            "src/session.ts",
+            "src/tools/comic_timing.ts",
+            "src/tools/heckle.ts",
+            "src/tools/mood.ts"
+          ],
+          "path": "scripts/simile-smoke.ts"
+        },
+        {
+          "hash": "298329d582c276d220ee80fbe040df45ca8b209004e95ddda8b67a5b382c3004",
+          "importsFiles": [
+            "src/prompts/base.ts",
+            "src/prompts/loader.ts",
+            "src/types.ts"
+          ],
+          "path": "scripts/smoke.ts"
+        },
+        {
+          "hash": "7b9a231db07e1859b0d2498c1825401a9be000d8c126dd8dfcd20b926e54ee71",
+          "importsFiles": [
+            "src/dataset/label/validate.ts"
+          ],
+          "path": "scripts/validate-bws-anchor.ts"
+        },
+        {
+          "hash": "f503c0975d7abe873360a9cbe6127cab29824053fdafb6a1efcce6cf3159444f",
+          "importsFiles": [
+            "src/dataset/validate.ts"
+          ],
+          "path": "scripts/validate-comedic-moods.ts"
+        },
+        {
+          "hash": "07d59687564c1fd1eec77e8d4070c872bec49c58dd0503fd0c29e4692e7bbc05",
+          "importsFiles": [
+            "src/character/voice-schema.ts"
+          ],
+          "path": "scripts/validate-voice-profile.ts"
+        },
+        {
+          "hash": "8a83af66b2e813a0d89fb7bf7f4192fc44c4b19564d57e9d2a1659c75697f066",
+          "path": "scripts/voice-demo.py"
+        },
+        {
+          "hash": "f2ad46d2c0b453c3e21ca1b910c63120b319b0645cddfd5ca30f50de79b2a7fd",
+          "importsFiles": [
+            "src/session.ts",
+            "src/tools/heckle.ts",
+            "src/tools/mood.ts"
+          ],
+          "path": "scripts/zoomer-heckle-test.ts"
+        }
+      ],
+      "globs": [
+        "scripts/**"
+      ],
+      "importConfidence": "full",
+      "name": "scripts",
+      "origin": "authored",
+      "outsideReads": 11,
+      "outsideWrites": 5,
+      "role": "code",
+      "testedBy": 0,
+      "unresolvedSites": 0
+    },
+    {
+      "dynamicReads": 0,
+      "dynamicSpawns": 0,
+      "dynamicSpawnsInTests": 0,
+      "dynamicWrites": 0,
+      "entryPoints": [],
+      "externals": 0,
+      "files": [
+        {
+          "hash": "54f56c04ea12fad05b053b11df776d5880b034cbff4e3bb407d4cf80b4ad1488",
+          "path": "site/astro.config.mjs"
+        },
+        {
+          "hash": "b5578baf42cab82e5e7b451b6992cb929aeb6ff8d02d8e11ab690e6f67fea144",
+          "path": "site/package-lock.json"
+        },
+        {
+          "hash": "cff923d88f356795747a843362ca300b43d09c5715e6356f904b4d5fa06a7fae",
+          "path": "site/package.json"
+        },
+        {
+          "hash": "af4ec014d8d0430380ac84108cce3d0704ed1111d47b8554f0601d68acec3ae9",
+          "path": "site/src/content.config.ts"
+        },
+        {
+          "hash": "089f87aeeffca4c6792934a66f2da73042d3acbc028adcbedbe04ab78574be34",
+          "path": "site/src/content/docs/handbook/architecture.md"
+        },
+        {
+          "hash": "77f220ed7cb07f4a58c39d55b9951788f6de7ab8e604035779128e4306f62241",
+          "path": "site/src/content/docs/handbook/beginners.md"
+        },
+        {
+          "hash": "2f84b927dc405f37a443a138baecf26be16abed714207ea5879351ee27431b07",
+          "path": "site/src/content/docs/handbook/getting-started.md"
+        },
+        {
+          "hash": "12375e36b89e4c0eb4efc85fcc9c9cc0d527d710b0003679ab58bd543de0f62a",
+          "path": "site/src/content/docs/handbook/index.md"
+        },
+        {
+          "hash": "5ac0d1f8454057d802765cf703cf660cde0336b60f4cbcab0c04c03bc1cb8d4e",
+          "path": "site/src/content/docs/handbook/moods.md"
+        },
+        {
+          "hash": "4d4fdd1b5dbb258917fd32b2d831fcdab4cc136555a21b62610f9331b58c9c04",
+          "path": "site/src/content/docs/handbook/reference.md"
+        },
+        {
+          "hash": "55cd8389562f614444cb49e750c732a406aadc522c118c15e8e890cc2bb29a02",
+          "path": "site/src/content/docs/handbook/voice.md"
+        },
+        {
+          "hash": "a699ad78a6d27d6864ccfe4c3a4a01993aca28ecb4a3d20893f37db9f9b1a522",
+          "path": "site/src/pages/index.astro"
+        },
+        {
+          "hash": "60381425678be7bd2bfe17874eb0e97bd85233825eab5e5ac6580e9e08655d70",
+          "path": "site/src/site-config.ts"
+        },
+        {
+          "hash": "5995279a40a9a63426a93feec129006b261cc7200426a398914d0317722ef19b",
+          "path": "site/src/styles/global.css"
+        },
+        {
+          "hash": "a58c78e9393c38de3f4fcafe64d9b46396f01716301f18b582740128e2aaf445",
+          "path": "site/src/styles/starlight-custom.css"
+        },
+        {
+          "hash": "61fc24492db9aef7ec38eb91cfeebaef96155014bb5f22648fd8ed2327c6cae2",
+          "path": "site/tsconfig.json"
+        }
+      ],
+      "globs": [
+        "site/**"
+      ],
+      "importConfidence": "full",
+      "name": "site",
+      "origin": "authored",
+      "role": "site",
+      "testedBy": 0,
+      "unresolvedSites": 0
+    },
+    {
+      "dynamicReads": 0,
+      "dynamicSpawns": 0,
+      "dynamicSpawnsInTests": 0,
+      "dynamicWrites": 2,
+      "entryPoints": [
+        "src/index.ts"
+      ],
+      "externals": 0,
+      "files": [
+        {
+          "exports": [
+            "buildCaptureRow",
+            "captureEnabled",
+            "captureRow",
+            "captureSourceType",
+            "captureStatus",
+            "captureTarget"
+          ],
+          "hash": "89aa31266e5226f98a65d36a583a0fef5e017e0154e7a31bc952b5b21dd01044",
+          "importsFiles": [
+            "src/dataset/schema.ts",
+            "src/ollama.ts",
+            "src/prompts/loader.ts",
+            "src/types.ts"
+          ],
+          "path": "src/capture.ts"
+        },
+        {
+          "hash": "37e2d325b07ef882faef412c5d3fc20f5658a371d8cdc24944f6c1ef2643d8c7",
+          "path": "src/character/profiles/chaotic.json"
+        },
+        {
+          "hash": "0f923bf87eb426b1642d7c3e6c93ffb11a96921bb64317278240e21c92240571",
+          "path": "src/character/profiles/cheeky.json"
+        },
+        {
+          "hash": "1fe43d42b6a480ba927cacde5af0e1522060c3c00f92965343486e88b3071c4e",
+          "path": "src/character/profiles/cynic.json"
+        },
+        {
+          "hash": "102b6abe7c44d48d6fb69de80826c1ded42a7e9d4597dec2cc5d33f7dfddd08a",
+          "path": "src/character/profiles/dry-british.json"
+        },
+        {
+          "hash": "07e34bb589572decfcc4da833e7924768fe8b71ff8d390a9a92a79ed04be17e1",
+          "path": "src/character/profiles/roast.json"
+        },
+        {
+          "hash": "a2804f27d178878c5e6e74f3454f24e473fadb2113b8c635f3bfef980e9aabef",
+          "path": "src/character/profiles/zoomer.json"
+        },
+        {
+          "exports": [
+            "validateProfile"
+          ],
+          "hash": "f1870b638f74e160455a1bc388e9c4adbac013e7c58ec85029a579571e95828c",
+          "path": "src/character/voice-schema.ts"
+        },
+        {
+          "exports": [
+            "enrichCaptureJsonl"
+          ],
+          "hash": "87cebeef3579ab3c10d5fc3027f3220418ad586b523ee046ebf259b9ba9ae779",
+          "importsFiles": [
+            "src/dataset/pii-scrub.ts",
+            "src/dataset/provenance-schema.ts",
+            "src/dataset/provenance.ts",
+            "src/dataset/schema.ts",
+            "src/dataset/validate.ts"
+          ],
+          "path": "src/dataset/enrich.ts"
+        },
+        {
+          "exports": [
+            "scoreCaricature"
+          ],
+          "hash": "54bad79260e76ea983e80fdea8bdc93de37c89dce588b7a3e98fc6ac1264eaea",
+          "path": "src/dataset/eval/caricature.ts"
+        },
+        {
+          "exports": [
+            "aggregatePanel",
+            "evaluate",
+            "gatePool",
+            "interPoolAgreement",
+            "majorityBool",
+            "majorityMood",
+            "runPool",
+            "shuffledMood"
+          ],
+          "hash": "fa54937d9319bf828c5f24207852c655f3028943cd9a80cad052e820c8b2665a",
+          "importsFiles": [
+            "src/dataset/eval/gates.ts",
+            "src/dataset/eval/judge.ts",
+            "src/types.ts"
+          ],
+          "path": "src/dataset/eval/controls.ts"
+        },
+        {
+          "exports": [
+            "binomialTailGE",
+            "conformanceFloorGate",
+            "degradedLineGate",
+            "isAboveChance",
+            "moodBlindGate",
+            "moodShuffledGate"
+          ],
+          "hash": "43cbcbc4fca6f011fd7bb9ebdb792595faa2efb3f9acbd6f5c9428bf42d1edec",
+          "path": "src/dataset/eval/gates.ts"
+        },
+        {
+          "exports": [
+            "buildConformancePrompt",
+            "buildIdentifyPrompt",
+            "counterbalancedOptions",
+            "parseMoodChoice",
+            "parseYesNo"
+          ],
+          "hash": "87c1d23dadd11538bf8f48cf1bea05fddfee43065e25f8528dc401e64291b76a",
+          "importsFiles": [
+            "src/types.ts"
+          ],
+          "path": "src/dataset/eval/judge.ts"
+        },
+        {
+          "exports": [
+            "ollamaJudge",
+            "probeJudgeModels"
+          ],
+          "hash": "bc09e60dde98822fee3e3ae1e355f7ebc04e6a598e66606d61c1f17b988eff1e",
+          "importsFiles": [
+            "src/dataset/eval/judge.ts",
+            "src/ollama.ts"
+          ],
+          "path": "src/dataset/eval/ollama-judge.ts"
+        },
+        {
+          "exports": [
+            "deterministicClean",
+            "scoreCorpus",
+            "scoreDeterministic"
+          ],
+          "hash": "ca1b9023f92e7c578bea4835ca2bbe5861cc5431c05bc1ab6527b9cb9ad34358",
+          "importsFiles": [
+            "src/dataset/eval/caricature.ts",
+            "src/scorecard/rules.ts",
+            "src/types.ts",
+            "src/validators.ts"
+          ],
+          "path": "src/dataset/eval/rubric.ts"
+        },
+        {
+          "exports": [
+            "appearanceCounts",
+            "comparisonEntropy",
+            "selectNextTuple",
+            "strengthMap"
+          ],
+          "hash": "84276e96613503afa05b52768d8292a2fd7b325617d4173dd519d473135eb117",
+          "importsFiles": [
+            "src/dataset/label/bws.ts"
+          ],
+          "path": "src/dataset/label/bws-active.ts"
+        },
+        {
+          "exports": [
+            "bwsCountScores",
+            "findIntransitiveTriples",
+            "fitBradleyTerry",
+            "judgmentToPairs",
+            "judgmentsToPairs",
+            "makeBwsTuples",
+            "tupleKey"
+          ],
+          "hash": "e7c6b2f840e91a84c53f1064b1dd76fcc15c5dd7b92a26f700c07a6f1801bf98",
+          "path": "src/dataset/label/bws.ts"
+        },
+        {
+          "exports": [
+            "bestWorstInTuple",
+            "judgmentRecordToBws",
+            "lineId",
+            "tupleIdsDistinct"
+          ],
+          "hash": "6d93d4090328ce435a1e48b9cd1aa67d8e1fbbc742b27aa065093af63315eeef",
+          "importsFiles": [
+            "src/dataset/label/bws.ts",
+            "src/types.ts"
+          ],
+          "path": "src/dataset/label/schema.ts"
+        },
+        {
+          "exports": [
+            "validateBwsJudgmentsJsonl"
+          ],
+          "hash": "94949693cb6e1088452e2c251cd7c42a873616bba17faacfe7911b96fbdad997",
+          "importsFiles": [
+            "src/dataset/label/schema.ts",
+            "src/dataset/validate.ts"
+          ],
+          "path": "src/dataset/label/validate.ts"
+        },
+        {
+          "exports": [
+            "combineScrubResults",
+            "scrubPii"
+          ],
+          "hash": "f22cc77b0a379a6a37c9b2201226ffdb373bc5c785051b134a1be1377332c59a",
+          "importsFiles": [
+            "src/dataset/provenance.ts"
+          ],
+          "path": "src/dataset/pii-scrub.ts"
+        },
+        {
+          "hash": "f63d910a533b059a0a4fb7b90277923e9f5adaa3c442bd7202f3e33b4b9fd561",
+          "importsFiles": [
+            "src/dataset/provenance.ts",
+            "src/dataset/schema.ts"
+          ],
+          "path": "src/dataset/provenance-schema.ts"
+        },
+        {
+          "exports": [
+            "assignVerdict",
+            "looksLikeCode"
+          ],
+          "hash": "04ce3bc845967e9a7d5bfecb2910025758dedbd96d70b165de878d8213ae0a38",
+          "importsFiles": [
+            "src/dataset/schema.ts"
+          ],
+          "path": "src/dataset/provenance.ts"
+        },
+        {
+          "exports": [
+            "validMatchesDegraded"
+          ],
+          "hash": "4d18703e81185c3396bb6b12d49a80322a94b252e0926540289f7efe2cc40973",
+          "importsFiles": [
+            "src/types.ts"
+          ],
+          "path": "src/dataset/schema.ts"
+        },
+        {
+          "exports": [
+            "validateCaptureJsonl"
+          ],
+          "hash": "e887e6bbc7936ec1ab293aa7d9e28d33d2e048166c76bb699b6f02d225045c3b",
+          "importsFiles": [
+            "src/dataset/schema.ts"
+          ],
+          "path": "src/dataset/validate.ts"
+        },
+        {
+          "entry": "main",
+          "entryRule": 1,
+          "hash": "fa8851186466dddd4caf59e242545e4c5fdbab0d37ae45c3dd482e9869e1db5a",
+          "importsFiles": [
+            "src/ollama.ts",
+            "src/prompts/base.ts",
+            "src/prompts/loader.ts",
+            "src/session.ts",
+            "src/tools/catchphrase.ts",
+            "src/tools/comic_timing.ts",
+            "src/tools/heckle.ts",
+            "src/tools/mood.ts",
+            "src/tools/roast.ts",
+            "src/tools/running_gag.ts",
+            "src/tools/techniques.ts",
+            "src/types.ts"
+          ],
+          "path": "src/index.ts",
+          "sequences": [
+            {
+              "calls": [
+                {
+                  "line": 378,
+                  "name": "probeOllama",
+                  "target": {
+                    "file": "src/ollama.ts"
+                  }
+                },
+                {
+                  "branch": "probe.reason === 'auth'",
+                  "line": 385,
+                  "name": "getOllamaHost",
+                  "target": {
+                    "file": "src/ollama.ts"
+                  }
+                },
+                {
+                  "branch": "!probe.reachable",
+                  "line": 391,
+                  "name": "getOllamaHost",
+                  "target": {
+                    "file": "src/ollama.ts"
+                  }
+                }
+              ],
+              "exported": false,
+              "invokedAtTopLevel": false,
+              "isDefaultExport": false,
+              "name": "checkOllamaHealth"
+            },
+            {
+              "calls": [
+                {
+                  "line": 378,
+                  "name": "probeOllama",
+                  "target": {
+                    "file": "src/ollama.ts"
+                  },
+                  "via": "checkOllamaHealth"
+                },
+                {
+                  "branch": "probe.reason === 'auth'",
+                  "line": 385,
+                  "name": "getOllamaHost",
+                  "target": {
+                    "file": "src/ollama.ts"
+                  },
+                  "via": "checkOllamaHealth"
+                },
+                {
+                  "branch": "!probe.reachable",
+                  "line": 391,
+                  "name": "getOllamaHost",
+                  "target": {
+                    "file": "src/ollama.ts"
+                  },
+                  "via": "checkOllamaHealth"
+                }
+              ],
+              "exported": false,
+              "invokedAtTopLevel": true,
+              "isDefaultExport": false,
+              "name": "main"
+            }
+          ]
+        },
+        {
+          "entry": "generateComedy",
+          "entryRule": 4,
+          "exports": [
+            "generateComedy",
+            "getInferenceSettings",
+            "getMaxRetries",
+            "getModel",
+            "getOllamaHost",
+            "getOllamaStats",
+            "getTemperature",
+            "getTimeoutMs",
+            "hasApiKey",
+            "isDebug",
+            "isFullTrace",
+            "probeOllama",
+            "promptFingerprint",
+            "recordSafetyFilterFire",
+            "resetOllamaStats"
+          ],
+          "hash": "d5ceecde781028620cb5f16a9799db1695770565de38ed77c6717858ceeb7ded",
+          "importsFiles": [
+            "src/types.ts"
+          ],
+          "path": "src/ollama.ts",
+          "sequences": [
+            {
+              "calls": [
+                {
+                  "line": 590,
+                  "name": "parse",
+                  "target": null
+                }
+              ],
+              "exported": true,
+              "invokedAtTopLevel": false,
+              "isDefaultExport": false,
+              "name": "generateComedy"
+            }
+          ]
+        },
+        {
+          "exports": [
+            "baseSystemPrefix"
+          ],
+          "hash": "34a5f2b357f7e578f61ef1befbcad4a7b478a72f5e8d869c7307740d94dac13e",
+          "path": "src/prompts/base.ts"
+        },
+        {
+          "exports": [
+            "getActivePromptKey",
+            "getMoodSystemPrompt",
+            "getMoodVoiceNotes",
+            "getPromptVersion",
+            "getRegisteredPromptKeys",
+            "loadMoodPrompt"
+          ],
+          "hash": "de183c5d3514ec494df260228a23aad19110f0d5712911478376d407a9ff92f6",
+          "importsFiles": [
+            "src/prompts/moods/chaotic.v1.prompt.ts",
+            "src/prompts/moods/cheeky.v1.prompt.ts",
+            "src/prompts/moods/cynic.v1.prompt.ts",
+            "src/prompts/moods/dry.v1.prompt.ts",
+            "src/prompts/moods/dry.v2.prompt.ts",
+            "src/prompts/moods/roast.v1.prompt.ts",
+            "src/prompts/moods/zoomer.v1.prompt.ts",
+            "src/types.ts"
+          ],
+          "path": "src/prompts/loader.ts"
+        },
+        {
+          "hash": "b165ddd83e9e0211679b186bfe54b34efd16cd8a604674f6085134ee0f86e5b4",
+          "path": "src/prompts/moods/chaotic.v1.prompt.ts"
+        },
+        {
+          "hash": "cb059526a60f76c29c9cd49a32aa41bf704ca4e55c27d033c54c0b73f6bde958",
+          "path": "src/prompts/moods/cheeky.v1.prompt.ts"
+        },
+        {
+          "hash": "b5c0dcf872801cf911bb735bedf23f5f11b4e4d0bf84426a455e97972f36a19e",
+          "path": "src/prompts/moods/cynic.v1.prompt.ts"
+        },
+        {
+          "hash": "9cad5bad97cc8c2671b5afd9a65bdca0cc4740129161657f2119bebe0112e5fd",
+          "path": "src/prompts/moods/dry.v1.prompt.ts"
+        },
+        {
+          "hash": "97962891dd9fc0dfd8552d6cb2d697f7a38659cdbbf75d4d2b4f1a147b1c1977",
+          "path": "src/prompts/moods/dry.v2.prompt.ts"
+        },
+        {
+          "hash": "95cefd3fbd34e0e49762c4f8566232bdfe44ee6214a087f024fca18fb0cee9a9",
+          "path": "src/prompts/moods/roast.v1.prompt.ts"
+        },
+        {
+          "hash": "6e17587252c7bf20e62cc9169cb04d1e423f6a62e5bfd16a772257b2d6672d40",
+          "path": "src/prompts/moods/zoomer.v1.prompt.ts"
+        },
+        {
+          "exports": [
+            "overlayCoexistenceBlock",
+            "overlayHowTo"
+          ],
+          "hash": "d36d5435893b439e0447900b8fda45c701a29c687fff682991c20c9bb2211d3b",
+          "importsFiles": [
+            "src/types.ts"
+          ],
+          "path": "src/prompts/overlay.ts"
+        },
+        {
+          "exports": [
+            "resolveScorecardModel"
+          ],
+          "hash": "97da38b752f344256cd9c0427b9665bcc44da73c314b48cc22a2b65caa6b1a0e",
+          "path": "src/scorecard/cli.ts"
+        },
+        {
+          "exports": [
+            "scoreOutput"
+          ],
+          "hash": "0643377859bf7a325466ecb2183d50c8951a11036eaa113645a39869526ed7d2",
+          "importsFiles": [
+            "src/tools/roast.ts",
+            "src/types.ts",
+            "src/validators.ts"
+          ],
+          "path": "src/scorecard/rules.ts"
+        },
+        {
+          "exports": [
+            "recommendedSampleSize",
+            "sprt",
+            "threeValuedVerdict",
+            "wilsonInterval"
+          ],
+          "hash": "f9ecdc790a631205a91094bc15423ee9e4e1e7aba3c23fe9b8e4afd26d9e6be6",
+          "path": "src/scorecard/stats.ts"
+        },
+        {
+          "exports": [
+            "fullTraceEnabled",
+            "getGagMaxFires",
+            "getGagMinDistance",
+            "getSession",
+            "persistEnabled",
+            "resetSession",
+            "sessionFilePath",
+            "snapshotIsFresh"
+          ],
+          "hash": "e004f44d960c6547ef81b937234d4d851747468f0307d936ba3d971705a57468",
+          "importsFiles": [
+            "src/capture.ts",
+            "src/types.ts",
+            "src/validators.ts"
+          ],
+          "path": "src/session.ts"
+        },
+        {
+          "exports": [
+            "catchphraseCallback",
+            "catchphraseGenerate"
+          ],
+          "hash": "567a5faec8876de08fd80632c4bc7bba869b1201a41fe35cd79e604c5ff075e3",
+          "importsFiles": [
+            "src/ollama.ts",
+            "src/prompts/base.ts",
+            "src/prompts/loader.ts",
+            "src/session.ts",
+            "src/types.ts",
+            "src/validators.ts"
+          ],
+          "path": "src/tools/catchphrase.ts"
+        },
+        {
+          "exports": [
+            "comicTiming"
+          ],
+          "hash": "7cc0544cd710d93da4f3d7063b67464c5a86a22388b400c9fdc56d52169fe211",
+          "importsFiles": [
+            "src/ollama.ts",
+            "src/prompts/base.ts",
+            "src/prompts/loader.ts",
+            "src/session.ts",
+            "src/tools/roast.ts",
+            "src/tools/techniques.ts",
+            "src/types.ts",
+            "src/validators.ts"
+          ],
+          "path": "src/tools/comic_timing.ts"
+        },
+        {
+          "exports": [
+            "heckle"
+          ],
+          "hash": "c86b6211b43bf22778be2c7236e08fa1125c97063ef24dab8d8e533bbd10fca3",
+          "importsFiles": [
+            "src/ollama.ts",
+            "src/prompts/base.ts",
+            "src/prompts/loader.ts",
+            "src/prompts/overlay.ts",
+            "src/session.ts",
+            "src/tools/techniques.ts",
+            "src/types.ts",
+            "src/validators.ts"
+          ],
+          "path": "src/tools/heckle.ts"
+        },
+        {
+          "exports": [
+            "moodGet",
+            "moodSet"
+          ],
+          "hash": "6e37ad04178e129b1da1681818fab9d2ff066e79fa55f74a14006f5ac429f669",
+          "importsFiles": [
+            "src/prompts/loader.ts",
+            "src/session.ts",
+            "src/tools/techniques.ts",
+            "src/types.ts"
+          ],
+          "path": "src/tools/mood.ts"
+        },
+        {
+          "exports": [
+            "roast"
+          ],
+          "hash": "21f0b8ecd0d84909652e07771fd82ebb5818e59dadcae18daf7546cc1ae97740",
+          "importsFiles": [
+            "src/ollama.ts",
+            "src/prompts/base.ts",
+            "src/prompts/loader.ts",
+            "src/prompts/overlay.ts",
+            "src/session.ts",
+            "src/tools/techniques.ts",
+            "src/types.ts",
+            "src/validators.ts"
+          ],
+          "path": "src/tools/roast.ts"
+        },
+        {
+          "exports": [
+            "runningGag"
+          ],
+          "hash": "f97bf5ead4079a00a436ee448e2dec39d3a2c4386800d486fe4df6cb7a158a4b",
+          "importsFiles": [
+            "src/session.ts",
+            "src/types.ts",
+            "src/validators.ts"
+          ],
+          "path": "src/tools/running_gag.ts"
+        },
+        {
+          "exports": [
+            "allowedTechniquesForMood",
+            "assertMoodTechnique",
+            "buildTechniqueGuidance",
+            "isVerbatimCallback",
+            "matchCallbackGag",
+            "normalizeCallbackText",
+            "resolveOverlayTechnique",
+            "techniquesForMood"
+          ],
+          "hash": "ea1bf5b6ff027250e436b9e5d7218799559d2ceee3e79219c280e04de1af6455",
+          "importsFiles": [
+            "src/types.ts"
+          ],
+          "path": "src/tools/techniques.ts"
+        },
+        {
+          "hash": "38e2d7426382fb4bd96a84dfe1b78d9d62cd0b7998fad097660ab92f062b538d",
+          "path": "src/types.ts"
+        },
+        {
+          "exports": [
+            "coversLetter",
+            "hasHarshLeak",
+            "hasLanguageLeak",
+            "hasSimileLeak",
+            "normalizeConfusables",
+            "normalizeForDetection",
+            "sanitizeForPrompt",
+            "slurAlphabet",
+            "voicedSafeFallback"
+          ],
+          "hash": "ac54883c3eef4d8587add28ee34fe2e2f96ae9e5616b6da6245917f7d3d69478",
+          "importsFiles": [
+            "src/types.ts"
+          ],
+          "path": "src/validators.ts"
+        }
+      ],
+      "globs": [
+        "src/**"
+      ],
+      "importConfidence": "full",
+      "name": "src",
+      "origin": "authored",
+      "outsideReads": 11,
+      "outsideWrites": 3,
+      "role": "code",
+      "testedBy": 25,
+      "unresolvedSites": 0
+    },
+    {
+      "dynamicReads": 0,
+      "dynamicSpawns": 0,
+      "dynamicSpawnsInTests": 0,
+      "dynamicWrites": 0,
+      "entryPoints": [],
+      "externals": 0,
+      "files": [
+        {
+          "hash": "2dbdce758f5d8e35bd00f648a0df78e49b545ca2f71c45cbbb1cc3ca64a2b7eb",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm-feature-pass-2026-09/citation-receipt.json"
+        },
+        {
+          "hash": "2845e533298e4f1fd70843a873983f17e6fc6510f0604a506b9fc8f453c58f57",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm-feature-pass-2026-09/gate-result.json"
+        },
+        {
+          "hash": "919fba8900afdedcccdbc1cdad934bb4e99a4b4a063cb5d767729693ddce8495",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm-feature-pass-2026-09/prism-pub.pem"
+        },
+        {
+          "hash": "cfabc111814cd8b6572c31b6865b28498feed1308e0e8b2b9b52a590b5a540e1",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm-feature-pass-2026-09/run-gate.mjs"
+        },
+        {
+          "hash": "6e8a010a03365f12a1e41f23c690350ea8f61acccdc1e1086c1f776cbdb63fe4",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm/citations.json"
+        },
+        {
+          "hash": "8f0022b895943118d5e24eeaff585b063c2198cb9b5341da99d0333a6f3137fd",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm/humorrank-correction.json"
+        },
+        {
+          "hash": "fa49ea35f7b9c3cb3e5e6e19f3444a4373458ecf59e33f033f1547fee6b9b16b",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm/prism-pub.pem"
+        },
+        {
+          "hash": "7ee3f4f76d06e20ad322178ebc97c14d04cd5cd50af4124e21d007e685dacdb1",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm/prism-receipt.json"
+        },
+        {
+          "hash": "79451bd152a9f3cca70b79c0d0121e43fc8a78646064f698d7ffa3b04f881d62",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm/prism-verify-full.json"
+        },
+        {
+          "hash": "8ec059e163528f3c024d352a83f4125850c3e5179a4ec45686ea0bfb4c014528",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/study-swarm-slice4/citations.json"
+        },
+        {
+          "hash": "5749fa3b1825ce00f9cd9f00822143ebd1b0d1d72fad816bcfe10b220d8ecbad",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/study-swarm-slice4/dispatch.md"
+        },
+        {
+          "hash": "18f6275da1587e81da4d4f6137136620fc68a5794d588762ed3ed9bdd868f622",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/study-swarm-slice4/existence-recheck.txt"
+        },
+        {
+          "hash": "755880dc74f83f6312de29913a51afece4b66cea99d68006d0a1834a6ed1977e",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/study-swarm-slice4/prism-receipt.json"
+        },
+        {
+          "hash": "e680300949005e54a51c4197390e503c3ee51d159e186858be42070fff9d7215",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/study-swarm-slice4/verdict-table.json"
+        },
+        {
+          "hash": "13bde783c5128f883d13d1ea0d44621491831dd3f5d0b3e7da94c9d454d6bb33",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/study-swarm.dispatch.md"
+        },
+        {
+          "hash": "3b1778777eb592c510dfebe289ab7a11d278dfd7f927831f0c85a24ab272353e",
+          "path": "swarms/mcp-tool-shop-org--sensor-humor/study-swarm.feature-pass-2026-09.dispatch.md"
+        }
+      ],
+      "globs": [
+        "swarms/**"
+      ],
+      "importConfidence": "full",
+      "name": "swarms",
+      "origin": "mixed",
+      "role": "config",
+      "testedBy": 0,
+      "unresolvedSites": 1
+    },
+    {
+      "dynamicReads": 0,
+      "dynamicSpawns": 1,
+      "dynamicSpawnsInTests": 1,
+      "dynamicWrites": 0,
+      "entryPoints": [],
+      "externals": 0,
+      "files": [
+        {
+          "hash": "83ee263d486b5c51d2a1a3f9b37a2193be8554bc7276cde6fb20343ea332e8da",
+          "importsFiles": [
+            "src/capture.ts",
+            "src/session.ts",
+            "src/types.ts",
+            "tests/setup.ts"
+          ],
+          "path": "tests/capture.test.ts"
+        },
+        {
+          "hash": "71b6e4aa84936153cd3f0750cfdb964d0917ffb67f88e88eb3d54b6199a86b3c",
+          "importsFiles": [
+            "src/character/voice-schema.ts"
+          ],
+          "path": "tests/character-voice-schema.test.ts"
+        },
+        {
+          "hash": "448c980149eb2ab146b2871ac2e672a3997c5c9c7b560aa1b2f249584c970706",
+          "importsFiles": [
+            "src/capture.ts",
+            "src/dataset/enrich.ts",
+            "src/dataset/provenance-schema.ts"
+          ],
+          "path": "tests/dataset-enrich.test.ts"
+        },
+        {
+          "hash": "10e6cd49d4b9a1412a03704622a303b0796a4ad3d809434bfb558a249021dbba",
+          "importsFiles": [
+            "src/dataset/eval/caricature.ts",
+            "src/dataset/eval/rubric.ts"
+          ],
+          "path": "tests/dataset-eval-caricature.test.ts"
+        },
+        {
+          "hash": "4d75e5bd952362e314d29192495b9b3694ebb92d43dcbc565489a2fac0aa144f",
+          "importsFiles": [
+            "src/dataset/eval/gates.ts",
+            "src/dataset/eval/rubric.ts"
+          ],
+          "path": "tests/dataset-eval-core.test.ts"
+        },
+        {
+          "hash": "e91fbe0ec668fb7b0bab831678539b0e8c9f65a41f4e514bfd98b94b35f091e4",
+          "importsFiles": [
+            "src/dataset/eval/controls.ts",
+            "src/dataset/eval/judge.ts",
+            "src/types.ts"
+          ],
+          "path": "tests/dataset-eval-judge.test.ts"
+        },
+        {
+          "hash": "442783718f082419580a056e098631c677365d5c1034275fb9f05f45b6e4e8c4",
+          "importsFiles": [
+            "src/dataset/label/bws-active.ts",
+            "src/dataset/label/bws.ts"
+          ],
+          "path": "tests/dataset-label-active.test.ts"
+        },
+        {
+          "hash": "73adec49bee18aaea87aae1aa4f79ad913cd0db6bee9d7ecce78f4aeafaf3b2a",
+          "importsFiles": [
+            "src/dataset/label/bws.ts"
+          ],
+          "path": "tests/dataset-label-bws.test.ts"
+        },
+        {
+          "hash": "aed911db4eb26bfe18b121529c1af4f86caed0f0346432b638f1b7cf95c81b79",
+          "importsFiles": [
+            "src/dataset/label/schema.ts"
+          ],
+          "path": "tests/dataset-label-schema.test.ts"
+        },
+        {
+          "hash": "2e747dbbc687aaf4042fae978483fec60b3680db46b26f668328d0811b610c18",
+          "importsFiles": [
+            "src/capture.ts",
+            "src/dataset/enrich.ts",
+            "src/dataset/pii-scrub.ts"
+          ],
+          "path": "tests/dataset-pii-scrub.test.ts"
+        },
+        {
+          "hash": "2f55498151b467e8b3e23a3a133db35e4d9d34882d05c6dad50d2ea2e2c16e52",
+          "importsFiles": [
+            "src/capture.ts",
+            "src/dataset/provenance.ts"
+          ],
+          "path": "tests/dataset-provenance.test.ts"
+        },
+        {
+          "hash": "ad867395e8439e6d711f4ca0974a02d0a8e37cfcda55ac07b6d6d54914cb833e",
+          "importsFiles": [
+            "src/capture.ts",
+            "src/dataset/schema.ts",
+            "src/dataset/validate.ts"
+          ],
+          "path": "tests/dataset-schema.test.ts"
+        },
+        {
+          "hash": "a9c467fd89d3a2873635c72412598752066686ced6e8c9c188e940c081e75d0f",
+          "importsFiles": [
+            "src/index.ts",
+            "src/ollama.ts",
+            "src/session.ts",
+            "tests/setup.ts"
+          ],
+          "path": "tests/index.test.ts"
+        },
+        {
+          "hash": "b21f112efb5a6fc2b3bc68f7da463eee6059b46ddacf1218eb06455a074db737",
+          "importsFiles": [
+            "src/dataset/label/schema.ts",
+            "src/dataset/label/validate.ts"
+          ],
+          "path": "tests/label-cli-smoke.test.ts"
+        },
+        {
+          "hash": "fbd7122f6e9b66030704e081e4c076c107191efd3f5257d6501e3a9979102d16",
+          "importsFiles": [
+            "src/prompts/base.ts",
+            "src/prompts/loader.ts",
+            "src/types.ts"
+          ],
+          "path": "tests/loader.test.ts"
+        },
+        {
+          "hash": "76ff716281a2b5a0d4364901e822b2992f91f1b038d2a52ec8ed772c64bf9455",
+          "importsFiles": [
+            "src/ollama.ts"
+          ],
+          "path": "tests/ollama.test.ts"
+        },
+        {
+          "hash": "3ac7b97e313220921f42ce228af9c06a3dda1ce3fc2630022274679d47420092",
+          "importsFiles": [
+            "src/session.ts",
+            "src/tools/running_gag.ts",
+            "src/validators.ts",
+            "tests/setup.ts"
+          ],
+          "path": "tests/running_gag.test.ts"
+        },
+        {
+          "hash": "5816056d17a1cd4cf80b56c60845691cc8746e68348f90f101c0f3bcb62b8c73",
+          "importsFiles": [
+            "src/scorecard/cli.ts"
+          ],
+          "path": "tests/scorecard-cli.test.ts"
+        },
+        {
+          "hash": "bb5383e943a2b01f1ec5a05356f83e359d1081ef936289ee654248c46e582543",
+          "importsFiles": [
+            "src/prompts/moods/chaotic.v1.prompt.ts",
+            "src/prompts/moods/cheeky.v1.prompt.ts",
+            "src/prompts/moods/cynic.v1.prompt.ts",
+            "src/prompts/moods/dry.v1.prompt.ts",
+            "src/prompts/moods/roast.v1.prompt.ts",
+            "src/prompts/moods/zoomer.v1.prompt.ts",
+            "src/types.ts"
+          ],
+          "path": "tests/scorecard-frozen-prompts.test.ts"
+        },
+        {
+          "hash": "be276e01f8e7a4822d4fdc8663d54d31dd2f40005fd0dd3b7856df897dca7a3f",
+          "importsFiles": [
+            "src/scorecard/rules.ts",
+            "src/types.ts"
+          ],
+          "path": "tests/scorecard-rules.test.ts"
+        },
+        {
+          "hash": "f705eb6088f069343ffe818fe0726bdca9f21d31e4eb97fbc86a0a23b1ff4430",
+          "importsFiles": [
+            "src/scorecard/stats.ts"
+          ],
+          "path": "tests/scorecard-stats.test.ts"
+        },
+        {
+          "hash": "424269b4290bf6d6809184d793ac016a3a49b09c8155d12033df6bc63dbf5101",
+          "importsFiles": [
+            "src/session.ts",
+            "src/types.ts",
+            "tests/setup.ts"
+          ],
+          "path": "tests/session.test.ts"
+        },
+        {
+          "exports": [
+            "isolatePersistEnv",
+            "restoreEnvVar",
+            "restorePersistEnv",
+            "snapshotPersistEnv"
+          ],
+          "hash": "ad393989a2325fd838db4ac1482c96eab2fc9e386ce68a2243468e5393dc5a28",
+          "path": "tests/setup.ts"
+        },
+        {
+          "hash": "f46e70d08c9926a2ce068fa8161a416e60f9330aba68d8fd70e74c08fe5fd217",
+          "importsFiles": [
+            "src/tools/techniques.ts",
+            "src/types.ts"
+          ],
+          "path": "tests/techniques.test.ts"
+        },
+        {
+          "hash": "1062ff25153573463ff6647dbff595c9810b7dbf048c4469e77c59c55ff8d806",
+          "importsFiles": [
+            "src/ollama.ts",
+            "src/session.ts",
+            "src/tools/catchphrase.ts",
+            "src/tools/comic_timing.ts",
+            "src/tools/heckle.ts",
+            "src/tools/mood.ts",
+            "src/tools/roast.ts",
+            "src/tools/running_gag.ts",
+            "src/tools/techniques.ts",
+            "src/types.ts",
+            "src/validators.ts",
+            "tests/setup.ts"
+          ],
+          "path": "tests/tools.test.ts"
+        },
+        {
+          "hash": "22b181985c94ec91a7bfa1a0a208816d079e568b45a3752a6382375506d46e4e",
+          "importsFiles": [
+            "src/validators.ts"
+          ],
+          "path": "tests/validators.test.ts"
+        },
+        {
+          "hash": "75cc22c99695b6631dd62d22152621ba9946f358a28e5feca06cb1b95d864131",
+          "path": "tests/version-alignment.test.ts"
+        }
+      ],
+      "globs": [
+        "tests/**"
+      ],
+      "importConfidence": "full",
+      "name": "tests",
+      "origin": "authored",
+      "role": "test",
+      "testedBy": 0,
+      "unresolvedSites": 0
+    }
+  ],
+  "doors": [
+    {
+      "checksCount": 1,
+      "commands": [
+        {
+          "job": "build-and-test",
+          "step": "Atlas check",
+          "text": "npx --yes @dogfood-lab/atlas@1.17.0 check"
+        },
+        {
+          "job": "build-and-test",
+          "step": "3",
+          "text": "npm ci"
+        },
+        {
+          "job": "build-and-test",
+          "step": "4",
+          "text": "npm run build"
+        },
+        {
+          "job": "build-and-test",
+          "step": "5",
+          "text": "npm test"
+        },
+        {
+          "job": "build-and-test",
+          "step": "Tarball budget",
+          "text": "npm run pack:check"
+        },
+        {
+          "job": "security",
+          "step": "2",
+          "text": "npm ci"
+        },
+        {
+          "job": "security",
+          "step": "Dependency audit (prod tree, critical gate)",
+          "text": "npm audit --omit=dev --audit-level=critical"
+        }
+      ],
+      "elsewhere": [],
+      "file": ".github/workflows/ci.yml",
+      "landings": [],
+      "mentions": [
+        {
+          "job": "build-and-test",
+          "path": "tsconfig.build.json"
+        }
+      ],
+      "name": "CI",
+      "permissions": [],
+      "pushes": false,
+      "reach": [
+        {
+          "boundary": "scripts",
+          "depth": 0,
+          "files": 1
+        },
+        {
+          "boundary": "src",
+          "depth": 0,
+          "files": 43
+        },
+        {
+          "boundary": "tests",
+          "depth": 0,
+          "files": 27
+        }
+      ],
+      "readers": [],
+      "runs": [
+        {
+          "job": "build-and-test",
+          "path": "scripts/check-pack.mjs",
+          "runKind": "executes"
+        },
+        {
+          "directory": true,
+          "job": "build-and-test",
+          "matched": true,
+          "path": "src/",
+          "runKind": "checks",
+          "via": "tsc tsconfig.build.json"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/capture.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/character-voice-schema.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/dataset-enrich.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/dataset-eval-caricature.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/dataset-eval-core.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/dataset-eval-judge.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/dataset-label-active.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/dataset-label-bws.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/dataset-label-schema.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/dataset-pii-scrub.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/dataset-provenance.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/dataset-schema.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/index.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/label-cli-smoke.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/loader.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/ollama.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/running_gag.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/scorecard-cli.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/scorecard-frozen-prompts.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/scorecard-rules.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/scorecard-stats.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/session.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/techniques.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/tools.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/validators.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "tests/version-alignment.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        }
+      ],
+      "runsCount": 28,
+      "secrets": [],
+      "sends": {
+        "deploysPages": false,
+        "dispatchesTo": [],
+        "opensIssues": false,
+        "opensIssuesOnFailure": false,
+        "opensPullRequests": false,
+        "publishes": false,
+        "publishesTo": [],
+        "releases": false
+      },
+      "stages": [],
+      "triggers": [
+        {
+          "event": "pull_request",
+          "paths": [
+            ".github/workflows/ci.yml",
+            ".npmignore",
+            "CHANGELOG.md",
+            "atlas/**",
+            "package-lock.json",
+            "package.json",
+            "site/astro.config.mjs",
+            "site/package-lock.json",
+            "site/package.json",
+            "src/**",
+            "tests/**",
+            "tsconfig.json"
+          ]
+        },
+        {
+          "event": "push",
+          "paths": [
+            ".github/workflows/ci.yml",
+            ".npmignore",
+            "CHANGELOG.md",
+            "atlas/**",
+            "package-lock.json",
+            "package.json",
+            "site/astro.config.mjs",
+            "site/package-lock.json",
+            "site/package.json",
+            "src/**",
+            "tests/**",
+            "tsconfig.json"
+          ]
+        },
+        {
+          "event": "workflow_dispatch"
+        }
+      ],
+      "uses": [
+        "actions/checkout",
+        "actions/setup-node",
+        "trufflesecurity/trufflehog"
+      ],
+      "usesWorkflowToken": false
+    },
+    {
+      "checksCount": 0,
+      "commands": [
+        {
+          "job": "build",
+          "step": "Install site dependencies",
+          "text": "npm ci"
+        },
+        {
+          "job": "build",
+          "step": "Build site",
+          "text": "npm run build"
+        }
+      ],
+      "elsewhere": [],
+      "file": ".github/workflows/pages.yml",
+      "landings": [],
+      "mentions": [],
+      "name": "Deploy site to GitHub Pages",
+      "permissions": [
+        "contents:read",
+        "id-token:write",
+        "pages:write"
+      ],
+      "pushes": false,
+      "reach": [
+        {
+          "boundary": "site",
+          "depth": 0,
+          "files": 3
+        }
+      ],
+      "readers": [],
+      "runs": [
+        {
+          "job": "build",
+          "matched": true,
+          "path": "site/astro.config.mjs",
+          "runKind": "executes",
+          "via": "astro build"
+        },
+        {
+          "directory": true,
+          "job": "build",
+          "matched": true,
+          "path": "site/src/",
+          "runKind": "executes",
+          "via": "astro build"
+        }
+      ],
+      "runsCount": 2,
+      "secrets": [],
+      "sends": {
+        "deploysPages": true,
+        "dispatchesTo": [],
+        "opensIssues": false,
+        "opensIssuesOnFailure": false,
+        "opensPullRequests": false,
+        "publishes": false,
+        "publishesTo": [],
+        "releases": false
+      },
+      "stages": [],
+      "triggers": [
+        {
+          "branches": [
+            "main"
+          ],
+          "event": "push",
+          "paths": [
+            ".github/workflows/pages.yml",
+            "site/**"
+          ]
+        },
+        {
+          "event": "workflow_dispatch"
+        }
+      ],
+      "uses": [
+        "actions/checkout",
+        "actions/deploy-pages",
+        "actions/setup-node",
+        "actions/upload-pages-artifact"
+      ],
+      "usesWorkflowToken": false
+    },
+    {
+      "checksCount": 5,
+      "commands": [
+        {
+          "job": "verify",
+          "step": "Verify tag matches package.json version",
+          "text": "PKG_VERSION=$(node -p \"require('./package.json').version\")\nTAG_VERSION=\"${GITHUB_REF_NAME#v}\"\necho \"Tag: ${GITHUB_REF_NAME} -> ${TAG_VERSION} | package.json: ${PKG_VERSION}\"\nif [ \"${PKG_VERSION}\" != \"${TAG_VERSION}\" ]; then\n  echo \"::error::Tag ${TAG_VERSION} does not match package.json version ${PKG_VERSION}\"\n  exit 1\nfi\n"
+        },
+        {
+          "job": "verify",
+          "step": "Install dependencies",
+          "text": "npm ci"
+        },
+        {
+          "job": "verify",
+          "step": "Test",
+          "text": "npm test"
+        },
+        {
+          "job": "verify",
+          "step": "Build",
+          "text": "npm run build"
+        },
+        {
+          "job": "verify",
+          "step": "Tarball budget",
+          "text": "npm run pack:check"
+        },
+        {
+          "job": "verify",
+          "step": "Extract release notes from CHANGELOG",
+          "text": "# awk-implementation-independent extraction (cdt-005): gawk and mawk differ on\n# dynamic-regex backslash handling, and an unescaped '.' in the version string is a\n# regex wildcard. Use an exact-prefix string match in node, and FAIL LOUDLY if the\n# section is missing rather than silently shipping a barren \"See CHANGELOG.md\" body.\nnode -e '\n  const { readFileSync, writeFileSync } = require(\"fs\");\n  const version = (process.env.REF_NAME || \"\").replace(/^v/, \"\");\n  const target = \"## [\" + version + \"]\";\n  const lines = readFileSync(\"CHANGELOG.md\", \"utf8\").split(/\\r?\\n/);\n  if (!lines.some((l) => l.indexOf(target) === 0)) {\n    console.error(\"::error::No CHANGELOG section found for \" + target);\n    process.exit(1);\n  }\n  let capture = false; const out = [];\n  for (const line of lines) {\n    if (/^## \\[/.test(line)) { if (capture) break; capture = line.indexOf(target) === 0; continue; }\n    if (capture) out.push(line);\n  }\n  const notes = out.join(\"\\n\").trim();\n  writeFileSync(\"RELEASE_NOTES.md\", (notes || \"See CHANGELOG.md\") + \"\\n\");\n'\necho \"--- RELEASE_NOTES.md ---\"; cat RELEASE_NOTES.md\n"
+        },
+        {
+          "job": "npm-release",
+          "step": "Verify tag matches package.json version",
+          "text": "PKG_VERSION=$(node -p \"require('./package.json').version\")\nTAG_VERSION=\"${GITHUB_REF_NAME#v}\"\necho \"Tag: ${GITHUB_REF_NAME} -> ${TAG_VERSION} | package.json: ${PKG_VERSION}\"\nif [ \"${PKG_VERSION}\" != \"${TAG_VERSION}\" ]; then\n  echo \"::error::Tag ${TAG_VERSION} does not match package.json version ${PKG_VERSION}\"\n  exit 1\nfi\n"
+        },
+        {
+          "job": "npm-release",
+          "step": "Extract release notes from CHANGELOG",
+          "text": "node -e '\n  const { readFileSync, writeFileSync } = require(\"fs\");\n  const version = (process.env.REF_NAME || \"\").replace(/^v/, \"\");\n  const target = \"## [\" + version + \"]\";\n  const lines = readFileSync(\"CHANGELOG.md\", \"utf8\").split(/\\r?\\n/);\n  if (!lines.some((l) => l.indexOf(target) === 0)) {\n    console.error(\"::error::No CHANGELOG section found for \" + target);\n    process.exit(1);\n  }\n  let capture = false; const out = [];\n  for (const line of lines) {\n    if (/^## \\[/.test(line)) { if (capture) break; capture = line.indexOf(target) === 0; continue; }\n    if (capture) out.push(line);\n  }\n  const notes = out.join(\"\\n\").trim();\n  writeFileSync(\"RELEASE_NOTES.md\", (notes || \"See CHANGELOG.md\") + \"\\n\");\n'\n"
+        },
+        {
+          "job": "npm-release",
+          "step": "Create GitHub Release",
+          "text": "if gh release view \"${GITHUB_REF_NAME}\" >/dev/null 2>&1; then\n  echo \"GitHub Release ${GITHUB_REF_NAME} already exists; skipping create\"\nelse\n  gh release create \"${GITHUB_REF_NAME}\" \\\n    --title \"sensor-humor ${GITHUB_REF_NAME}\" \\\n    --notes-file RELEASE_NOTES.md \\\n    --verify-tag\nfi\n"
+        },
+        {
+          "job": "npm-release",
+          "step": "Install npm >=11.5 in a sandbox for OIDC trusted publishing",
+          "text": "# Node 22 bundles npm 10.9; in-place `npm i -g npm@latest` races on its\n# arborist rebuild (MODULE_NOT_FOUND: promise-retry). Install npm@latest\n# into an isolated sandbox and shadow the system npm via PATH instead.\nSANDBOX=\"$HOME/.npm-cli-sandbox\"\nmkdir -p \"$SANDBOX\"\npushd \"$SANDBOX\" >/dev/null\necho '{\"name\":\"npm-cli-sandbox\",\"version\":\"0.0.0\",\"private\":true}' > package.json\nnpm install --no-save --no-audit --no-fund --silent npm@latest\npopd >/dev/null\necho \"$SANDBOX/node_modules/.bin\" >> \"$GITHUB_PATH\"\n\"$SANDBOX/node_modules/.bin/npm\" --version\n"
+        },
+        {
+          "job": "npm-release",
+          "step": "Install dependencies",
+          "text": "npm ci"
+        },
+        {
+          "job": "npm-release",
+          "step": "Build",
+          "text": "npm run build"
+        },
+        {
+          "job": "npm-release",
+          "step": "Publish to npm with provenance (OIDC trusted publisher)",
+          "text": "PKG_NAME=$(node -p \"require('./package.json').name\")\nPKG_VERSION=$(node -p \"require('./package.json').version\")\nPUBLISHED=$(npm view \"${PKG_NAME}@${PKG_VERSION}\" version 2>/dev/null || true)\nif [ \"${PUBLISHED}\" = \"${PKG_VERSION}\" ]; then\n  echo \"${PKG_NAME}@${PKG_VERSION} already on npm; skipping publish\"\nelse\n  npm publish --provenance --access public\nfi\n"
+        }
+      ],
+      "elsewhere": [],
+      "file": ".github/workflows/release.yml",
+      "landings": [],
+      "mentions": [
+        {
+          "job": "npm-release",
+          "path": "CHANGELOG.md"
+        },
+        {
+          "job": "verify",
+          "path": "CHANGELOG.md"
+        },
+        {
+          "job": "npm-release",
+          "path": "package.json"
+        },
+        {
+          "job": "verify",
+          "path": "package.json"
+        },
+        {
+          "job": "npm-release",
+          "path": "tsconfig.build.json"
+        },
+        {
+          "job": "verify",
+          "path": "tsconfig.build.json"
+        }
+      ],
+      "name": "Release",
+      "permissions": [
+        "contents:read",
+        "contents:write",
+        "id-token:write",
+        "packages:write"
+      ],
+      "pushes": false,
+      "reach": [
+        {
+          "boundary": "root",
+          "depth": 0,
+          "files": 4
+        },
+        {
+          "boundary": "scripts",
+          "depth": 0,
+          "files": 1
+        },
+        {
+          "boundary": "src",
+          "depth": 0,
+          "files": 43
+        },
+        {
+          "boundary": "tests",
+          "depth": 0,
+          "files": 27
+        }
+      ],
+      "readers": [],
+      "runs": [
+        {
+          "job": "docker",
+          "path": "package-lock.json",
+          "runKind": "checks",
+          "via": "docker build Dockerfile"
+        },
+        {
+          "job": "docker",
+          "path": "package.json",
+          "runKind": "checks",
+          "via": "docker build Dockerfile"
+        },
+        {
+          "job": "verify",
+          "path": "scripts/check-pack.mjs",
+          "runKind": "executes"
+        },
+        {
+          "directory": true,
+          "job": "docker",
+          "path": "src/",
+          "runKind": "checks",
+          "via": "docker build Dockerfile"
+        },
+        {
+          "directory": true,
+          "job": "npm-release",
+          "matched": true,
+          "path": "src/",
+          "runKind": "checks",
+          "via": "tsc tsconfig.build.json"
+        },
+        {
+          "directory": true,
+          "job": "verify",
+          "matched": true,
+          "path": "src/",
+          "runKind": "checks",
+          "via": "tsc tsconfig.build.json"
+        },
+        {
+          "job": "docker",
+          "path": "src/index.ts",
+          "runKind": "executes",
+          "via": "docker build Dockerfile"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/capture.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/character-voice-schema.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/dataset-enrich.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/dataset-eval-caricature.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/dataset-eval-core.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/dataset-eval-judge.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/dataset-label-active.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/dataset-label-bws.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/dataset-label-schema.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/dataset-pii-scrub.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/dataset-provenance.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/dataset-schema.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/index.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/label-cli-smoke.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/loader.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/ollama.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/running_gag.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/scorecard-cli.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/scorecard-frozen-prompts.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/scorecard-rules.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/scorecard-stats.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/session.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/techniques.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/tools.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/validators.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "verify",
+          "matched": true,
+          "path": "tests/version-alignment.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "docker",
+          "path": "tsconfig.build.json",
+          "runKind": "checks",
+          "via": "docker build Dockerfile"
+        },
+        {
+          "job": "docker",
+          "path": "tsconfig.json",
+          "runKind": "checks",
+          "via": "docker build Dockerfile"
+        }
+      ],
+      "runsCount": 33,
+      "secrets": [
+        "GITHUB_TOKEN"
+      ],
+      "sends": {
+        "deploysPages": false,
+        "dispatchesTo": [],
+        "opensIssues": false,
+        "opensIssuesOnFailure": false,
+        "opensPullRequests": false,
+        "packages": [
+          {
+            "dir": "",
+            "name": "@mcptoolshop/sensor-humor",
+            "registry": "npm"
+          }
+        ],
+        "publishes": true,
+        "publishesTo": [
+          "container image",
+          "npm"
+        ],
+        "releases": true
+      },
+      "stages": [],
+      "triggers": [
+        {
+          "event": "push",
+          "tags": [
+            "v*"
+          ]
+        }
+      ],
+      "uses": [
+        "actions/checkout",
+        "actions/setup-node",
+        "docker/build-push-action",
+        "docker/login-action",
+        "docker/metadata-action"
+      ],
+      "usesWorkflowToken": true
+    },
+    {
+      "checksCount": 0,
+      "commands": [],
+      "elsewhere": [],
+      "entry": "src/index.ts",
+      "file": "package.json",
+      "kind": "package",
+      "landings": [],
+      "mentions": [],
+      "name": "@mcptoolshop/sensor-humor",
+      "permissions": [],
+      "pushes": false,
+      "reach": [
+        {
+          "boundary": "src",
+          "depth": 0,
+          "files": 24
+        }
+      ],
+      "readers": [],
+      "runs": [
+        {
+          "path": "src/index.ts",
+          "runKind": "executes"
+        }
+      ],
+      "runsCount": 1,
+      "secrets": [],
+      "sends": {
+        "deploysPages": false,
+        "dispatchesTo": [],
+        "opensIssues": false,
+        "opensIssuesOnFailure": false,
+        "opensPullRequests": false,
+        "publishes": false,
+        "publishesTo": [],
+        "releases": false
+      },
+      "stages": [],
+      "triggers": [],
+      "uses": [],
+      "usesWorkflowToken": false
+    },
+    {
+      "checksCount": 0,
+      "commands": [],
+      "elsewhere": [],
+      "file": "package.json",
+      "kind": "command",
+      "landings": [],
+      "mentions": [],
+      "name": "sensor-humor",
+      "permissions": [],
+      "pushes": false,
+      "reach": [
+        {
+          "boundary": "src",
+          "depth": 0,
+          "files": 24
+        }
+      ],
+      "readers": [],
+      "runs": [
+        {
+          "path": "src/index.ts",
+          "runKind": "executes"
+        }
+      ],
+      "runsCount": 1,
+      "secrets": [],
+      "sends": {
+        "deploysPages": false,
+        "dispatchesTo": [],
+        "opensIssues": false,
+        "opensIssuesOnFailure": false,
+        "opensPullRequests": false,
+        "publishes": false,
+        "publishesTo": [],
+        "releases": false
+      },
+      "stages": [],
+      "triggers": [],
+      "uses": [],
+      "usesWorkflowToken": false
+    }
+  ],
+  "edges": [
+    {
+      "from": "scripts",
+      "kind": "file",
+      "to": "src"
+    },
+    {
+      "from": "tests",
+      "fromTests": true,
+      "kind": "file",
+      "to": "src"
+    }
+  ],
+  "generatedFrom": {
+    "commit": "6e8ea9a82d220b4f0a6eb197d1176fddc6d8e6f8",
+    "tracked": 153
+  },
+  "landings": [
+    {
+      "readers": [
+        {
+          "by": "tests/index.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": ".github/workflows/release.yml",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": ".github/workflows/release.yml"
+        },
+        {
+          "by": "tests/version-alignment.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "CHANGELOG.md",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": ".github/workflows/release.yml"
+        },
+        {
+          "by": "tests/index.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        },
+        {
+          "by": "tests/version-alignment.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "package.json",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "tests/label-cli-smoke.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "scripts/label-comedic-moods.ts",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "site/astro.config.mjs",
+          "call": "content-collection",
+          "confidence": "ast"
+        }
+      ],
+      "target": "site/src/content/docs",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "site/astro.config.mjs",
+          "call": "autogenerate",
+          "confidence": "ast"
+        }
+      ],
+      "target": "site/src/content/docs/handbook",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "tests/character-voice-schema.test.ts",
+          "call": "readdirSync",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "src/character/profiles",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "tests/index.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        },
+        {
+          "by": "tests/version-alignment.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "src/index.ts",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "tsconfig.build.json",
+          "call": "literal",
+          "confidence": "text"
+        }
+      ],
+      "target": "src/scorecard",
+      "writers": []
+    },
+    {
+      "readers": [],
+      "target": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm-feature-pass-2026-09/citation-receipt.json",
+      "writers": [
+        {
+          "by": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm-feature-pass-2026-09/run-gate.mjs",
+          "confidence": "ast"
+        }
+      ]
+    },
+    {
+      "readers": [],
+      "target": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm-feature-pass-2026-09/gate-result.json",
+      "writers": [
+        {
+          "by": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm-feature-pass-2026-09/run-gate.mjs",
+          "confidence": "ast"
+        }
+      ]
+    },
+    {
+      "readers": [
+        {
+          "by": ".github/workflows/ci.yml"
+        },
+        {
+          "by": ".github/workflows/release.yml"
+        }
+      ],
+      "target": "tsconfig.build.json",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "tsconfig.build.json",
+          "call": "literal",
+          "confidence": "text"
+        }
+      ],
+      "target": "tsconfig.json",
+      "writers": []
+    }
+  ],
+  "overlaps": [],
+  "submodules": [],
+  "symlinks": [],
+  "testFiles": 27,
+  "unassigned": []
+}
