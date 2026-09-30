@@ -1,26 +1,28 @@
 # sensor-humor: how it works
 
-Mapped at 2026-09-24 from commit 6e8ea9a.
+Mapped at 2026-09-30 from commit a2c1927 by Atlas 1.24.0.
 
 ## What this is
 
-8 parts, mostly TypeScript (86 files). Work enters through 5 doors; the busiest is Release, which reaches 4 parts. It publishes to npm and a container image. People run sensor-humor. People import @mcptoolshop/sensor-humor.
+8 parts, mostly TypeScript (86 files), JavaScript (3), CSS (2), Astro (1), Python (1) and shell (1). Work enters through 5 doors; the busiest is Release, which reaches 4 parts. It publishes to npm and a container image. It deploys a site to GitHub Pages. People run sensor-humor.
 
-## What changed since the last map
+## What changed since 2026-09-24 (6e8ea9a)
 
-This is the first map.
+- CI's pull request trigger now also names `codecov.yml`.
+- CI's push trigger now also names `codecov.yml`.
+- 1 file added and 152 changed content, across 8 parts.
 
 ## What comes in
 
-1. **Release.** When a tag matching `v*` is pushed. Runs scripts/check-pack.mjs, src/index.ts, tests/capture.test.ts and 25 more; checks package-lock.json, package.json, src/ and 2 more.
-2. **CI.** On a pull request touching 12 paths; on a push touching 12 paths; or by hand. Runs scripts/check-pack.mjs, tests/capture.test.ts, tests/character-voice-schema.test.ts and 24 more; checks src/.
+1. **Release.** When a tag matching `v*` is pushed. Runs scripts/check-pack.mjs, src/index.ts, tests/capture.test.ts and 25 more; builds src/; packs package-lock.json, package.json, tsconfig.build.json and 1 more into an image.
+2. **CI.** On a pull request touching 13 paths; on a push touching 13 paths; or by hand. Runs scripts/check-pack.mjs, tests/capture.test.ts, tests/character-voice-schema.test.ts and 24 more; builds src/.
 3. **Deploy site to GitHub Pages.** On a push to main touching 2 paths; or by hand. Runs site/astro.config.mjs and site/src/.
-4. **@mcptoolshop/sensor-humor** (the package people import). Loads src/index.ts.
+4. **@mcptoolshop/sensor-humor** (the package's entry, which runs the command sensor-humor; it is not a library). Loads src/index.ts.
 5. **sensor-humor** (a command people run). Runs src/index.ts.
 
 ## What happens through Release
 
-1. The workflow runs scripts/check-pack.mjs in scripts, src/index.ts in src, and 26 files in tests; it checks 4 files in the repository root and src/ in src.
+1. The workflow runs scripts/check-pack.mjs in scripts, src/index.ts in src, and 26 files in tests; it builds src/ in src; it packs 4 files in the repository root into an image.
 2. It publishes to npm and a container image.
 3. It creates a GitHub release.
 
@@ -30,11 +32,11 @@ Release writes nothing this map can see.
 
 ## The other doors
 
-**CI** runs scripts/check-pack.mjs, tests/capture.test.ts, tests/character-voice-schema.test.ts and 24 more, and checks src/.
+**CI** runs scripts/check-pack.mjs, tests/capture.test.ts, tests/character-voice-schema.test.ts and 24 more, builds src/, uploads coverage to Codecov, and scans for secrets with TruffleHog.
 
 **Deploy site to GitHub Pages** runs site/astro.config.mjs and site/src/, and deploys the site.
 
-**@mcptoolshop/sensor-humor** (the package people import) loads src/index.ts.
+**@mcptoolshop/sensor-humor** (the package's entry, which runs the command sensor-humor; it is not a library) loads src/index.ts.
 
 **sensor-humor** (a command people run) runs src/index.ts.
 
@@ -46,21 +48,25 @@ Release writes nothing this map can see.
 
 ## What tends to change together
 
-- **src/tools/heckle.ts** and **src/tools/roast.ts** changed together in 14 of 16 commits, inside the src part.
-- **src/tools/comic_timing.ts** and **src/tools/roast.ts** changed together in 13 of 18 commits, inside the src part.
-- **src/tools/catchphrase.ts** and **src/tools/roast.ts** changed together in 11 of 16 commits, inside the src part.
-- **src/ollama.ts** and **src/tools/catchphrase.ts** changed together in 10 of 15 commits, inside the src part.
-- **src/tools/catchphrase.ts** and **src/tools/comic_timing.ts** changed together in 11 of 17 commits, inside the src part.
+- **src/tools/heckle.ts** and **src/tools/roast.ts** changed together in 9 of 11 commits, inside the src part.
+- **src/ollama.ts** and **src/tools/catchphrase.ts** changed together in 8 of 10 commits, inside the src part.
+- **src/tools/catchphrase.ts** and **src/tools/roast.ts** changed together in 8 of 10 commits, inside the src part.
+- **src/ollama.ts** and **src/tools/comic_timing.ts** changed together in 9 of 12 commits, inside the src part.
+- **src/tools/comic_timing.ts** and **src/tools/roast.ts** changed together in 9 of 12 commits, inside the src part.
 
-1 file changed together with its own test, as expected.
+2 files changed together with their own tests, as expected.
 
-Confidence is low: fewer than 20 source files reach 10 revisions in the window.
+Confidence is low: fewer than 25 source files reach 10 revisions in the window.
 
-Window: 180 days; a pair counts from 3 shared commits, since 12 source files reach 10 revisions; the floor rises to 10 when 25 do.
+Window: 180 days; a pair counts from 3 shared commits, since 7 source files reach 10 revisions; the floor rises to 10 when 25 do.
 
 ## What no test touches
 
-- **scripts** is imported by no test.
+Every code part is touched by at least one test.
+
+scripts is touched by tests only through a spawn: a test runs its files as a child process.
+
+verify.sh runs in no workflow.
 
 ## Written but never read
 
@@ -82,16 +88,16 @@ People write .github/, docs/, the repository root and site/; 2 writes with paths
 
 ## Where to start
 
-.github/workflows/ci.yml → src/index.ts
+.github/workflows/ci.yml → src/index.ts → src/ollama.ts → src/types.ts
 
 Read those in order to follow one pull request end to end.
 
 ## What this map cannot see
 
-- 1 import site could not be resolved.
+- 1 import could not be resolved: `swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm-feature-pass-2026-09/run-gate.mjs` imports `../../../../E:/AI/role-os/src/verify-citations.mjs`, which is not in this repository.
 - 2 writes use paths built at run time and are not named here.
-- 8 writes and 22 reads go to the directory the command is run in, the home directory or a path its caller passes, not to this repository.
-- 1 command is built at run time and not followed, and it is in tests.
-- Statistics confidence is low: fewer than 20 source files reach 10 revisions in the window.
+- 5 writes and 19 reads go to a path their caller passes, not to this repository.
+- 3 writes and 2 reads go to the home directory (.sensor-humor/) or a path their caller passes, not to this repository.
+- Statistics confidence is low: fewer than 25 source files reach 10 revisions in the window.
 
 Regenerate with `npx --yes @dogfood-lab/atlas map`.

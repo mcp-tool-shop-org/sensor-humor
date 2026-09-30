@@ -36,13 +36,45 @@
     }
   ],
   "changes": {
-    "first": true
+    "fileCounts": {
+      "added": 1,
+      "changed": 152,
+      "moved": 0,
+      "parts": 8,
+      "removed": 0
+    },
+    "items": [
+      {
+        "kind": "door",
+        "sentence": "CI's pull request trigger now also names `codecov.yml`.",
+        "subjects": [
+          ".github/workflows/ci.yml"
+        ]
+      },
+      {
+        "kind": "door",
+        "sentence": "CI's push trigger now also names `codecov.yml`.",
+        "subjects": [
+          ".github/workflows/ci.yml"
+        ]
+      },
+      {
+        "kind": "counts",
+        "sentence": "1 file added and 152 changed content, across 8 parts.",
+        "subjects": []
+      }
+    ],
+    "since": {
+      "commit": "6e8ea9a82d220b4f0a6eb197d1176fddc6d8e6f8",
+      "generatedAt": "2026-09-24T08:40:36.224Z"
+    },
+    "unchanged": false
   },
   "changesTogether": [
     {
       "a": "src/tools/heckle.ts",
       "b": "src/tools/roast.ts",
-      "either": 16,
+      "either": 11,
       "partLabels": [
         "src",
         "src"
@@ -52,42 +84,12 @@
         "src"
       ],
       "relation": "inside",
-      "shared": 14
-    },
-    {
-      "a": "src/tools/comic_timing.ts",
-      "b": "src/tools/roast.ts",
-      "either": 18,
-      "partLabels": [
-        "src",
-        "src"
-      ],
-      "parts": [
-        "src",
-        "src"
-      ],
-      "relation": "inside",
-      "shared": 13
-    },
-    {
-      "a": "src/tools/catchphrase.ts",
-      "b": "src/tools/roast.ts",
-      "either": 16,
-      "partLabels": [
-        "src",
-        "src"
-      ],
-      "parts": [
-        "src",
-        "src"
-      ],
-      "relation": "inside",
-      "shared": 11
+      "shared": 9
     },
     {
       "a": "src/ollama.ts",
       "b": "src/tools/catchphrase.ts",
-      "either": 15,
+      "either": 10,
       "partLabels": [
         "src",
         "src"
@@ -97,12 +99,12 @@
         "src"
       ],
       "relation": "inside",
-      "shared": 10
+      "shared": 8
     },
     {
       "a": "src/tools/catchphrase.ts",
-      "b": "src/tools/comic_timing.ts",
-      "either": 17,
+      "b": "src/tools/roast.ts",
+      "either": 10,
       "partLabels": [
         "src",
         "src"
@@ -112,32 +114,66 @@
         "src"
       ],
       "relation": "inside",
-      "shared": 11
+      "shared": 8
+    },
+    {
+      "a": "src/ollama.ts",
+      "b": "src/tools/comic_timing.ts",
+      "either": 12,
+      "partLabels": [
+        "src",
+        "src"
+      ],
+      "parts": [
+        "src",
+        "src"
+      ],
+      "relation": "inside",
+      "shared": 9
+    },
+    {
+      "a": "src/tools/comic_timing.ts",
+      "b": "src/tools/roast.ts",
+      "either": 12,
+      "partLabels": [
+        "src",
+        "src"
+      ],
+      "parts": [
+        "src",
+        "src"
+      ],
+      "relation": "inside",
+      "shared": 9
     }
   ],
   "changesTogetherNote": [
-    "1 file changed together with its own test, as expected.",
-    "Confidence is low: fewer than 20 source files reach 10 revisions in the window.",
-    "Window: 180 days; a pair counts from 3 shared commits, since 12 source files reach 10 revisions; the floor rises to 10 when 25 do."
+    "2 files changed together with their own tests, as expected.",
+    "Confidence is low: fewer than 25 source files reach 10 revisions in the window.",
+    "Window: 180 days; a pair counts from 3 shared commits, since 7 source files reach 10 revisions; the floor rises to 10 when 25 do."
   ],
-  "changesTogetherWithTests": 1,
-  "commit": "6e8ea9a82d220b4f0a6eb197d1176fddc6d8e6f8",
+  "changesTogetherWithTests": 2,
+  "commit": "a2c192732c8bc55db7976a21e904730698aa0a78",
   "defaultBranch": "main",
-  "derived": "8 parts, mostly TypeScript (86 files). Work enters through 5 doors; the busiest is Release, which reaches 4 parts. It publishes to npm and a container image. People run sensor-humor. People import @mcptoolshop/sensor-humor.",
+  "derived": "8 parts, mostly TypeScript (86 files), JavaScript (3), CSS (2), Astro (1), Python (1) and shell (1). Work enters through 5 doors; the busiest is Release, which reaches 4 parts. It publishes to npm and a container image. It deploys a site to GitHub Pages. People run sensor-humor.",
   "doors": [
     {
-      "checks": [
-        "package-lock.json",
-        "package.json",
-        "src/",
-        "tsconfig.build.json",
-        "tsconfig.json"
+      "builds": [
+        "src/"
       ],
-      "checksCount": 5,
+      "checks": [],
+      "checksCount": 0,
+      "checksMore": 0,
       "file": ".github/workflows/release.yml",
       "id": ".github/workflows/release.yml",
       "landings": [],
       "name": "Release",
+      "packs": [
+        "package-lock.json",
+        "package.json",
+        "tsconfig.build.json",
+        "tsconfig.json"
+      ],
       "pushes": false,
       "reach": [
         {
@@ -192,6 +228,7 @@
         "tests/version-alignment.test.ts"
       ],
       "runsCount": 28,
+      "runsMore": 25,
       "sends": [
         "publishes to npm and a container image",
         "creates a GitHub release"
@@ -202,10 +239,12 @@
       ]
     },
     {
-      "checks": [
+      "builds": [
         "src/"
       ],
-      "checksCount": 1,
+      "checks": [],
+      "checksCount": 0,
+      "checksMore": 0,
       "file": ".github/workflows/ci.yml",
       "id": ".github/workflows/ci.yml",
       "landings": [],
@@ -258,17 +297,22 @@
         "tests/version-alignment.test.ts"
       ],
       "runsCount": 27,
-      "sends": [],
+      "runsMore": 24,
+      "sends": [
+        "uploads coverage to Codecov",
+        "scans for secrets with TruffleHog"
+      ],
       "stages": [],
       "triggers": [
-        "on a pull request touching 12 paths",
-        "on a push touching 12 paths",
+        "on a pull request touching 13 paths",
+        "on a push touching 13 paths",
         "or by hand"
       ]
     },
     {
       "checks": [],
       "checksCount": 0,
+      "checksMore": 0,
       "file": ".github/workflows/pages.yml",
       "id": ".github/workflows/pages.yml",
       "landings": [],
@@ -278,7 +322,7 @@
         {
           "boundary": "site",
           "depth": 0,
-          "files": 3
+          "files": 5
         }
       ],
       "runs": [
@@ -286,6 +330,7 @@
         "site/src/"
       ],
       "runsCount": 2,
+      "runsMore": 0,
       "sends": [
         "deploys the site"
       ],
@@ -298,6 +343,7 @@
     {
       "checks": [],
       "checksCount": 0,
+      "checksMore": 0,
       "file": "package.json",
       "id": "package.json#@mcptoolshop/sensor-humor",
       "kind": "package",
@@ -314,7 +360,9 @@
       "runs": [
         "src/index.ts"
       ],
+      "runsCommand": "sensor-humor",
       "runsCount": 1,
+      "runsMore": 0,
       "sends": [],
       "stages": [],
       "triggers": []
@@ -322,6 +370,7 @@
     {
       "checks": [],
       "checksCount": 0,
+      "checksMore": 0,
       "file": "package.json",
       "id": "package.json#sensor-humor",
       "kind": "command",
@@ -339,6 +388,7 @@
         "src/index.ts"
       ],
       "runsCount": 1,
+      "runsMore": 0,
       "sends": [],
       "stages": [],
       "triggers": []
@@ -359,6 +409,7 @@
       "to": "src"
     }
   ],
+  "engine": "1.24.0",
   "generated": [
     {
       "place": "swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm-feature-pass-2026-09/citation-receipt.json",
@@ -373,13 +424,13 @@
       ]
     }
   ],
-  "generatedAt": "2026-09-24T08:40:36.224Z",
+  "generatedAt": "2026-09-30T20:12:51.716Z",
   "limits": [
-    "1 import site could not be resolved.",
+    "1 import could not be resolved: `swarms/mcp-tool-shop-org--sensor-humor/evidence/study-swarm-feature-pass-2026-09/run-gate.mjs` imports `../../../../E:/AI/role-os/src/verify-citations.mjs`, which is not in this repository.",
     "2 writes use paths built at run time and are not named here.",
-    "8 writes and 22 reads go to the directory the command is run in, the home directory or a path its caller passes, not to this repository.",
-    "1 command is built at run time and not followed, and it is in tests.",
-    "Statistics confidence is low: fewer than 20 source files reach 10 revisions in the window."
+    "5 writes and 19 reads go to a path their caller passes, not to this repository.",
+    "3 writes and 2 reads go to the home directory (.sensor-humor/) or a path their caller passes, not to this repository.",
+    "Statistics confidence is low: fewer than 25 source files reach 10 revisions in the window."
   ],
   "mainDoor": ".github/workflows/release.yml",
   "partLabels": {
@@ -396,16 +447,21 @@
   "readers": [],
   "repo": "mcp-tool-shop-org/sensor-humor",
   "sequences": [],
+  "spawnTested": [
+    "scripts"
+  ],
   "startDoor": ".github/workflows/ci.yml",
   "startHere": [
     ".github/workflows/ci.yml",
-    "src/index.ts"
+    "src/index.ts",
+    "src/ollama.ts",
+    "src/types.ts"
   ],
   "summary": null,
   "summaryFrom": null,
   "testFiles": 27,
   "testedBy": {
-    "scripts": 0,
+    "scripts": 1,
     "src": 25
   },
   "unnamedWrites": 2,
@@ -425,13 +481,10 @@
   ],
   "unreadFiles": 0,
   "unreadNote": [],
-  "untested": [
-    {
-      "part": "scripts",
-      "partLabel": "scripts",
-      "testedBy": 0
-    }
+  "untested": [],
+  "untestedNote": [
+    "scripts is touched by tests only through a spawn: a test runs its files as a child process.",
+    "verify.sh runs in no workflow."
   ],
-  "untestedNote": [],
   "written": 2
 }
