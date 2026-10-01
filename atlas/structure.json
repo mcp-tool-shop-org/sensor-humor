@@ -9,7 +9,7 @@
       "externals": 0,
       "files": [
         {
-          "hash": "ed271bf2e642e0686b36e87150365b2fd36813a2d0ad0fa4615f220ec8f04eea",
+          "hash": "7ac2304e1d3b50946f230de3b24f5594c875c66e2ddd112f62cee036b5848a98",
           "path": ".github/workflows/ci.yml"
         },
         {
@@ -2420,22 +2420,7 @@
       ],
       "triggers": [
         {
-          "event": "pull_request",
-          "paths": [
-            ".github/workflows/ci.yml",
-            ".npmignore",
-            "CHANGELOG.md",
-            "atlas/**",
-            "codecov.yml",
-            "package-lock.json",
-            "package.json",
-            "site/astro.config.mjs",
-            "site/package-lock.json",
-            "site/package.json",
-            "src/**",
-            "tests/**",
-            "tsconfig.json"
-          ]
+          "event": "pull_request"
         },
         {
           "event": "push",
@@ -3272,7 +3257,7 @@
   ],
   "engine": "1.24.0",
   "generatedFrom": {
-    "commit": "a2c192732c8bc55db7976a21e904730698aa0a78",
+    "commit": "c62986b198abbe521c503e1fea158c528a4ffe03",
     "tracked": 154
   },
   "landings": [
