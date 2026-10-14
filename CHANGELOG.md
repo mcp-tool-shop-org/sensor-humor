@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-10-14
+
 - Build fake credentials at runtime in `tests/dataset-pii-scrub.test.ts` so secret scanners do not flag test fixtures.
 
 ## [1.3.1] - 2026-09-07
