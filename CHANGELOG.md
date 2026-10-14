@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Build fake credentials at runtime in `tests/dataset-pii-scrub.test.ts` so secret scanners do not flag test fixtures.
+
 ## [1.3.1] - 2026-09-07
 
 Feature Pass after the 1.3.0 health swarm: mood×technique overlays, callback variation contract, scorecard model pin, tarball CI gate, language-conformance, and the confirming-audit close-outs. 425 → 700 tests.

@@ -38,12 +38,11 @@ describe('scrubPii — the regex floor', () => {
     expect(scrubPii('token sk-ABCDEFGHIJKLMNOP1234 leaked').result.per_entity.key).toBe('fail');
     expect(scrubPii('sk-proj-abcdefghijklmnopqrstuvwxyz leaked').result.per_entity.key).toBe('fail');
     expect(scrubPii('sk-ant-abcdefghijklmnopqrstuvwxyz leaked').result.per_entity.key).toBe('fail');
-    // Built at runtime so the source never contains a contiguous sk_live_ + 16-alnum token
-    // (GitHub push protection treats that shape as a Stripe secret).
+    // built at runtime so secret scanners don't flag a test fixture
     expect(scrubPii(`token ${['sk', 'live', 'x'.repeat(16)].join('_')} leaked`).result.per_entity.key).toBe('fail');
-    expect(scrubPii('github_pat_abcdefghijklmnopqrstuvwxyz leaked').result.per_entity.key).toBe('fail');
-    expect(scrubPii('-----BEGIN PRIVATE KEY----- leaked').result.per_entity.key).toBe('fail');
-    expect(scrubPii('AKIAIOSFODNN7EXAMPLE in the log').result.per_entity.key).toBe('fail');
+    expect(scrubPii(`${'github_pat' + '_abcdefghijklmnopqrstuvwxyz'} leaked`).result.per_entity.key).toBe('fail');
+    expect(scrubPii(`${'-----BEGIN ' + 'PRIVATE KEY-----'} leaked`).result.per_entity.key).toBe('fail');
+    expect(scrubPii(`${'AKIA' + 'IOSFODNN7EXAMPLE'} in the log`).result.per_entity.key).toBe('fail');
     expect(scrubPii('hash 5f4dcc3b5aa765d61d8327deb882cf99 stored').result.per_entity.key).toBe('fail');
   });
 
