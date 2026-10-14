@@ -79,7 +79,7 @@
           "path": ".npmignore"
         },
         {
-          "hash": "420e5e399a24b5f0b577baa6d9561792c176b4b2dbd43b731ffb6a8d92f84993",
+          "hash": "74d0d2b5fdf9f46cdd4c83e5330e1d92d3c186babd33728de2909a42742d021b",
           "path": "CHANGELOG.md"
         },
         {
@@ -123,7 +123,7 @@
           "path": "README.zh.md"
         },
         {
-          "hash": "5f12917b74e8b43a8808c5212262e0bad4d7f4ad55fe517173a3bb0eabf15d5f",
+          "hash": "83f52bf80d5c676881b1bfdceec815c3ec26d5fc67c558d2522e0069197a3f73",
           "path": "ROADMAP.md"
         },
         {
@@ -147,11 +147,11 @@
           "path": "logo.png"
         },
         {
-          "hash": "b986f1a6f30a7d4c11d06b891b6cf885171fdd529fdd0f8c05d11c25bcab73e4",
+          "hash": "f6ffcdaed2e8f9223d2a4d3bf581023fc5c6f8c83fd1c17d7f2522d46457b184",
           "path": "package-lock.json"
         },
         {
-          "hash": "441f43f81f7f82a295daf981f150aa1371f6ba0913ad7b4390a2b26037b52a6e",
+          "hash": "65712ab20dba0affc3355b09144929cffec9b7954f1d51e9607e5ea940d49826",
           "path": "package.json"
         },
         {
@@ -501,7 +501,7 @@
           "path": "site/astro.config.mjs"
         },
         {
-          "hash": "af5d4f54dca60686724d306eb58759fb25b6f5ba4d66559ab84a968112a184e5",
+          "hash": "0607a19c4f60b635244a906c7ad2424359b50e20c4a83bc140f202abce4a941e",
           "path": "site/package-lock.json"
         },
         {
@@ -994,7 +994,7 @@
               "line": 425
             }
           ],
-          "hash": "241ea0f3b4774c8d7496dfd6b9590c1f83aa7915c605ff54e9dd724222d520d5",
+          "hash": "86b44827c5befb6b9dd03e95590666449b65dbc03af9c5ae37bd8e531cae48b7",
           "importsFiles": [
             "src/ollama.ts",
             "src/prompts/base.ts",
@@ -1774,7 +1774,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "1bede4d07927b51aa093de5795ea3731fa4382fd62294d0afafaf49a3a382559",
+          "hash": "440b0fb35addfc8e604d3e00a507a9ffb9ff3f67cb5569330e9354437f2ff2e9",
           "importOrder": [
             "src/capture.ts",
             "src/dataset/pii-scrub.ts",
@@ -3257,7 +3257,7 @@
   ],
   "engine": "1.24.0",
   "generatedFrom": {
-    "commit": "c62986b198abbe521c503e1fea158c528a4ffe03",
+    "commit": "9a6a9d525ba475cbf384543ada0f995c62d70a2e",
     "tracked": 154
   },
   "landings": [

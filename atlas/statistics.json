@@ -101,7 +101,7 @@
       "confidence": "full",
       "highWater": null,
       "name": "src",
-      "qualifyingSourceCommits": 34,
+      "qualifyingSourceCommits": 35,
       "rebaseline": null
     },
     {
@@ -135,7 +135,7 @@
       "confidence": "full",
       "highWater": null,
       "name": "tests",
-      "qualifyingSourceCommits": 36,
+      "qualifyingSourceCommits": 37,
       "rebaseline": null
     }
   ],
@@ -153,8 +153,8 @@
         "path": ".env.example"
       },
       {
-        "commits": 15,
-        "lines": 258,
+        "commits": 17,
+        "lines": 296,
         "path": ".github/workflows/ci.yml"
       },
       {
@@ -178,8 +178,8 @@
         "path": ".npmignore"
       },
       {
-        "commits": 10,
-        "lines": 186,
+        "commits": 12,
+        "lines": 190,
         "path": "CHANGELOG.md"
       },
       {
@@ -228,8 +228,8 @@
         "path": "README.zh.md"
       },
       {
-        "commits": 9,
-        "lines": 138,
+        "commits": 10,
+        "lines": 140,
         "path": "ROADMAP.md"
       },
       {
@@ -243,8 +243,8 @@
         "path": "SHIP_GATE.md"
       },
       {
-        "commits": 4,
-        "lines": 302,
+        "commits": 7,
+        "lines": 331,
         "path": "atlas/README.md"
       },
       {
@@ -253,18 +253,18 @@
         "path": "atlas/boundaries.yaml"
       },
       {
-        "commits": 4,
-        "lines": 1176,
+        "commits": 7,
+        "lines": 1253,
         "path": "atlas/page.json"
       },
       {
-        "commits": 4,
-        "lines": 3278,
+        "commits": 7,
+        "lines": 3411,
         "path": "atlas/statistics.json"
       },
       {
-        "commits": 4,
-        "lines": 7874,
+        "commits": 7,
+        "lines": 7932,
         "path": "atlas/structure.json"
       },
       {
@@ -283,13 +283,13 @@
         "path": "logo.png"
       },
       {
-        "commits": 9,
-        "lines": 2116,
+        "commits": 11,
+        "lines": 2274,
         "path": "package-lock.json"
       },
       {
-        "commits": 13,
-        "lines": 40,
+        "commits": 14,
+        "lines": 42,
         "path": "package.json"
       },
       {
@@ -373,8 +373,8 @@
         "path": "site/astro.config.mjs"
       },
       {
-        "commits": 1,
-        "lines": 5860,
+        "commits": 3,
+        "lines": 5872,
         "path": "site/package-lock.json"
       },
       {
@@ -523,8 +523,8 @@
         "path": "src/dataset/validate.ts"
       },
       {
-        "commits": 17,
-        "lines": 416,
+        "commits": 18,
+        "lines": 420,
         "path": "src/index.ts"
       },
       {
@@ -748,8 +748,8 @@
         "path": "tests/dataset-label-schema.test.ts"
       },
       {
-        "commits": 4,
-        "lines": 264,
+        "commits": 5,
+        "lines": 273,
         "path": "tests/dataset-pii-scrub.test.ts"
       },
       {
@@ -853,30 +853,23 @@
     "level": "low",
     "reason": "fewer than 25 source files reach 10 revisions in the window"
   },
-  "generatedAt": "2026-10-01T02:13:04.339Z",
+  "generatedAt": "2026-10-14T22:50:23.682Z",
   "generatedFrom": {
-    "commit": "c62986b198abbe521c503e1fea158c528a4ffe03"
+    "commit": "9a6a9d525ba475cbf384543ada0f995c62d70a2e"
   },
   "pairs": [
     {
       "a": "CHANGELOG.md",
       "b": "ROADMAP.md",
-      "either": 12,
-      "shared": 6,
-      "strength": 0.5
-    },
-    {
-      "a": "CHANGELOG.md",
-      "b": "SHIP_GATE.md",
-      "either": 10,
-      "shared": 5,
+      "either": 14,
+      "shared": 7,
       "strength": 0.5
     },
     {
       "a": "CHANGELOG.md",
       "b": "package.json",
-      "either": 14,
-      "shared": 7,
+      "either": 16,
+      "shared": 8,
       "strength": 0.5
     },
     {
@@ -1020,13 +1013,6 @@
       "strength": 1
     },
     {
-      "a": "README.md",
-      "b": "src/index.ts",
-      "either": 22,
-      "shared": 11,
-      "strength": 0.5
-    },
-    {
       "a": "README.pt-BR.md",
       "b": "README.zh.md",
       "either": 5,
@@ -1036,16 +1022,16 @@
     {
       "a": "ROADMAP.md",
       "b": "SHIP_GATE.md",
-      "either": 9,
+      "either": 10,
       "shared": 6,
-      "strength": 0.666667
+      "strength": 0.6
     },
     {
       "a": "ROADMAP.md",
       "b": "package.json",
-      "either": 14,
-      "shared": 7,
-      "strength": 0.5
+      "either": 15,
+      "shared": 8,
+      "strength": 0.533333
     },
     {
       "a": "SECURITY.md",
@@ -1057,9 +1043,9 @@
     {
       "a": "package-lock.json",
       "b": "package.json",
-      "either": 13,
-      "shared": 7,
-      "strength": 0.538462
+      "either": 15,
+      "shared": 8,
+      "strength": 0.533333
     },
     {
       "a": "src/ollama.ts",
@@ -1212,16 +1198,16 @@
     "floor": "fallen",
     "floorHeld": false,
     "floorTrigger": "revision-depth",
-    "headDate": "2026-09-30T13:52:42-07:00",
+    "headDate": "2026-10-14T18:48:05-04:00",
     "inScopeFiles": 159,
     "pinnedStart": null,
     "priorFloor": "fallen",
-    "qualifyingCommits": 65,
+    "qualifyingCommits": 69,
     "qualifyingMinimum": 30,
     "revisions": 5,
     "shared": 10,
     "sharedFloorUsed": 3,
-    "since": "2026-04-03T20:52:42.000Z",
+    "since": "2026-04-17T22:48:05.000Z",
     "sourceExtensions": [
       ".js",
       ".mjs",
