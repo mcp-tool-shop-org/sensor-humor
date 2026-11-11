@@ -1,14 +1,14 @@
 # sensor-humor: how it works
 
-Mapped at 2026-10-14 from commit 9a6a9d5 by Atlas 1.24.0.
+Mapped at 2026-11-11 from commit aaaa903 by Atlas 1.26.0.
 
 ## What this is
 
 8 parts, mostly TypeScript (86 files), JavaScript (3), CSS (2), Astro (1), Python (1) and shell (1). Work enters through 5 doors; the busiest is Release, which reaches 4 parts. It publishes to npm and a container image. It deploys a site to GitHub Pages. People run sensor-humor.
 
-## What changed since 2026-10-14 (73f18c3)
+## What changed since 2026-10-14 (9a6a9d5)
 
-Nothing structural changed since 2026-10-14; no file changed.
+Nothing structural changed since 2026-10-14; 1 file changed content.
 
 ## What comes in
 
