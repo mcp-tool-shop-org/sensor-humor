@@ -9,7 +9,7 @@
       "externals": 0,
       "files": [
         {
-          "hash": "7ac2304e1d3b50946f230de3b24f5594c875c66e2ddd112f62cee036b5848a98",
+          "hash": "88feb31db5fc36c3e6101bec6f6743373cf653a6bdff667364961f1002360524",
           "path": ".github/workflows/ci.yml"
         },
         {
@@ -3255,9 +3255,9 @@
       "to": "src"
     }
   ],
-  "engine": "1.24.0",
+  "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "9a6a9d525ba475cbf384543ada0f995c62d70a2e",
+    "commit": "aaaa90385dff7af5f6367effd387cb75cd3c792f",
     "tracked": 154
   },
   "landings": [
